@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@vivliostyle/cli": "^9.1.1"
+  }
+}

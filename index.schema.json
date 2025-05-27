@@ -1,0 +1,242 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": {
+    "$ref": "#/definitions/Index"
+  },
+  "definitions": {
+    "Index": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Group"
+      }
+    },
+    "Group": {
+      "type": "object",
+      "required": ["group", "entries"],
+      "properties": {
+        "group": {
+          "type": "string"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Entry"
+          }
+        }
+      }
+    },
+    "Entry": {
+      "type": "object",
+      "required": [
+        "headword",
+        "reading",
+        "locators",
+        "see",
+        "seeAlso",
+        "subentries"
+      ],
+      "properties": {
+        "headword": {
+          "type": "string"
+        },
+        "reading": {
+          "type": "string"
+        },
+        "locators": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/PageLocator" },
+              { "$ref": "#/definitions/RangeLocator" }
+            ]
+          }
+        },
+        "see": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/EntryReference" },
+              { "$ref": "#/definitions/SubentryReference" }
+            ]
+          }
+        },
+        "seeAlso": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/EntryReference" },
+              { "$ref": "#/definitions/SubentryReference" }
+            ]
+          }
+        },
+        "subentries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Subentry"
+          }
+        }
+      }
+    },
+    "Subentry": {
+      "type": "object",
+      "required": ["headword", "reading", "locators", "see", "seeAlso"],
+      "properties": {
+        "headword": {
+          "type": "string"
+        },
+        "reading": {
+          "type": "string"
+        },
+        "locators": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/PageLocator" },
+              { "$ref": "#/definitions/RangeLocator" }
+            ]
+          }
+        },
+        "see": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/EntryReference" },
+              { "$ref": "#/definitions/SubentryReference" }
+            ]
+          }
+        },
+        "seeAlso": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/EntryReference" },
+              { "$ref": "#/definitions/SubentryReference" }
+            ]
+          }
+        }
+      }
+    },
+    "LocatorBase": {
+      "type": "object",
+      "required": ["type", "file", "id"],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string"
+        },
+        "id": {
+          "oneOf": [
+            { "type": "string" },
+            {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          ]
+        }
+      }
+    },
+    "PageLocator": {
+      "allOf": [
+        { "$ref": "#/definitions/LocatorBase" },
+        {
+          "type": "object",
+          "required": ["type", "id"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["page"]
+            },
+            "id": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "RangeLocator": {
+      "allOf": [
+        { "$ref": "#/definitions/LocatorBase" },
+        {
+          "type": "object",
+          "required": ["type", "id"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["range"]
+            },
+            "id": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        }
+      ]
+    },
+    "ReferenceBase": {
+      "type": "object",
+      "required": ["type", "group", "headword", "reading"],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "group": {
+          "type": "string"
+        },
+        "headword": {
+          "type": "string"
+        },
+        "reading": {
+          "type": "string"
+        }
+      }
+    },
+    "EntryReference": {
+      "allOf": [
+        { "$ref": "#/definitions/ReferenceBase" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["entry"]
+            }
+          }
+        }
+      ]
+    },
+    "SubentryReference": {
+      "allOf": [
+        { "$ref": "#/definitions/ReferenceBase" },
+        {
+          "type": "object",
+          "required": ["type", "subHeadword", "subReading"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["subentry"]
+            },
+            "subHeadword": {
+              "type": "string"
+            },
+            "subReading": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

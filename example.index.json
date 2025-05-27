@@ -1,0 +1,189 @@
+{
+  "$schema": "./index.schema.json",
+  "otherIndex": [],
+  "index": [
+    {
+      "group": "さ",
+      "entries": [
+        {
+          "headword": "自由利用",
+          "reading": "じゆうりよう",
+          "locators": [
+            {
+              "type": "range",
+              "file": "051-110.md",
+              "id": ["104", "108"]
+            },
+            {
+              "type": "page",
+              "file": "111-150.md",
+              "id": "112"
+            }
+          ],
+          "see": [],
+          "seeAlso": [],
+          "subentries": []
+        },
+        {
+          "headword": "相続",
+          "reading": "そうぞく",
+          "locators": [
+            {
+              "type": "page",
+              "file": "051-110.md",
+              "id": "68"
+            }
+          ],
+          "see": [],
+          "seeAlso": [],
+          "subentries": [
+            {
+              "headword": "一身専属",
+              "reading": "いつしんせんぞく",
+              "locators": [
+                {
+                  "type": "page",
+                  "file": "051-110.md",
+                  "id": "76"
+                }
+              ],
+              "see": [],
+              "seeAlso": []
+            },
+            {
+              "headword": "相続人",
+              "reading": "そうぞくにん",
+              "locators": [
+                {
+                  "type": "range",
+                  "file": "051-110.md",
+                  "id": ["90", "91"]
+                }
+              ],
+              "see": [],
+              "seeAlso": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "group": "た",
+      "entries": [
+        {
+          "headword": "知的財産権",
+          "reading": "ちてきざいさんけん",
+          "locators": [
+            {
+              "type": "range",
+              "file": "051-110.md",
+              "id": ["56", "58"]
+            }
+          ],
+          "see": [],
+          "seeAlso": [],
+          "subentries": []
+        },
+        {
+          "headword": "著作権",
+          "reading": "ちよさくけん",
+          "locators": [
+            {
+              "type": "page",
+              "file": "001-050.md",
+              "id": "3"
+            },
+            {
+              "type": "page",
+              "file": "001-050.md",
+              "id": "8"
+            },
+            {
+              "type": "range",
+              "file": "001-050.md",
+              "id": ["33", "35"]
+            }
+          ],
+          "see": [],
+          "seeAlso": [
+            {
+              "type": "entry",
+              "group": "た",
+              "headword": "知的財産権",
+              "reading": "ちてきざいさんけん"
+            }
+          ],
+          "subentries": [
+            {
+              "headword": "――の使用",
+              "reading": "ちよさくけんのしよう",
+              "locators": [
+                {
+                  "type": "page",
+                  "file": "111-150.md",
+                  "id": "150"
+                }
+              ],
+              "see": [],
+              "seeAlso": []
+            },
+            {
+              "headword": "――の譲渡",
+              "reading": "ちよさくけんのじようと",
+              "locators": [
+                {
+                  "type": "page",
+                  "file": "001-050.md",
+                  "id": "42"
+                },
+                {
+                  "type": "range",
+                  "file": "051-110.md",
+                  "id": ["100", "104"]
+                }
+              ],
+              "see": [],
+              "seeAlso": []
+            },
+            {
+              "headword": "――の制限",
+              "reading": "ちよさくけんのせいげん",
+              "locators": [],
+              "see": [
+                {
+                  "type": "entry",
+                  "group": "さ",
+                  "headword": "自由利用",
+                  "reading": "じゆうりよう"
+                }
+              ],
+              "seeAlso": []
+            },
+            {
+              "headword": "――の相続",
+              "reading": "ちよさくけんのそうぞく",
+              "locators": [
+                {
+                  "type": "page",
+                  "file": "001-050.md",
+                  "id": "20"
+                }
+              ],
+              "see": [
+                {
+                  "type": "subentry",
+                  "group": "さ",
+                  "headword": "相続",
+                  "reading": "そうぞく",
+                  "subHeadword": "一身専属",
+                  "subReading": "いつしんせんぞく"
+                }
+              ],
+              "seeAlso": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
