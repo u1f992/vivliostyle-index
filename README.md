@@ -31,3 +31,75 @@
 著者名　24
 　⇒個人著者名；団体著者名
 ```
+
+フォーマットは`<索引ID>,<登録先見出し語>[,<登録種別>[,<参照>]]`です。内部的には、両端に`[ ]`を補ってYAMLのリストとしてパースします。
+
+```typescript
+/**
+ * 索引が1つの場合は`$`や`_`としておけばよいでしょう。
+ */
+type 索引ID = string;
+
+/**
+ * `<グループ>[,<読み>[,<見出し語>]]`です。
+ * `<グループ>`には見出し語自体を入れ子状に指定することができ、この場合は`<グループ>`に指定された主見出し語に副見出しを登録します。
+ * 省略された箇所はinnerHTML（textContentではない）を使用します。
+ */
+type 登録先見出し語 =
+  | [string, string, string]
+  | [string, string]
+  | [string]
+  | [[string, string, string], string, string]
+  | [[string, string, string], string]
+  | [[string, string, string]]
+  | [[string, string], string, string]
+  | [[string, string], string]
+  | [[string, string]]
+  | [[string], string, string]
+  | [[string], string]
+  | [[string]];
+
+/**
+ * それぞれ所在指示（範囲）、「を見よ参照」、「をも見よ参照」に対応します。省略した場合は所在指示（ページ）になります。
+ */
+type 登録種別 = "range" | "see" | "seeAlso";
+
+/**
+ * 「を見よ参照」、「をも見よ参照」の参照先を指定します。参照先見出し語が存在するかは関知しません。
+ */
+type 参照 = 登録先見出し語;
+```
+
+<!-- prettier-ignore-start -->
+
+```html
+<span data-vivliostyle-index="$,[さ,じゆうりよう]">自由利用</span>
+<div data-vivliostyle-index="$,[さ,じゆうりよう,自由利用],range">
+  自由利用について
+</div>
+<span data-vivliostyle-index="$,[さ,そうぞく]">相続</span>
+<span data-vivliostyle-index="$,[[さ,そうぞく,相続],いつしんせんぞく]">一身専属</span>
+<div data-vivliostyle-index="$,[[さ,そうぞく,相続],そうぞくにん,相続人],range">
+  相続人について
+</div>
+<div data-vivliostyle-index="$,[た,ちてきざいさんけん,知的財産権],range">
+  知的財産権について
+</div>
+<span data-vivliostyle-index="$,[た,ちよさくけん]">著作権</span>
+<span data-vivliostyle-index="$,[た,ちよさくけん]">著作権</span>
+<div data-vivliostyle-index="$,[た,ちよさくけん,著作権],range">
+  著作権について
+</div>
+<span data-vivliostyle-index="$,[た,ちよさくけん,著作権],seeAlso,[た,ちてきざいさんけん,知的財産権]"></span>
+<span data-vivliostyle-index="$,[[た,ちよさくけん,著作権],ちよさくけんのしよう,――の使用]"
+>著作権の使用</span>
+<span data-vivliostyle-index="$,[[た,ちよさくけん,著作権],ちよさくけんのじようと,――の譲渡]">著作権の譲渡</span>
+<div data-vivliostyle-index="$,[[た,ちよさくけん,著作権],ちよさくけんのじようと,――の譲渡],range">
+  著作権の譲渡について
+</div>
+<span data-vivliostyle-index="$,[[た,ちよさくけん,著作権],ちよさくけんのせいげん,――の制限],see,[さ,じゆうりよう,自由利用]"></span>
+<span data-vivliostyle-index="$,[[た,ちよさくけん,著作権],ちよさくけんのそうぞく,――の相続]">著作権の相続</span>
+<span data-vivliostyle-index="$,[[た,ちよさくけん,著作権],ちよさくけんのそうぞく,――の相続],see,[[さ,そうぞく,相続],いつしんせんぞく,一身専属]"></span>
+```
+
+<!-- prettier-ignore-end -->
