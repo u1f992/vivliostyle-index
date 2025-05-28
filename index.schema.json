@@ -34,18 +34,18 @@
     "Entry": {
       "type": "object",
       "required": [
-        "headword",
         "reading",
+        "headword",
         "locators",
         "see",
         "seeAlso",
         "subentries"
       ],
       "properties": {
-        "headword": {
+        "reading": {
           "type": "string"
         },
-        "reading": {
+        "headword": {
           "type": "string"
         },
         "locators": {
@@ -85,12 +85,12 @@
     },
     "Subentry": {
       "type": "object",
-      "required": ["headword", "reading", "locators", "see", "seeAlso"],
+      "required": ["reading", "headword", "locators", "see", "seeAlso"],
       "properties": {
-        "headword": {
+        "reading": {
           "type": "string"
         },
-        "reading": {
+        "headword": {
           "type": "string"
         },
         "locators": {
@@ -186,7 +186,7 @@
     },
     "ReferenceBase": {
       "type": "object",
-      "required": ["type", "group", "headword", "reading"],
+      "required": ["type", "group", "reading", "headword"],
       "properties": {
         "type": {
           "type": "string"
@@ -194,10 +194,10 @@
         "group": {
           "type": "string"
         },
-        "headword": {
+        "reading": {
           "type": "string"
         },
-        "reading": {
+        "headword": {
           "type": "string"
         }
       }
@@ -222,16 +222,16 @@
         { "$ref": "#/definitions/ReferenceBase" },
         {
           "type": "object",
-          "required": ["type", "subHeadword", "subReading"],
+          "required": ["type", "subReading", "subHeadword"],
           "properties": {
             "type": {
               "type": "string",
               "enum": ["subentry"]
             },
-            "subHeadword": {
+            "subReading": {
               "type": "string"
             },
-            "subReading": {
+            "subHeadword": {
               "type": "string"
             }
           }

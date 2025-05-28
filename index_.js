@@ -1,5 +1,20 @@
 // @ts-check
 
+import {
+  getRegisterPageLocatorToEntryQueryValidator,
+  getRegisterRangeLocatorToEntryQueryValidator,
+  getRegisterSeeReferenceOfEntryToEntryQueryValidator,
+  getRegisterSeeReferenceOfSubentryToEntryQueryValidator,
+  getRegisterSeeAlsoReferenceOfEntryToEntryQueryValidator,
+  getRegisterSeeAlsoReferenceOfSubentryToEntryQueryValidator,
+  getRegisterPageLocatorToSubentryQueryValidator,
+  getRegisterRangeLocatorToSubentryQueryValidator,
+  getRegisterSeeReferenceOfEntryToSubentryQueryValidator,
+  getRegisterSeeReferenceOfSubentryToSubentryQueryValidator,
+  getRegisterSeeAlsoReferenceOfEntryToSubentryQueryValidator,
+  getRegisterSeeAlsoReferenceOfSubentryToSubentryQueryValidator,
+} from "./query-validators.js";
+
 /**
  * @typedef {{
  *   type: string;
@@ -12,19 +27,19 @@
  * @typedef {{
  *   type: string;
  *   group: string;
- *   headword: string;
  *   reading: string;
+ *   headword: string;
  * }} ReferenceBase
  * @typedef {ReferenceBase & { type: "entry" }} EntryReference
  * @typedef {ReferenceBase & {
  *   type: "subentry";
- *   subHeadword: string;
  *   subReading: string;
+ *   subHeadword: string;
  * }} SubentryReference
  *
  * @typedef {{
- *   headword: string;
  *   reading: string;
+ *   headword: string;
  *   locators: (PageLocator | RangeLocator)[];
  *   see: (EntryReference | SubentryReference)[];
  *   seeAlso: (EntryReference | SubentryReference)[];
@@ -32,20 +47,60 @@
  * @typedef {EntryBase} Subentry
  * @typedef {Subentry & { subentries: Subentry[] }} Entry
  *
- * @typedef {{ group: string; entries: Entry }} Group
+ * @typedef {{ group: string; entries: Entry[] }} Group
  * @typedef {Group[]} Index
  * @typedef {{[key: string]: Index}} Indexes
  */
 
 /**
- * @returns {Indexes}
- */
-function create() {
-  return {};
-}
-
-/**
  * @param {Indexes} indexes
  * @param {any} query
+ * @param {HTMLElement} elem
  */
-function register(indexes, query) {}
+function register(indexes, query, elem) {
+  if (getRegisterPageLocatorToEntryQueryValidator()(query)) {
+    const [id, [group, reading_, headword_]] = query[0];
+    const reading = reading_ ?? elem.innerHTML;
+    const headword = headword_ ?? elem.innerHTML;
+
+    const targetIndex = indexes[id];
+    const targetGroup =
+      targetIndex.find((g) => g.group === group) ??
+      targetIndex[targetIndex.push({ group, entries: [] }) - 1];
+    const targetEntry =
+      targetGroup.entries.find(
+        (e) => e.reading === reading && e.headword === headword,
+      ) ??
+      targetGroup.entries[
+        targetGroup.entries.push({
+          reading,
+          headword,
+          locators: [],
+          see: [],
+          seeAlso: [],
+          subentries: [],
+        }) - 1
+      ];
+    targetEntry.locators.push({ type: "page", file: "", id: "" });
+  } else if (getRegisterRangeLocatorToEntryQueryValidator()(query)) {
+  } else if (getRegisterSeeReferenceOfEntryToEntryQueryValidator()(query)) {
+  } else if (getRegisterSeeReferenceOfSubentryToEntryQueryValidator()(query)) {
+  } else if (getRegisterSeeAlsoReferenceOfEntryToEntryQueryValidator()(query)) {
+  } else if (
+    getRegisterSeeAlsoReferenceOfSubentryToEntryQueryValidator()(query)
+  ) {
+  } else if (getRegisterPageLocatorToSubentryQueryValidator()(query)) {
+  } else if (getRegisterRangeLocatorToSubentryQueryValidator()(query)) {
+  } else if (getRegisterSeeReferenceOfEntryToSubentryQueryValidator()(query)) {
+  } else if (
+    getRegisterSeeReferenceOfSubentryToSubentryQueryValidator()(query)
+  ) {
+  } else if (
+    getRegisterSeeAlsoReferenceOfEntryToSubentryQueryValidator()(query)
+  ) {
+  } else if (
+    getRegisterSeeAlsoReferenceOfSubentryToSubentryQueryValidator()(query)
+  ) {
+  } else {
+  }
+}

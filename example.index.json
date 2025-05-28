@@ -6,8 +6,8 @@
       "group": "さ",
       "entries": [
         {
-          "headword": "自由利用",
           "reading": "じゆうりよう",
+          "headword": "自由利用",
           "locators": [
             {
               "type": "range",
@@ -25,8 +25,8 @@
           "subentries": []
         },
         {
-          "headword": "相続",
           "reading": "そうぞく",
+          "headword": "相続",
           "locators": [
             {
               "type": "page",
@@ -38,8 +38,8 @@
           "seeAlso": [],
           "subentries": [
             {
-              "headword": "一身専属",
               "reading": "いつしんせんぞく",
+              "headword": "一身専属",
               "locators": [
                 {
                   "type": "page",
@@ -51,8 +51,8 @@
               "seeAlso": []
             },
             {
-              "headword": "相続人",
               "reading": "そうぞくにん",
+              "headword": "相続人",
               "locators": [
                 {
                   "type": "range",
@@ -71,8 +71,8 @@
       "group": "た",
       "entries": [
         {
-          "headword": "知的財産権",
           "reading": "ちてきざいさんけん",
+          "headword": "知的財産権",
           "locators": [
             {
               "type": "range",
@@ -85,8 +85,8 @@
           "subentries": []
         },
         {
-          "headword": "著作権",
           "reading": "ちよさくけん",
+          "headword": "著作権",
           "locators": [
             {
               "type": "page",
@@ -109,14 +109,14 @@
             {
               "type": "entry",
               "group": "た",
-              "headword": "知的財産権",
-              "reading": "ちてきざいさんけん"
+              "reading": "ちてきざいさんけん",
+              "headword": "知的財産権"
             }
           ],
           "subentries": [
             {
-              "headword": "――の使用",
               "reading": "ちよさくけんのしよう",
+              "headword": "――の使用",
               "locators": [
                 {
                   "type": "page",
@@ -128,8 +128,8 @@
               "seeAlso": []
             },
             {
-              "headword": "――の譲渡",
               "reading": "ちよさくけんのじようと",
+              "headword": "――の譲渡",
               "locators": [
                 {
                   "type": "page",
@@ -146,22 +146,22 @@
               "seeAlso": []
             },
             {
-              "headword": "――の制限",
               "reading": "ちよさくけんのせいげん",
+              "headword": "――の制限",
               "locators": [],
               "see": [
                 {
                   "type": "entry",
                   "group": "さ",
-                  "headword": "自由利用",
-                  "reading": "じゆうりよう"
+                  "reading": "じゆうりよう",
+                  "headword": "自由利用"
                 }
               ],
               "seeAlso": []
             },
             {
-              "headword": "――の相続",
               "reading": "ちよさくけんのそうぞく",
+              "headword": "――の相続",
               "locators": [
                 {
                   "type": "page",
@@ -173,10 +173,10 @@
                 {
                   "type": "subentry",
                   "group": "さ",
-                  "headword": "相続",
                   "reading": "そうぞく",
-                  "subHeadword": "一身専属",
-                  "subReading": "いつしんせんぞく"
+                  "headword": "相続",
+                  "subReading": "いつしんせんぞく",
+                  "subHeadword": "一身専属"
                 }
               ],
               "seeAlso": []
