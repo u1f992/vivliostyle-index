@@ -25,6 +25,29 @@ test("registerPageLocatorToEntry", () => {
     "../01/manuscript.html",
     span,
   );
-  console.dir(indexes, { depth: null });
-  console.log(new TextDecoder().decode(base16.parse(span.id)));
+  assert.deepStrictEqual(indexes, {
+    $: [
+      {
+        group: "さ",
+        entries: [
+          {
+            reading: "じゆうりよう",
+            headword: "自由利用",
+            locators: [
+              {
+                type: "page",
+                file: "../01/manuscript.html",
+                id: base16.stringify(
+                  new TextEncoder().encode("/html/body/span"),
+                ),
+              },
+            ],
+            see: [],
+            seeAlso: [],
+            subentries: [],
+          },
+        ],
+      },
+    ],
+  });
 });
