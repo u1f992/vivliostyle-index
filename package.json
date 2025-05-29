@@ -15,6 +15,8 @@
   "dependencies": {
     "ajv": "^8.17.1",
     "get-xpath": "^3.3.0",
+    "jsdom": "^26.1.0",
+    "rehype": "^11.0.0",
     "rfc4648": "^1.5.4"
   },
   "type": "module"

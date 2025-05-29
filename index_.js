@@ -58,7 +58,7 @@ import {
  * @param {string} headword
  */
 function ensureTargetEntry(indexes, indexId, groupTag, reading, headword) {
-  const targetIndex = indexes[indexId];
+  const targetIndex = indexes[indexId] ?? (indexes[indexId] = []);
   const targetGroup =
     targetIndex.find((g) => g.group === groupTag) ??
     targetIndex[targetIndex.push({ group: groupTag, entries: [] }) - 1];
@@ -143,247 +143,407 @@ function appendSpanAsLastChild(elem) {
 }
 
 /**
+ *
+ * @param {Indexes} indexes
+ * @param {import("./query-validators.js").RegisterPageLocatorToEntryQuery} query
+ * @param {string} file
+ * @param {HTMLElement} elem
+ */
+function registerPageLocatorToEntry(indexes, query, file, elem) {
+  const [indexId, [group, reading, headword]] = query;
+  ensureTargetEntry(
+    indexes,
+    indexId,
+    group,
+    reading ?? elem.innerHTML,
+    headword ?? elem.innerHTML,
+  ).locators.push({
+    type: "page",
+    file,
+    id: ensureId(elem),
+  });
+}
+
+/**
+ *
+ * @param {Indexes} indexes
+ * @param {import("./query-validators.js").RegisterRangeLocatorToEntryQuery} query
+ * @param {string} file
+ * @param {HTMLElement} elem
+ */
+function registerRangeLocatorToEntry(indexes, query, file, elem) {
+  const [indexId, [group, reading, headword], _] = query;
+  ensureTargetEntry(
+    indexes,
+    indexId,
+    group,
+    reading ?? elem.innerHTML,
+    headword ?? elem.innerHTML,
+  ).locators.push({
+    type: "range",
+    file,
+    id: [ensureId(elem), ensureId(appendSpanAsLastChild(elem))],
+  });
+}
+
+/**
+ *
+ * @param {Indexes} indexes
+ * @param {import("./query-validators.js").RegisterSeeReferenceOfEntryToEntryQuery} query
+ * @param {string} file
+ * @param {HTMLElement} elem
+ */
+function registerSeeReferenceOfEntryToEntry(indexes, query, file, elem) {
+  const [
+    indexId,
+    [group, reading, headword],
+    _,
+    [refGroup, refReading, refHeadword],
+  ] = query;
+  ensureTargetEntry(
+    indexes,
+    indexId,
+    group,
+    reading ?? elem.innerHTML,
+    headword ?? elem.innerHTML,
+  ).see.push({
+    type: "entry",
+    group: refGroup,
+    reading: refReading ?? elem.innerHTML,
+    headword: refHeadword ?? elem.innerHTML,
+  });
+}
+
+/**
+ *
+ * @param {Indexes} indexes
+ * @param {import("./query-validators.js").RegisterSeeReferenceOfSubentryToEntryQuery} query
+ * @param {string} file
+ * @param {HTMLElement} elem
+ */
+function registerSeeReferenceOfSubentryToEntry(indexes, query, file, elem) {
+  const [
+    indexId,
+    [group, reading, headword],
+    _,
+    [[refGroup, refReading, refHeadword], refSubReading, refSubHeadword],
+  ] = query;
+  ensureTargetEntry(
+    indexes,
+    indexId,
+    group,
+    reading ?? elem.innerHTML,
+    headword ?? elem.innerHTML,
+  ).see.push({
+    type: "subentry",
+    group: refGroup,
+    reading: refReading ?? elem.innerHTML,
+    headword: refHeadword ?? elem.innerHTML,
+    subReading: refSubReading ?? elem.innerHTML,
+    subHeadword: refSubHeadword ?? elem.innerHTML,
+  });
+}
+
+/**
+ *
+ * @param {Indexes} indexes
+ * @param {import("./query-validators.js").RegisterSeeAlsoReferenceOfEntryToEntryQuery} query
+ * @param {string} file
+ * @param {HTMLElement} elem
+ */
+function registerSeeAlsoReferenceOfEntryToEntry(indexes, query, file, elem) {
+  const [
+    indexId,
+    [group, reading, headword],
+    _,
+    [refGroup, refReading, refHeadword],
+  ] = query;
+  ensureTargetEntry(
+    indexes,
+    indexId,
+    group,
+    reading ?? elem.innerHTML,
+    headword ?? elem.innerHTML,
+  ).seeAlso.push({
+    type: "entry",
+    group: refGroup,
+    reading: refReading ?? elem.innerHTML,
+    headword: refHeadword ?? elem.innerHTML,
+  });
+}
+
+/**
+ *
+ * @param {Indexes} indexes
+ * @param {import("./query-validators.js").RegisterSeeAlsoReferenceOfSubentryToEntryQuery} query
+ * @param {string} file
+ * @param {HTMLElement} elem
+ */
+function registerSeeAlsoReferenceOfSubentryToEntry(indexes, query, file, elem) {
+  const [
+    indexId,
+    [group, reading, headword],
+    _,
+    [[refGroup, refReading, refHeadword], refSubReading, refSubHeadword],
+  ] = query;
+  ensureTargetEntry(
+    indexes,
+    indexId,
+    group,
+    reading ?? elem.innerHTML,
+    headword ?? elem.innerHTML,
+  ).seeAlso.push({
+    type: "subentry",
+    group: refGroup,
+    reading: refReading ?? elem.innerHTML,
+    headword: refHeadword ?? elem.innerHTML,
+    subReading: refSubReading ?? elem.innerHTML,
+    subHeadword: refSubHeadword ?? elem.innerHTML,
+  });
+}
+
+/**
+ *
+ * @param {Indexes} indexes
+ * @param {import("./query-validators.js").RegisterPageLocatorToSubentryQuery} query
+ * @param {string} file
+ * @param {HTMLElement} elem
+ */
+function registerPageLocatorToSubentry(indexes, query, file, elem) {
+  const [indexId, [[group, reading, headword], subReading, subHeadword]] =
+    query;
+  ensureTargetSubentry(
+    indexes,
+    indexId,
+    group,
+    reading ?? elem.innerHTML,
+    headword ?? elem.innerHTML,
+    subReading ?? elem.innerHTML,
+    subHeadword ?? elem.innerHTML,
+  ).locators.push({
+    type: "page",
+    file,
+    id: ensureId(elem),
+  });
+}
+
+/**
+ *
+ * @param {Indexes} indexes
+ * @param {import("./query-validators.js").RegisterRangeLocatorToSubentryQuery} query
+ * @param {string} file
+ * @param {HTMLElement} elem
+ */
+function registerRangeLocatorToSubentry(indexes, query, file, elem) {
+  const [indexId, [[group, reading, headword], subReading, subHeadword], _] =
+    query;
+  ensureTargetSubentry(
+    indexes,
+    indexId,
+    group,
+    reading ?? elem.innerHTML,
+    headword ?? elem.innerHTML,
+    subReading ?? elem.innerHTML,
+    subHeadword ?? elem.innerHTML,
+  ).locators.push({
+    type: "range",
+    file,
+    id: [ensureId(elem), ensureId(appendSpanAsLastChild(elem))],
+  });
+}
+
+/**
+ *
+ * @param {Indexes} indexes
+ * @param {import("./query-validators.js").RegisterSeeReferenceOfEntryToSubentryQuery} query
+ * @param {string} file
+ * @param {HTMLElement} elem
+ */
+function registerSeeReferenceOfEntryToSubentry(indexes, query, file, elem) {
+  const [
+    indexId,
+    [[group, reading, headword], subReading, subHeadword],
+    _,
+    [refGroup, refReading, refHeadword],
+  ] = query;
+  ensureTargetSubentry(
+    indexes,
+    indexId,
+    group,
+    reading ?? elem.innerHTML,
+    headword ?? elem.innerHTML,
+    subReading ?? elem.innerHTML,
+    subHeadword ?? elem.innerHTML,
+  ).see.push({
+    type: "entry",
+    group: refGroup,
+    reading: refReading ?? elem.innerHTML,
+    headword: refHeadword ?? elem.innerHTML,
+  });
+}
+
+/**
+ *
+ * @param {Indexes} indexes
+ * @param {import("./query-validators.js").RegisterSeeReferenceOfSubentryToSubentryQuery} query
+ * @param {string} file
+ * @param {HTMLElement} elem
+ */
+function registerSeeReferenceOfSubentryToSubentry(indexes, query, file, elem) {
+  const [
+    indexId,
+    [[group, reading, headword], subReading, subHeadword],
+    _,
+    [[refGroup, refReading, refHeadword], refSubReading, refSubHeadword],
+  ] = query;
+  ensureTargetSubentry(
+    indexes,
+    indexId,
+    group,
+    reading ?? elem.innerHTML,
+    headword ?? elem.innerHTML,
+    subReading ?? elem.innerHTML,
+    subHeadword ?? elem.innerHTML,
+  ).see.push({
+    type: "subentry",
+    group: refGroup,
+    reading: refReading ?? elem.innerHTML,
+    headword: refHeadword ?? elem.innerHTML,
+    subReading: refSubReading ?? elem.innerHTML,
+    subHeadword: refSubHeadword ?? elem.innerHTML,
+  });
+}
+
+/**
+ *
+ * @param {Indexes} indexes
+ * @param {import("./query-validators.js").RegisterSeeAlsoReferenceOfEntryToSubentryQuery} query
+ * @param {string} file
+ * @param {HTMLElement} elem
+ */
+function registerSeeAlsoReferenceOfEntryToSubentry(indexes, query, file, elem) {
+  const [
+    indexId,
+    [[group, reading, headword], subReading, subHeadword],
+    _,
+    [refGroup, refReading, refHeadword],
+  ] = query;
+  ensureTargetSubentry(
+    indexes,
+    indexId,
+    group,
+    reading ?? elem.innerHTML,
+    headword ?? elem.innerHTML,
+    subReading ?? elem.innerHTML,
+    subHeadword ?? elem.innerHTML,
+  ).seeAlso.push({
+    type: "entry",
+    group: refGroup,
+    reading: refReading ?? elem.innerHTML,
+    headword: refHeadword ?? elem.innerHTML,
+  });
+}
+
+/**
+ *
+ * @param {Indexes} indexes
+ * @param {import("./query-validators.js").RegisterSeeAlsoReferenceOfSubentryToSubentryQuery} query
+ * @param {string} file
+ * @param {HTMLElement} elem
+ */
+function registerSeeAlsoReferenceOfSubentryToSubentry(
+  indexes,
+  query,
+  file,
+  elem,
+) {
+  const [
+    indexId,
+    [[group, reading, headword], subReading, subHeadword],
+    _,
+    [[refGroup, refReading, refHeadword], refSubReading, refSubHeadword],
+  ] = query;
+  ensureTargetSubentry(
+    indexes,
+    indexId,
+    group,
+    reading ?? elem.innerHTML,
+    headword ?? elem.innerHTML,
+    subReading ?? elem.innerHTML,
+    subHeadword ?? elem.innerHTML,
+  ).seeAlso.push({
+    type: "subentry",
+    group: refGroup,
+    reading: refReading ?? elem.innerHTML,
+    headword: refHeadword ?? elem.innerHTML,
+    subReading: refSubReading ?? elem.innerHTML,
+    subHeadword: refSubHeadword ?? elem.innerHTML,
+  });
+}
+
+/**
+ * @typedef {(query: any) => boolean} QueryValidator
+ * @typedef {(indexes: Indexes, query: any, file: string, elem: HTMLElement) => void} Register
+ * @typedef {[() => QueryValidator, Register]} ValidatorRegisterPair
+ * @type {ValidatorRegisterPair[]}
+ */
+const validatorRegisterPairs = [
+  [getRegisterPageLocatorToEntryQueryValidator, registerPageLocatorToEntry],
+  [getRegisterRangeLocatorToEntryQueryValidator, registerRangeLocatorToEntry],
+  [
+    getRegisterSeeReferenceOfEntryToEntryQueryValidator,
+    registerSeeReferenceOfEntryToEntry,
+  ],
+  [
+    getRegisterSeeReferenceOfSubentryToEntryQueryValidator,
+    registerSeeReferenceOfSubentryToEntry,
+  ],
+  [
+    getRegisterSeeAlsoReferenceOfEntryToEntryQueryValidator,
+    registerSeeAlsoReferenceOfEntryToEntry,
+  ],
+  [
+    getRegisterSeeAlsoReferenceOfSubentryToEntryQueryValidator,
+    registerSeeAlsoReferenceOfSubentryToEntry,
+  ],
+  [
+    getRegisterPageLocatorToSubentryQueryValidator,
+    registerPageLocatorToSubentry,
+  ],
+  [
+    getRegisterRangeLocatorToSubentryQueryValidator,
+    registerRangeLocatorToSubentry,
+  ],
+  [
+    getRegisterSeeReferenceOfEntryToSubentryQueryValidator,
+    registerSeeReferenceOfEntryToSubentry,
+  ],
+  [
+    getRegisterSeeReferenceOfSubentryToSubentryQueryValidator,
+    registerSeeReferenceOfSubentryToSubentry,
+  ],
+  [
+    getRegisterSeeAlsoReferenceOfEntryToSubentryQueryValidator,
+    registerSeeAlsoReferenceOfEntryToSubentry,
+  ],
+  [
+    getRegisterSeeAlsoReferenceOfSubentryToSubentryQueryValidator,
+    registerSeeAlsoReferenceOfSubentryToSubentry,
+  ],
+];
+
+/**
  * @param {Indexes} indexes
  * @param {any} query
  * @param {string} file
  * @param {HTMLElement} elem
  */
 export function register(indexes, query, file, elem) {
-  if (getRegisterPageLocatorToEntryQueryValidator()(query)) {
-    const [indexId, [group, reading, headword]] = query;
-    ensureTargetEntry(
-      indexes,
-      indexId,
-      group,
-      reading ?? elem.innerHTML,
-      headword ?? elem.innerHTML,
-    ).locators.push({
-      type: "page",
-      file,
-      id: ensureId(elem),
-    });
-  } else if (getRegisterRangeLocatorToEntryQueryValidator()(query)) {
-    const [indexId, [group, reading, headword], _] = query;
-    ensureTargetEntry(
-      indexes,
-      indexId,
-      group,
-      reading ?? elem.innerHTML,
-      headword ?? elem.innerHTML,
-    ).locators.push({
-      type: "range",
-      file,
-      id: [ensureId(elem), ensureId(appendSpanAsLastChild(elem))],
-    });
-  } else if (getRegisterSeeReferenceOfEntryToEntryQueryValidator()(query)) {
-    const [
-      indexId,
-      [group, reading, headword],
-      _,
-      [refGroup, refReading, refHeadword],
-    ] = query;
-    ensureTargetEntry(
-      indexes,
-      indexId,
-      group,
-      reading ?? elem.innerHTML,
-      headword ?? elem.innerHTML,
-    ).see.push({
-      type: "entry",
-      group: refGroup,
-      reading: refReading ?? elem.innerHTML,
-      headword: refHeadword ?? elem.innerHTML,
-    });
-  } else if (getRegisterSeeReferenceOfSubentryToEntryQueryValidator()(query)) {
-    const [
-      indexId,
-      [group, reading, headword],
-      _,
-      [[refGroup, refReading, refHeadword], refSubReading, refSubHeadword],
-    ] = query;
-    ensureTargetEntry(
-      indexes,
-      indexId,
-      group,
-      reading ?? elem.innerHTML,
-      headword ?? elem.innerHTML,
-    ).see.push({
-      type: "subentry",
-      group: refGroup,
-      reading: refReading ?? elem.innerHTML,
-      headword: refHeadword ?? elem.innerHTML,
-      subReading: refSubReading ?? elem.innerHTML,
-      subHeadword: refSubHeadword ?? elem.innerHTML,
-    });
-  } else if (getRegisterSeeAlsoReferenceOfEntryToEntryQueryValidator()(query)) {
-    const [
-      indexId,
-      [group, reading, headword],
-      _,
-      [refGroup, refReading, refHeadword],
-    ] = query;
-    ensureTargetEntry(
-      indexes,
-      indexId,
-      group,
-      reading ?? elem.innerHTML,
-      headword ?? elem.innerHTML,
-    ).seeAlso.push({
-      type: "entry",
-      group: refGroup,
-      reading: refReading ?? elem.innerHTML,
-      headword: refHeadword ?? elem.innerHTML,
-    });
-  } else if (
-    getRegisterSeeAlsoReferenceOfSubentryToEntryQueryValidator()(query)
-  ) {
-    const [
-      indexId,
-      [group, reading, headword],
-      _,
-      [[refGroup, refReading, refHeadword], refSubReading, refSubHeadword],
-    ] = query;
-    ensureTargetEntry(
-      indexes,
-      indexId,
-      group,
-      reading ?? elem.innerHTML,
-      headword ?? elem.innerHTML,
-    ).seeAlso.push({
-      type: "subentry",
-      group: refGroup,
-      reading: refReading ?? elem.innerHTML,
-      headword: refHeadword ?? elem.innerHTML,
-      subReading: refSubReading ?? elem.innerHTML,
-      subHeadword: refSubHeadword ?? elem.innerHTML,
-    });
-  } else if (getRegisterPageLocatorToSubentryQueryValidator()(query)) {
-    const [indexId, [[group, reading, headword], subReading, subHeadword]] =
-      query;
-    ensureTargetSubentry(
-      indexes,
-      indexId,
-      group,
-      reading ?? elem.innerHTML,
-      headword ?? elem.innerHTML,
-      subReading ?? elem.innerHTML,
-      subHeadword ?? elem.innerHTML,
-    ).locators.push({
-      type: "page",
-      file,
-      id: ensureId(elem),
-    });
-  } else if (getRegisterRangeLocatorToSubentryQueryValidator()(query)) {
-    const [indexId, [[group, reading, headword], subReading, subHeadword], _] =
-      query;
-    ensureTargetSubentry(
-      indexes,
-      indexId,
-      group,
-      reading ?? elem.innerHTML,
-      headword ?? elem.innerHTML,
-      subReading ?? elem.innerHTML,
-      subHeadword ?? elem.innerHTML,
-    ).locators.push({
-      type: "range",
-      file,
-      id: [ensureId(elem), ensureId(appendSpanAsLastChild(elem))],
-    });
-  } else if (getRegisterSeeReferenceOfEntryToSubentryQueryValidator()(query)) {
-    const [
-      indexId,
-      [[group, reading, headword], subReading, subHeadword],
-      _,
-      [refGroup, refReading, refHeadword],
-    ] = query;
-    ensureTargetSubentry(
-      indexes,
-      indexId,
-      group,
-      reading ?? elem.innerHTML,
-      headword ?? elem.innerHTML,
-      subReading ?? elem.innerHTML,
-      subHeadword ?? elem.innerHTML,
-    ).see.push({
-      type: "entry",
-      group: refGroup,
-      reading: refReading ?? elem.innerHTML,
-      headword: refHeadword ?? elem.innerHTML,
-    });
-  } else if (
-    getRegisterSeeReferenceOfSubentryToSubentryQueryValidator()(query)
-  ) {
-    const [
-      indexId,
-      [[group, reading, headword], subReading, subHeadword],
-      _,
-      [[refGroup, refReading, refHeadword], refSubReading, refSubHeadword],
-    ] = query;
-    ensureTargetSubentry(
-      indexes,
-      indexId,
-      group,
-      reading ?? elem.innerHTML,
-      headword ?? elem.innerHTML,
-      subReading ?? elem.innerHTML,
-      subHeadword ?? elem.innerHTML,
-    ).see.push({
-      type: "subentry",
-      group: refGroup,
-      reading: refReading ?? elem.innerHTML,
-      headword: refHeadword ?? elem.innerHTML,
-      subReading: refSubReading ?? elem.innerHTML,
-      subHeadword: refSubHeadword ?? elem.innerHTML,
-    });
-  } else if (
-    getRegisterSeeAlsoReferenceOfEntryToSubentryQueryValidator()(query)
-  ) {
-    const [
-      indexId,
-      [[group, reading, headword], subReading, subHeadword],
-      _,
-      [refGroup, refReading, refHeadword],
-    ] = query;
-    ensureTargetSubentry(
-      indexes,
-      indexId,
-      group,
-      reading ?? elem.innerHTML,
-      headword ?? elem.innerHTML,
-      subReading ?? elem.innerHTML,
-      subHeadword ?? elem.innerHTML,
-    ).seeAlso.push({
-      type: "entry",
-      group: refGroup,
-      reading: refReading ?? elem.innerHTML,
-      headword: refHeadword ?? elem.innerHTML,
-    });
-  } else if (
-    getRegisterSeeAlsoReferenceOfSubentryToSubentryQueryValidator()(query)
-  ) {
-    const [
-      indexId,
-      [[group, reading, headword], subReading, subHeadword],
-      _,
-      [[refGroup, refReading, refHeadword], refSubReading, refSubHeadword],
-    ] = query;
-    ensureTargetSubentry(
-      indexes,
-      indexId,
-      group,
-      reading ?? elem.innerHTML,
-      headword ?? elem.innerHTML,
-      subReading ?? elem.innerHTML,
-      subHeadword ?? elem.innerHTML,
-    ).seeAlso.push({
-      type: "subentry",
-      group: refGroup,
-      reading: refReading ?? elem.innerHTML,
-      headword: refHeadword ?? elem.innerHTML,
-      subReading: refSubReading ?? elem.innerHTML,
-      subHeadword: refSubHeadword ?? elem.innerHTML,
-    });
-  } else {
-    throw new Error(`incorrect query format: ${JSON.stringify(query)}`);
+  for (const [validatorGetter, register] of validatorRegisterPairs) {
+    if (validatorGetter()(query)) {
+      register(indexes, query, file, elem);
+      return;
+    }
   }
+  throw new Error(`incorrect query format: ${JSON.stringify(query)}`);
 }
