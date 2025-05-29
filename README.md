@@ -112,7 +112,7 @@ type 参照 = 登録先見出し語;
 <span data-index="$,[[た,ちよさくけん,著作権],ちよさくけんのそうぞく,――の相続],see,[[さ,そうぞく,相続],いつしんせんぞく,一身専属]"></span>
 ```
 
-`elem.tagName==="nav" && elem.classList.contains("index") && elem.hasAttribute("data-index")`を満たす要素の内部に、索引を展開します。
+`elem.hasAttribute("data-index") && elem.classList.contains("index")`を満たす要素の内部に、索引を展開します。
 
 ```html
 <nav class="index" data-index="$"><!--

@@ -121,7 +121,7 @@ function ensureTargetSubentry(
 }
 
 /**
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function ensureId(elem) {
   const id = elem.hasAttribute("id")
@@ -134,7 +134,7 @@ function ensureId(elem) {
 }
 
 /**
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function appendSpanAsLastChild(elem) {
   const span = document.createElement("span");
@@ -147,7 +147,7 @@ function appendSpanAsLastChild(elem) {
  * @param {Indexes} indexes
  * @param {import("./query-validators.js").RegisterPageLocatorToEntryQuery} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function registerPageLocatorToEntry(indexes, query, file, elem) {
   const [indexId, [group, reading, headword]] = query;
@@ -169,7 +169,7 @@ function registerPageLocatorToEntry(indexes, query, file, elem) {
  * @param {Indexes} indexes
  * @param {import("./query-validators.js").RegisterRangeLocatorToEntryQuery} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function registerRangeLocatorToEntry(indexes, query, file, elem) {
   const [indexId, [group, reading, headword], _] = query;
@@ -191,7 +191,7 @@ function registerRangeLocatorToEntry(indexes, query, file, elem) {
  * @param {Indexes} indexes
  * @param {import("./query-validators.js").RegisterSeeReferenceOfEntryToEntryQuery} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function registerSeeReferenceOfEntryToEntry(indexes, query, file, elem) {
   const [
@@ -219,7 +219,7 @@ function registerSeeReferenceOfEntryToEntry(indexes, query, file, elem) {
  * @param {Indexes} indexes
  * @param {import("./query-validators.js").RegisterSeeReferenceOfSubentryToEntryQuery} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function registerSeeReferenceOfSubentryToEntry(indexes, query, file, elem) {
   const [
@@ -249,7 +249,7 @@ function registerSeeReferenceOfSubentryToEntry(indexes, query, file, elem) {
  * @param {Indexes} indexes
  * @param {import("./query-validators.js").RegisterSeeAlsoReferenceOfEntryToEntryQuery} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function registerSeeAlsoReferenceOfEntryToEntry(indexes, query, file, elem) {
   const [
@@ -277,7 +277,7 @@ function registerSeeAlsoReferenceOfEntryToEntry(indexes, query, file, elem) {
  * @param {Indexes} indexes
  * @param {import("./query-validators.js").RegisterSeeAlsoReferenceOfSubentryToEntryQuery} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function registerSeeAlsoReferenceOfSubentryToEntry(indexes, query, file, elem) {
   const [
@@ -307,7 +307,7 @@ function registerSeeAlsoReferenceOfSubentryToEntry(indexes, query, file, elem) {
  * @param {Indexes} indexes
  * @param {import("./query-validators.js").RegisterPageLocatorToSubentryQuery} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function registerPageLocatorToSubentry(indexes, query, file, elem) {
   const [indexId, [[group, reading, headword], subReading, subHeadword]] =
@@ -332,7 +332,7 @@ function registerPageLocatorToSubentry(indexes, query, file, elem) {
  * @param {Indexes} indexes
  * @param {import("./query-validators.js").RegisterRangeLocatorToSubentryQuery} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function registerRangeLocatorToSubentry(indexes, query, file, elem) {
   const [indexId, [[group, reading, headword], subReading, subHeadword], _] =
@@ -357,7 +357,7 @@ function registerRangeLocatorToSubentry(indexes, query, file, elem) {
  * @param {Indexes} indexes
  * @param {import("./query-validators.js").RegisterSeeReferenceOfEntryToSubentryQuery} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function registerSeeReferenceOfEntryToSubentry(indexes, query, file, elem) {
   const [
@@ -387,7 +387,7 @@ function registerSeeReferenceOfEntryToSubentry(indexes, query, file, elem) {
  * @param {Indexes} indexes
  * @param {import("./query-validators.js").RegisterSeeReferenceOfSubentryToSubentryQuery} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function registerSeeReferenceOfSubentryToSubentry(indexes, query, file, elem) {
   const [
@@ -419,7 +419,7 @@ function registerSeeReferenceOfSubentryToSubentry(indexes, query, file, elem) {
  * @param {Indexes} indexes
  * @param {import("./query-validators.js").RegisterSeeAlsoReferenceOfEntryToSubentryQuery} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function registerSeeAlsoReferenceOfEntryToSubentry(indexes, query, file, elem) {
   const [
@@ -449,7 +449,7 @@ function registerSeeAlsoReferenceOfEntryToSubentry(indexes, query, file, elem) {
  * @param {Indexes} indexes
  * @param {import("./query-validators.js").RegisterSeeAlsoReferenceOfSubentryToSubentryQuery} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 function registerSeeAlsoReferenceOfSubentryToSubentry(
   indexes,
@@ -483,7 +483,7 @@ function registerSeeAlsoReferenceOfSubentryToSubentry(
 
 /**
  * @typedef {(query: any) => boolean} QueryValidator
- * @typedef {(indexes: Indexes, query: any, file: string, elem: HTMLElement) => void} Register
+ * @typedef {(indexes: Indexes, query: any, file: string, elem: Element) => void} Register
  * @typedef {[() => QueryValidator, Register]} ValidatorRegisterPair
  * @type {ValidatorRegisterPair[]}
  */
@@ -536,7 +536,7 @@ const validatorRegisterPairs = [
  * @param {Indexes} indexes
  * @param {any} query
  * @param {string} file
- * @param {HTMLElement} elem
+ * @param {Element} elem
  */
 export function register(indexes, query, file, elem) {
   for (const [validatorGetter, register] of validatorRegisterPairs) {
