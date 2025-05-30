@@ -5,7 +5,9 @@ import path from "node:path";
 
 import { JSDOM } from "jsdom";
 import rehype from "rehype"; // "^11.0.0"
-import { register } from "./index_";
+import YAML from "yaml";
+
+import { register } from "./index_.js";
 
 /**
  * - https://nodejs.org/api/fs.html#fsutimessyncpath-atime-mtime
@@ -33,14 +35,18 @@ const ensureHTMLExt = (path_) =>
  * @param {import("unist").Node} tree
  * @param {string} html
  * @param {string} resolvedEntryWithIndex
- * @returns
  */
 function processTargetEntry(tree, html, resolvedEntryWithIndex) {
   const jsdom = new JSDOM(rehype().stringify(tree));
   jsdom.window.document
     .querySelectorAll("[data-index]")
     .forEach((elem) =>
-      register({}, elem.getAttribute("data-index") ?? "", html, elem),
+      register(
+        {},
+        YAML.parse(`[${elem.getAttribute("data-index") ?? ""}]`),
+        html,
+        elem,
+      ),
     );
   touchIfExists(resolvedEntryWithIndex);
   return rehype().parse(jsdom.serialize());
@@ -50,23 +56,39 @@ function processTargetEntry(tree, html, resolvedEntryWithIndex) {
  * @param {import("unist").Node} tree
  * @param {import("unified").Processor} processor
  * @param {[`${string}.md`, `${string}.html`][]} resolvedTargetEntries
- * @returns
+ * @param {string | undefined} indexesOutput
  */
-function processEntryWithIndex(tree, processor, resolvedTargetEntries) {
+function processEntryWithIndex(
+  tree,
+  processor,
+  resolvedTargetEntries,
+  indexesOutput,
+) {
   /** @type {import("./index_.js").Indexes} */
   const indexes = {};
 
   resolvedTargetEntries.forEach(([md, html]) =>
     new JSDOM(
-      rehype().stringify(
-        processor.parse(fs.readFileSync(md, { encoding: "utf-8" })),
-      ),
+      processor
+        .processSync(fs.readFileSync(md, { encoding: "utf-8" }))
+        .toString(),
     ).window.document
       .querySelectorAll("[data-index]")
       .forEach((elem) =>
-        register(indexes, elem.getAttribute("data-index") ?? "", html, elem),
+        register(
+          indexes,
+          YAML.parse(`[${elem.getAttribute("data-index") ?? ""}]`),
+          html,
+          elem,
+        ),
       ),
   );
+
+  if (typeof indexesOutput !== "undefined") {
+    fs.writeFileSync(indexesOutput, JSON.stringify(indexes), {
+      encoding: "utf-8",
+    });
+  }
 
   const jsdom = new JSDOM(rehype().stringify(tree));
   const { document } = jsdom.window;
@@ -85,6 +107,7 @@ function processEntryWithIndex(tree, processor, resolvedTargetEntries) {
  *   entryWithIndex: `${string}.md`;
  *   entryContext?: string;
  *   workspaceDir?: string;
+ *   indexesOutput?: string;
  * }], import("unified").Settings>}
  */
 export const vivliostyleIndex = ({
@@ -93,6 +116,7 @@ export const vivliostyleIndex = ({
   entryWithIndex,
   entryContext: entryContext_,
   workspaceDir: workspaceDir_,
+  indexesOutput,
 }) => {
   const entryContext = path.resolve(entryContext_ ?? ".");
   const workspaceDir = path.resolve(
@@ -114,7 +138,7 @@ export const vivliostyleIndex = ({
         /** @type {[`${string}.md`, `${string}.html`]} */ ([
           resolvedEntry,
           path.relative(
-            resolvedEntryWithIndexHTML,
+            path.dirname(resolvedEntryWithIndexHTML),
             ensureHTMLExt(
               path.resolve(
                 workspaceDir,
@@ -150,8 +174,22 @@ export const vivliostyleIndex = ({
     const containsIndex = resolvedEntryWithIndex === originalMarkdown;
 
     if (containsIndex) {
-      return processEntryWithIndex(tree, processor, resolvedTargetEntries);
+      /**
+       * > 型 'Node' の引数を型 'Node<Data>' のパラメーターに割り当てることはできません。
+       * >   プロパティ 'data' の型に互換性がありません。
+       * >     型 'import("/home/mukai/Documents/vivliostyle-index/example/node_modules/@types/unist/index").Data | undefined' を型 'import("/home/mukai/Documents/vivliostyle-index/example/node_modules/vfile/node_modules/@types/unist/index").Data | undefined' に割り当てることはできません。
+       * >       型 'import("/home/mukai/Documents/vivliostyle-index/example/node_modules/@types/unist/index").Data' を型 'import("/home/mukai/Documents/vivliostyle-index/example/node_modules/vfile/node_modules/@types/unist/index").Data' に割り当てることはできません。
+       * >         型 'string' is missing in type 'Data' のインデックス シグネチャがありません。ts(2345)
+       */
+      return processEntryWithIndex(
+        // @ts-ignore
+        tree,
+        processor,
+        resolvedTargetEntries,
+        indexesOutput,
+      );
     } else if (isTargetEntry) {
+      // @ts-ignore
       return processTargetEntry(tree, findResult[1], resolvedEntryWithIndex);
     } else {
       return tree;

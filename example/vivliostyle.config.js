@@ -1,23 +1,27 @@
 // @ts-check
+
+import { VFM } from "@vivliostyle/vfm";
+
+import { vivliostyleIndex } from "@u1f992/vivliostyle-index";
+
 /** @type {import('@vivliostyle/cli').VivliostyleConfigSchema} */
 const vivliostyleConfig = {
-  title: "Principia", // populated into 'publication.json', default to 'title' of the first entry or 'name' in 'package.json'.
-  author: "Isaac Newton", // default to 'author' in 'package.json' or undefined
-  // language: 'la',
+  title: "example",
+  author: "u1f992",
+  language: "ja",
   // readingProgression: 'rtl', // reading progression direction, 'ltr' or 'rtl'.
-  // size: 'A4',
+  size: "A5",
   // theme: '', // .css or local dir or npm package. default to undefined
   image: "ghcr.io/vivliostyle/cli:9.1.1",
-  entry: [
-    // **required field**
-    // 'introduction.md', // 'title' is automatically guessed from the file (frontmatter > first heading)
-    // {
-    //   path: 'epigraph.md',
-    //   title: 'おわりに', // title can be overwritten (entry > file),
-    //   theme: '@vivliostyle/theme-whatever' // theme can be set individually. default to root 'theme'
-    // },
-    // 'glossary.html' // html is also acceptable
-  ], // 'entry' can be 'string' or 'object' if there's only single markdown file
+  entry: ["001-050.md", "051-110.md", "111-150.md", "151.md"], // 'entry' can be 'string' or 'object' if there's only single markdown file
+  documentProcessor: (opts, meta) =>
+    ((processor = VFM(opts, meta)) =>
+      processor.use(vivliostyleIndex, {
+        processor,
+        targetEntries: ["001-050.md", "051-110.md", "111-150.md"],
+        entryWithIndex: "151.md",
+        indexesOutput: ".vivliostyle/index.json",
+      }))(),
   // entryContext: './manuscripts', // default to '.' (relative to 'vivliostyle.config.js')
   // output: [ // path to generate draft file(s). default to '{title}.pdf'
   //   './output.pdf', // the output format will be inferred from the name.
@@ -49,4 +53,4 @@ const vivliostyleConfig = {
   // },
 };
 
-module.exports = vivliostyleConfig;
+export default vivliostyleConfig;

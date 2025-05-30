@@ -1,5 +1,7 @@
 {
   "devDependencies": {
-    "@vivliostyle/cli": "^9.1.1"
-  }
+    "@vivliostyle/cli": "^9.1.1",
+    "@u1f992/vivliostyle-index": "../"
+  },
+  "type": "module"
 }

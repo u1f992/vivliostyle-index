@@ -137,7 +137,7 @@ function ensureId(elem) {
  * @param {Element} elem
  */
 function appendSpanAsLastChild(elem) {
-  const span = document.createElement("span");
+  const span = elem.ownerDocument.createElement("span");
   elem.appendChild(span);
   return span;
 }

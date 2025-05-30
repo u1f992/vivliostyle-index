@@ -1,0 +1,204 @@
+{
+  "$": [
+    {
+      "group": "た",
+      "entries": [
+        {
+          "reading": "ちよさくけん",
+          "headword": "著作権",
+          "locators": [
+            {
+              "type": "page",
+              "file": "001-050.html",
+              "id": "2F68746D6C2F626F64792F7370616E5B315D"
+            },
+            {
+              "type": "page",
+              "file": "001-050.html",
+              "id": "2F68746D6C2F626F64792F7370616E5B335D"
+            },
+            {
+              "type": "range",
+              "file": "001-050.html",
+              "id": [
+                "2F68746D6C2F626F64792F6469765B33335D",
+                "2F68746D6C2F626F64792F6469765B33335D2F7370616E"
+              ]
+            }
+          ],
+          "see": [],
+          "seeAlso": [
+            {
+              "type": "entry",
+              "group": "た",
+              "reading": "ちてきざいさんけん",
+              "headword": "知的財産権"
+            }
+          ],
+          "subentries": [
+            {
+              "reading": "ちよさくけん",
+              "headword": "著作権",
+              "locators": [
+                {
+                  "type": "page",
+                  "file": "001-050.html",
+                  "id": "2F68746D6C2F626F64792F7370616E5B345D"
+                }
+              ],
+              "see": [],
+              "seeAlso": []
+            },
+            {
+              "reading": "ちよさくけん",
+              "headword": "著作権",
+              "locators": [],
+              "see": [
+                {
+                  "type": "subentry",
+                  "group": "さ",
+                  "reading": "そうぞく",
+                  "headword": "相続",
+                  "subReading": "いつしんせんぞく",
+                  "subHeadword": "一身専属"
+                }
+              ],
+              "seeAlso": []
+            },
+            {
+              "reading": "ちよさくけん",
+              "headword": "著作権",
+              "locators": [
+                {
+                  "type": "range",
+                  "file": "051-110.html",
+                  "id": [
+                    "2F68746D6C2F626F64792F6469765B34395D",
+                    "2F68746D6C2F626F64792F6469765B34395D2F7370616E"
+                  ]
+                }
+              ],
+              "see": [],
+              "seeAlso": []
+            },
+            {
+              "reading": "ちよさくけん",
+              "headword": "著作権",
+              "locators": [],
+              "see": [
+                {
+                  "type": "entry",
+                  "group": "さ",
+                  "reading": "じゆうりよう",
+                  "headword": "自由利用"
+                }
+              ],
+              "seeAlso": []
+            },
+            {
+              "reading": "ちよさくけん",
+              "headword": "著作権",
+              "locators": [
+                {
+                  "type": "page",
+                  "file": "111-150.html",
+                  "id": "2F68746D6C2F626F64792F7370616E5B325D"
+                }
+              ],
+              "see": [],
+              "seeAlso": []
+            }
+          ]
+        },
+        {
+          "reading": "ちてきざいさんけん",
+          "headword": "知的財産権",
+          "locators": [
+            {
+              "type": "range",
+              "file": "051-110.html",
+              "id": [
+                "2F68746D6C2F626F64792F6469765B365D",
+                "2F68746D6C2F626F64792F6469765B365D2F7370616E"
+              ]
+            }
+          ],
+          "see": [],
+          "seeAlso": [],
+          "subentries": []
+        }
+      ]
+    },
+    {
+      "group": "さ",
+      "entries": [
+        {
+          "reading": "そうぞく",
+          "headword": "相続",
+          "locators": [
+            {
+              "type": "page",
+              "file": "051-110.html",
+              "id": "2F68746D6C2F626F64792F7370616E5B325D"
+            }
+          ],
+          "see": [],
+          "seeAlso": [],
+          "subentries": [
+            {
+              "reading": "そうぞく",
+              "headword": "相続",
+              "locators": [
+                {
+                  "type": "page",
+                  "file": "051-110.html",
+                  "id": "2F68746D6C2F626F64792F7370616E5B315D"
+                }
+              ],
+              "see": [],
+              "seeAlso": []
+            },
+            {
+              "reading": "そうぞく",
+              "headword": "相続",
+              "locators": [
+                {
+                  "type": "range",
+                  "file": "051-110.html",
+                  "id": [
+                    "2F68746D6C2F626F64792F6469765B33395D",
+                    "2F68746D6C2F626F64792F6469765B33395D2F7370616E"
+                  ]
+                }
+              ],
+              "see": [],
+              "seeAlso": []
+            }
+          ]
+        },
+        {
+          "reading": "じゆうりよう",
+          "headword": "自由利用",
+          "locators": [
+            {
+              "type": "range",
+              "file": "051-110.html",
+              "id": [
+                "2F68746D6C2F626F64792F6469765B35305D",
+                "2F68746D6C2F626F64792F6469765B35305D2F7370616E"
+              ]
+            },
+            {
+              "type": "page",
+              "file": "111-150.html",
+              "id": "2F68746D6C2F626F64792F7370616E5B315D"
+            }
+          ],
+          "see": [],
+          "seeAlso": [],
+          "subentries": []
+        }
+      ]
+    }
+  ]
+}

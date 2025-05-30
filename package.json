@@ -1,7 +1,7 @@
 {
   "name": "@u1f992/vivliostyle-index",
   "version": "0.1.0",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -17,7 +17,8 @@
     "get-xpath": "^3.3.0",
     "jsdom": "^26.1.0",
     "rehype": "^11.0.0",
-    "rfc4648": "^1.5.4"
+    "rfc4648": "^1.5.4",
+    "yaml": "^2.8.0"
   },
   "type": "module"
 }
