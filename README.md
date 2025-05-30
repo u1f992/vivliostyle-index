@@ -1,4 +1,4 @@
-# @u1f992/vivliostyle-index
+# @u1f992/vivliostyle-extensible-navigators
 
 藤田節子『本の索引の作り方』　p.63より
 
