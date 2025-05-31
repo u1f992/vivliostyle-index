@@ -110,8 +110,8 @@ function ensureTargetSubentry(
     ) ??
     targetEntry.subentries[
       targetEntry.subentries.push({
-        reading,
-        headword,
+        reading: subReading,
+        headword: subHeadword,
         locators: [],
         see: [],
         seeAlso: [],

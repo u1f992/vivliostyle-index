@@ -37,8 +37,8 @@
           ],
           "subentries": [
             {
-              "reading": "ちよさくけん",
-              "headword": "著作権",
+              "reading": "ちよさくけんのそうぞく",
+              "headword": "――の相続",
               "locators": [
                 {
                   "type": "page",
@@ -46,13 +46,6 @@
                   "id": "2F68746D6C2F626F64792F7370616E5B345D"
                 }
               ],
-              "see": [],
-              "seeAlso": []
-            },
-            {
-              "reading": "ちよさくけん",
-              "headword": "著作権",
-              "locators": [],
               "see": [
                 {
                   "type": "subentry",
@@ -66,8 +59,8 @@
               "seeAlso": []
             },
             {
-              "reading": "ちよさくけん",
-              "headword": "著作権",
+              "reading": "ちよさくけんのじようと",
+              "headword": "――の譲渡",
               "locators": [
                 {
                   "type": "range",
@@ -82,8 +75,8 @@
               "seeAlso": []
             },
             {
-              "reading": "ちよさくけん",
-              "headword": "著作権",
+              "reading": "ちよさくけんのせいげん",
+              "headword": "――の制限",
               "locators": [],
               "see": [
                 {
@@ -96,8 +89,8 @@
               "seeAlso": []
             },
             {
-              "reading": "ちよさくけん",
-              "headword": "著作権",
+              "reading": "ちよさくけんのしよう",
+              "headword": "――の使用",
               "locators": [
                 {
                   "type": "page",
@@ -146,8 +139,8 @@
           "seeAlso": [],
           "subentries": [
             {
-              "reading": "そうぞく",
-              "headword": "相続",
+              "reading": "いつしんせんぞく",
+              "headword": "一身専属",
               "locators": [
                 {
                   "type": "page",
@@ -159,8 +152,8 @@
               "seeAlso": []
             },
             {
-              "reading": "そうぞく",
-              "headword": "相続",
+              "reading": "そうぞくにん",
+              "headword": "相続人",
               "locators": [
                 {
                   "type": "range",
