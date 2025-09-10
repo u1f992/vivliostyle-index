@@ -1,0 +1,6 @@
+.vscode
+example
+*.config.js
+src
+dist/**/*.test.*
+dist/**/test-util.*

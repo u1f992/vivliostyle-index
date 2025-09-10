@@ -1,0 +1,37 @@
+{
+  "name": "@u1f992/vivliostyle-index",
+  "version": "0.0.0",
+  "description": "unified plugin that integrates automatic index generation into Vivliostyle CLI workflows.",
+  "main": "dist/index.js",
+  "scripts": {
+    "lint": "eslint --fix \"src/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "build": "tsc",
+    "test": "node --test \"dist/**/*.test.js\"",
+    "example": "cd example && npx vivliostyle preview"
+  },
+  "keywords": [],
+  "author": "Koutaro Mukai",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "@types/hast": "^2.3.10",
+    "@types/node": "^24.3.0",
+    "eslint": "^9.35.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.42.0",
+    "unified": "^9.0.0"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "hast-util-from-html": "^1.0.2",
+    "hast-util-get-attribute": "^1.0.0",
+    "hast-util-get-xpath": "^1.0.0",
+    "hast-util-select": "^5.0.5",
+    "hast-util-to-text": "^3.1.2",
+    "upath": "^2.0.1",
+    "yaml": "^2.8.1"
+  }
+}

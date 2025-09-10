@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@vivliostyle/cli": "^9.6.0",
+    "@u1f992/vivliostyle-index": "file:.."
+  }
+}

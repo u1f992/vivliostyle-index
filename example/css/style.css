@@ -1,0 +1,185 @@
+@page {
+  size: 148mm 210mm;
+
+  @bottom-center {
+    content: counter(page);
+  }
+}
+
+.index-group {
+  list-style: none;
+}
+
+.index-main-entries {
+  padding-left: 1em;
+}
+
+.index-main-entry {
+  list-style: none;
+}
+
+.index-main-entry-locators {
+  display: inline;
+  padding: 0;
+  margin-left: 1em;
+  list-style: none;
+}
+
+.index-main-entry-locators li {
+  display: inline;
+}
+
+.index-main-entry-locators li::after {
+  content: ", ";
+}
+
+.index-main-entry-locators li:last-child::after {
+  content: "";
+}
+
+.index-main-entry-locators li > a::before {
+  content: target-counter(attr(href url), page);
+}
+
+.index-main-entry-locators-separator::before {
+  content: "-";
+}
+
+.index-main-entry-see {
+  display: inline;
+  padding: 0;
+  margin-left: 1em;
+  list-style: none;
+}
+
+.index-main-entry-see li {
+  display: inline;
+}
+
+.index-main-entry-see li:first-child::before {
+  content: "→";
+}
+
+.index-main-entry-see li::after {
+  content: "；";
+}
+
+.index-main-entry-see li:last-child::after {
+  content: "";
+}
+
+.index-main-entry-see-separator::before {
+  content: "：";
+}
+
+.index-main-entry-see-also {
+  padding-left: 1em;
+  list-style: none;
+}
+
+.index-main-entry-see-also li {
+  display: inline;
+}
+
+.index-main-entry-see-also li:first-child::before {
+  content: "⇒";
+}
+
+.index-main-entry-see-also li::after {
+  content: "；";
+}
+
+.index-main-entry-see-also li:last-child::after {
+  content: "";
+}
+
+.index-main-entry-see-also-separator::before {
+  content: "：";
+}
+
+.index-subentries {
+  padding-left: 1em;
+}
+
+.index-subentry {
+  list-style: none;
+}
+
+.index-subentry-locators {
+  display: inline;
+  padding: 0;
+  margin-left: 1em;
+  list-style: none;
+}
+
+.index-subentry-locators li {
+  display: inline;
+}
+
+.index-subentry-locators li::after {
+  content: ", ";
+}
+
+.index-subentry-locators li:last-child::after {
+  content: "";
+}
+
+.index-subentry-locators li > a::before {
+  content: target-counter(attr(href url), page);
+}
+
+.index-subentry-locators-separator::before {
+  content: "-";
+}
+
+.index-subentry-see {
+  display: inline;
+  padding: 0;
+  margin-left: 1em;
+  list-style: none;
+}
+
+.index-subentry-see li {
+  display: inline;
+}
+
+.index-subentry-see li:first-child::before {
+  content: "→";
+}
+
+.index-subentry-see li::after {
+  content: "；";
+}
+
+.index-subentry-see li:last-child::after {
+  content: "";
+}
+
+.index-subentry-see-separator::before {
+  content: "：";
+}
+
+.index-subentry-see-also {
+  padding-left: 1em;
+  list-style: none;
+}
+
+.index-subentry-see-also li {
+  display: inline;
+}
+
+.index-subentry-see-also li:first-child::before {
+  content: "⇒";
+}
+
+.index-subentry-see-also li::after {
+  content: "；";
+}
+
+.index-subentry-see-also li:last-child::after {
+  content: "";
+}
+
+.index-subentry-see-also-separator::before {
+  content: "：";
+}

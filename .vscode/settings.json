@@ -1,0 +1,11 @@
+{
+    "prettier.configPath": "prettier.config.js",
+    "prettier.prettierPath": "node_modules/prettier",
+    "eslint.useFlatConfig": true,
+    "[javascript]": {
+        "editor.formatOnSave": true
+    },
+    "[typescript]": {
+        "editor.formatOnSave": true
+    }
+}
