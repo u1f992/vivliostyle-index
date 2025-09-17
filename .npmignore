@@ -1,6 +1,9 @@
+.github
 .vscode
 example
-*.config.js
 src
 dist/**/*.test.*
 dist/**/test-util.*
+*.config.js
+tsconfig.json
+*.tgz
