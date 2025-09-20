@@ -146,7 +146,7 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
         )
         .forEach(({ indexPath }) => {
           log(
-            `[vivliostyle-toc] ${upath.relative(ctx, filePath)} affects ${upath.relative(ctx, indexPath)}`,
+            `[vivliostyle-index] ${upath.relative(ctx, filePath)} affects ${upath.relative(ctx, indexPath)}`,
           );
           touchSync(indexPath);
         });
