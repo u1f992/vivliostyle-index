@@ -77,9 +77,11 @@ function processEntry(
     );
 }
 
+type Entry = { path: string; ignoreUpdate: boolean };
+
 export type Config = {
   entryContext?: string;
-  indexEntryMap: Readonly<{ [index: string]: readonly string[] }>;
+  indexEntryMap: Readonly<{ [index: string]: readonly (string | Entry)[] }>;
   comparators: Comparators;
 };
 
@@ -88,21 +90,31 @@ export const index: unified.Plugin<[Readonly<Config>]> = function (
   { entryContext, indexEntryMap, comparators },
 ) {
   const ctx = upath.resolve(process.cwd(), entryContext ?? ".");
-  indexEntryMap = Object.fromEntries(
+  const normalizedIndexEntryMap = new Map(
     Object.entries(indexEntryMap).map(([index, entries]) => [
       upath.resolve(ctx, index),
-      entries.map((entry) => upath.resolve(ctx, entry)),
+      entries.map((ent) =>
+        typeof ent === "string"
+          ? { entryPath: upath.resolve(ctx, ent), ignoreUpdate: false }
+          : {
+              entryPath: upath.resolve(ctx, ent.path),
+              ignoreUpdate: ent.ignoreUpdate,
+            },
+      ),
     ]),
   );
-  const entryIndexMap = Object.entries(indexEntryMap).reduce(
-    (acc, [index, entries]) => {
-      entries.forEach((entry) => (acc[entry] ??= []).push(index));
-      return acc;
+  const entryIndexMap = normalizedIndexEntryMap.entries().reduce(
+    (map, [indexPath, entries]) => {
+      entries.forEach(({ entryPath, ignoreUpdate }) => {
+        if (!map.has(entryPath)) {
+          map.set(entryPath, []);
+        }
+        map.get(entryPath)!.push({ indexPath, ignoreUpdate });
+      });
+      return map;
     },
-    {} as { [entry: string]: string[] },
+    new Map() as Map<string, { indexPath: string; ignoreUpdate: boolean }[]>,
   );
-  const indexPaths = new Set(Object.keys(indexEntryMap));
-  const entryPaths = new Set(Object.keys(entryIndexMap));
 
   return (tree, file) => {
     if (this.data()["vfmIndex"]) {
@@ -119,45 +131,51 @@ export const index: unified.Plugin<[Readonly<Config>]> = function (
     }
     const filePath = upath.resolve(rawPath);
 
-    if (entryPaths.has(filePath)) {
+    const affects = entryIndexMap.get(filePath);
+    if (affects) {
       processEntry(root, [], null);
 
       // trigger hot reload
-      entryIndexMap[filePath]!.filter((path) => path !== filePath).forEach(
-        touchSync,
-      );
+      affects
+        .filter(
+          ({ indexPath, ignoreUpdate }) =>
+            indexPath !== filePath && !ignoreUpdate,
+        )
+        .forEach(({ indexPath }) => touchSync(indexPath));
     }
 
-    if (indexPaths.has(filePath)) {
+    const dependsOn = normalizedIndexEntryMap.get(filePath);
+    if (dependsOn) {
       const indexes: Index<Key>[] = [];
       const baseDir = upath.dirname(filePath);
 
-      indexEntryMap[filePath]!.map((path) => ({
-        path,
-        content: fs.readFileSync(path, {
-          encoding: "utf-8",
-        }),
-      }))
-        .map(({ path, content }) => {
+      dependsOn
+        .map(({ entryPath }) => ({
+          entryPath,
+          contents: fs.readFileSync(entryPath, {
+            encoding: "utf-8",
+          }),
+        }))
+        .map(({ entryPath, contents }) => {
           let file;
           this.data()["vfmIndex"] = {};
           try {
             file = this.processSync({
-              contents: content,
-              path: path,
+              contents,
+              path: entryPath,
             });
           } finally {
             delete this.data()["vfmIndex"];
           }
-          return { path, root: fromHtml(file.toString()) };
+          return { entryPath, root: fromHtml(file.toString()) };
         })
-        .forEach(({ path, root }) =>
+        .forEach(({ entryPath, root }) =>
           processEntry(
             root,
             indexes,
-            filePath === path
+            filePath === entryPath
               ? null
-              : upath.relative(baseDir, upath.changeExt(path, ".html")),
+              : upath.relative(baseDir, upath.changeExt(entryPath, ".html")),
           ),
         );
 
