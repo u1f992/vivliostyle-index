@@ -84,6 +84,7 @@ export type Config = {
   entryContext?: string;
   indexEntryMap: Readonly<{ [index: string]: readonly (string | Entry)[] }>;
   comparators: Comparators;
+  log?: (msg: string) => void;
 };
 
 export const index: unified.Plugin<[Readonly<Config>]> = ({
@@ -91,7 +92,9 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
   entryContext,
   indexEntryMap,
   comparators,
+  log,
 }) => {
+  log ??= () => {};
   const ctx = upath.resolve(process.cwd(), entryContext ?? ".");
   const normalizedIndexEntryMap = new Map(
     Object.entries(indexEntryMap).map(([index, entries]) => [
@@ -124,8 +127,8 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
 
     const rawPath = file.path;
     if (typeof rawPath === "undefined") {
-      console.warn(
-        "cannot extract index entries from anonymous files or expand indexes into anonymous files.",
+      log(
+        "[vivliostyle-index] cannot extract index entries from anonymous files or expand indexes into anonymous files.",
       );
       return;
     }
@@ -141,7 +144,12 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
           ({ indexPath, ignoreUpdate }) =>
             indexPath !== filePath && !ignoreUpdate,
         )
-        .forEach(({ indexPath }) => touchSync(indexPath));
+        .forEach(({ indexPath }) => {
+          log(
+            `[vivliostyle-toc] ${upath.relative(ctx, filePath)} affects ${upath.relative(ctx, indexPath)}`,
+          );
+          touchSync(indexPath);
+        });
     }
 
     const dependsOn = normalizedIndexEntryMap.get(filePath);
