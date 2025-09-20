@@ -12,6 +12,7 @@ const vivliostyleConfig = {
   entry: ["001-050.md", "051-099.md", "100-150.md", "index.md"],
   documentProcessor: (opt, meta) =>
     VFM(opt, meta).use(index, {
+      entryProcessor: VFM(opt, meta),
       indexEntryMap: {
         "index.md": ["001-050.md", "051-099.md", "100-150.md"],
       },
