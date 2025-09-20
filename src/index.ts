@@ -80,15 +80,18 @@ function processEntry(
 type Entry = { path: string; ignoreUpdate: boolean };
 
 export type Config = {
+  entryProcessor: unified.Processor;
   entryContext?: string;
   indexEntryMap: Readonly<{ [index: string]: readonly (string | Entry)[] }>;
   comparators: Comparators;
 };
 
-export const index: unified.Plugin<[Readonly<Config>]> = function (
-  this,
-  { entryContext, indexEntryMap, comparators },
-) {
+export const index: unified.Plugin<[Readonly<Config>]> = ({
+  entryProcessor,
+  entryContext,
+  indexEntryMap,
+  comparators,
+}) => {
   const ctx = upath.resolve(process.cwd(), entryContext ?? ".");
   const normalizedIndexEntryMap = new Map(
     Object.entries(indexEntryMap).map(([index, entries]) => [
@@ -117,9 +120,6 @@ export const index: unified.Plugin<[Readonly<Config>]> = function (
   );
 
   return (tree, file) => {
-    if (this.data()["vfmIndex"]) {
-      return;
-    }
     const root = tree as hast.Root;
 
     const rawPath = file.path;
@@ -156,19 +156,17 @@ export const index: unified.Plugin<[Readonly<Config>]> = function (
             encoding: "utf-8",
           }),
         }))
-        .map(({ entryPath, contents }) => {
-          let file;
-          this.data()["vfmIndex"] = {};
-          try {
-            file = this.processSync({
-              contents,
-              path: entryPath,
-            });
-          } finally {
-            delete this.data()["vfmIndex"];
-          }
-          return { entryPath, root: fromHtml(file.toString()) };
-        })
+        .map(({ entryPath, contents }) => ({
+          entryPath,
+          root: fromHtml(
+            entryProcessor
+              .processSync({
+                contents,
+                path: entryPath,
+              })
+              .toString(),
+          ),
+        }))
         .forEach(({ entryPath, root }) =>
           processEntry(
             root,
