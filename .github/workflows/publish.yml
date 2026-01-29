@@ -5,13 +5,15 @@ on:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
 
+permissions:
+  id-token: write # Required for npm OIDC
+  contents: write # to generate release note
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ github.ref_name }}
-    permissions:
-      contents: write # to generate release note
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,8 +31,4 @@ jobs:
           gh release upload "${VERSION}" *.tgz
         env:
           GH_TOKEN: ${{ github.token }}
-      - run: |
-          npm whoami
-          npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --access public
