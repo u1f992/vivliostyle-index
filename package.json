@@ -13,6 +13,10 @@
   "keywords": [],
   "author": "Koutaro Mukai",
   "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/u1f992/vivliostyle-index"
+  },
   "type": "module",
   "devDependencies": {
     "@eslint/js": "^9.34.0",
