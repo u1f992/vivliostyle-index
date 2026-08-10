@@ -80,7 +80,15 @@ test("insert a main entry", () => {
             {
               key: [toHastChildren("自由利用"), "じゆうりよう"],
               children: [],
-              locators: [[["/html/body/span[1]", "/html/body/span[2]"], false]],
+              locators: [
+                [
+                  [
+                    "#%2Fhtml%2Fbody%2Fspan%5B1%5D",
+                    "#%2Fhtml%2Fbody%2Fspan%5B2%5D",
+                  ],
+                  false,
+                ],
+              ],
               see: [],
               seeAlso: [],
             },
@@ -171,7 +179,13 @@ test("insert a locator to an existing main entry", () => {
               children: [],
               locators: [
                 [["test", "test"], false],
-                [["/html/body/span[1]", "/html/body/span[2]"], false],
+                [
+                  [
+                    "#%2Fhtml%2Fbody%2Fspan%5B1%5D",
+                    "#%2Fhtml%2Fbody%2Fspan%5B2%5D",
+                  ],
+                  false,
+                ],
               ],
               see: [],
               seeAlso: [],
@@ -239,7 +253,13 @@ test("insert a subentry", () => {
                 {
                   key: [toHastChildren("一身専属"), "いっしんせんぞく"],
                   locators: [
-                    [["/html/body/span[1]", "/html/body/span[2]"], false],
+                    [
+                      [
+                        "#%2Fhtml%2Fbody%2Fspan%5B1%5D",
+                        "#%2Fhtml%2Fbody%2Fspan%5B2%5D",
+                      ],
+                      false,
+                    ],
                   ],
                   see: [],
                   seeAlso: [],

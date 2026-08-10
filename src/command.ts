@@ -149,6 +149,15 @@ function ensureId(tree: Readonly<hast.Root>, elem: hast.Element) {
   throw new Error("id === null: won't happen. it's likely a bug in getXPath()");
 }
 
+function encodeRelativePath(path: string) {
+  return path.split("/").map(encodeURIComponent).join("/");
+}
+
+function createHref(relPath: string | null, id: string) {
+  const path = relPath === null ? "" : encodeRelativePath(relPath);
+  return `${path}#${encodeURIComponent(id)}`;
+}
+
 export function run<T extends (string | IndexId | PartialEntryKey)[]>(
   cmd: Command<T>,
   input: CommandString<T>,
@@ -167,11 +176,8 @@ export function run<T extends (string | IndexId | PartialEntryKey)[]>(
     }
     memo.set(input, parsed);
   }
-  cmd[runSymbol](
-    memo.get(input) as T,
-    indexes,
-    elem,
-    (el) => (relPath === null ? "" : relPath + "#") + ensureId(tree, el),
+  cmd[runSymbol](memo.get(input) as T, indexes, elem, (el) =>
+    createHref(relPath, ensureId(tree, el)),
   );
 }
 
