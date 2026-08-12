@@ -39,8 +39,11 @@ export function defaultComparator(locales?: Intl.LocalesArgument): IndexComparat
   };
 }
 
-export type TargetReference = string;
-export type Comparators = Readonly<Record<TargetReference, IndexComparator>>;
+export type IndexTarget = Readonly<{
+  path: string;
+  id: string;
+}>;
+export type Comparators = readonly (readonly [IndexTarget, IndexComparator])[];
 
 export type CreatePluginOptions = {
   entry: readonly string[];
@@ -105,12 +108,6 @@ type State = {
 const commands = [insertPage, insertRange, insertReference] as unknown as Command[];
 const rangeCommandIndex = commands.indexOf(insertRange as unknown as Command);
 
-function directoryUrl(path: string): URL {
-  const normalized = upath.normalize(path);
-  const withTrailingSlash = normalized === "/" ? normalized : `${normalized.replace(/\/+$/v, "")}/`;
-  return pathToFileURL(withTrailingSlash);
-}
-
 function resolveTarget(reference: string, baseUrl: URL): Target {
   const url = new URL(reference, baseUrl);
   return {
@@ -128,19 +125,13 @@ function normalizeComparators(
   entryContext: string,
 ): Map<TargetKey, IndexComparator> {
   const normalized = new Map<TargetKey, IndexComparator>();
-  const originalReferences = new Map<TargetKey, string>();
-  const baseUrl = directoryUrl(entryContext);
 
-  for (const [reference, comparator] of Object.entries(comparators)) {
-    const targetKey = createTargetKey(resolveTarget(reference, baseUrl));
-    const previousReference = originalReferences.get(targetKey);
-    if (previousReference !== undefined) {
-      throw new TypeError(
-        `Comparator references ${JSON.stringify(previousReference)} and ${JSON.stringify(reference)} resolve to the same index target`,
-      );
-    }
+  for (const [{ path, id }, comparator] of comparators) {
+    const targetKey = createTargetKey({
+      documentPath: upath.resolve(entryContext, path),
+      elementId: id,
+    });
     normalized.set(targetKey, comparator);
-    originalReferences.set(targetKey, reference);
   }
 
   return normalized;
@@ -484,7 +475,7 @@ export function createIndexPlugin({
   // Match the field name in Vivliostyle CLI's config.
   entry: entries,
   entryContext,
-  comparators = {},
+  comparators = [],
   fileSystem = nodeFileSystem,
 }: Readonly<CreatePluginOptions>): unified.Plugin<[Readonly<PluginOptions>]> {
   const context = upath.resolve(process.cwd(), entryContext ?? ".");

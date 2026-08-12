@@ -149,7 +149,7 @@ void test("keeps target fragments as distinct indexes", () => {
   assert.doesNotMatch(toText(person), /Apple/v);
 });
 
-void test("uses a comparator addressed by a URL containing a query", () => {
+void test("uses a comparator selected by path and element ID", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?command=[[z,z],[Z,Z]]#index">Z</span>',
@@ -160,9 +160,7 @@ void test("uses a comparator addressed by a URL containing a query", () => {
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    comparators: {
-      "index.md?view=subject#index": defaultComparator("en"),
-    },
+    comparators: [[{ path: "index.md", id: "index" }, defaultComparator("en")]],
   });
   const root = fromHtml(files["/publication/index.md"]);
 
@@ -171,19 +169,27 @@ void test("uses a comparator addressed by a URL containing a query", () => {
   assert.deepStrictEqual(groupHeadings(root), ["ä", "z"]);
 });
 
-void test("rejects comparator references that normalize to the same target", () => {
-  assert.throws(
-    () =>
-      createIndexPlugin({
-        entry: ["index.md"],
-        entryContext: "/publication",
-        comparators: {
-          "index.md?view=a#index": defaultComparator("en"),
-          "index.md?view=b#index": defaultComparator("sv"),
-        },
-      }),
-    /resolve to the same index target/v,
-  );
+void test("uses the last comparator configured for an index target", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span data-index="index.md?command=[[z,z],[Z,Z]]#index">Z</span>',
+      '<span data-index="index.md?command=[[ä,ä],[Ä,Ä]]#index">Ä</span>',
+    ].join(""),
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+    comparators: [
+      [{ path: "index.md", id: "index" }, defaultComparator("en")],
+      [{ path: "index.md", id: "index" }, defaultComparator("sv")],
+    ],
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(groupHeadings(root), ["z", "ä"]);
 });
 
 void test("uses the closest language when no comparator is configured", () => {
