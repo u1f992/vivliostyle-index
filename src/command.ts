@@ -6,7 +6,6 @@ import {
   type Index,
   type IndexId,
   type Key,
-  type ResolvedKey,
 } from "./model.ts";
 
 import { Ajv2020 as Ajv, type JSONSchemaType } from "ajv/dist/2020.js";
@@ -18,66 +17,50 @@ import YAML from "yaml";
 const ajv = new Ajv();
 const $schema = "https://json-schema.org/draft/2020-12/schema";
 
-type PartialKey = null | ResolvedKey[0] | [null, ResolvedKey[1]] | ResolvedKey;
-type PartialMainEntryKey = [PartialKey, PartialKey];
-type PartialSubentryKey = [PartialKey, PartialKey, PartialKey];
-export type PartialEntryKey = PartialMainEntryKey | PartialSubentryKey;
-export type Base = [IndexId, PartialEntryKey];
+type InputKey = [string, string];
+type MainEntryKey = [InputKey, InputKey];
+type SubentryKey = [InputKey, InputKey, InputKey];
+export type EntryKey = MainEntryKey | SubentryKey;
+export type Base = [IndexId, EntryKey];
 const $defs = {
   IndexId: { type: "string" },
-  PartialKey: {
-    oneOf: [
-      { type: "null" },
-      { type: "string" },
-      {
-        type: "array",
-        minItems: 2,
-        maxItems: 2,
-        prefixItems: [{ type: "null" }, { type: "string" }],
-      },
-      {
-        type: "array",
-        minItems: 2,
-        maxItems: 2,
-        prefixItems: [{ type: "string" }, { type: "string" }],
-      },
-    ],
-  },
-  PartialMainEntryKey: {
+  Key: {
     type: "array",
     minItems: 2,
     maxItems: 2,
-    prefixItems: [{ $ref: "#/$defs/PartialKey" }, { $ref: "#/$defs/PartialKey" }],
+    prefixItems: [{ type: "string" }, { type: "string" }],
   },
-  PartialSubentryKey: {
+  MainEntryKey: {
+    type: "array",
+    minItems: 2,
+    maxItems: 2,
+    prefixItems: [{ $ref: "#/$defs/Key" }, { $ref: "#/$defs/Key" }],
+  },
+  SubentryKey: {
     type: "array",
     minItems: 3,
     maxItems: 3,
-    prefixItems: [
-      { $ref: "#/$defs/PartialKey" },
-      { $ref: "#/$defs/PartialKey" },
-      { $ref: "#/$defs/PartialKey" },
-    ],
+    prefixItems: [{ $ref: "#/$defs/Key" }, { $ref: "#/$defs/Key" }, { $ref: "#/$defs/Key" }],
   },
-  PartialEntryKey: {
-    oneOf: [{ $ref: "#/$defs/PartialMainEntryKey" }, { $ref: "#/$defs/PartialSubentryKey" }],
+  EntryKey: {
+    oneOf: [{ $ref: "#/$defs/MainEntryKey" }, { $ref: "#/$defs/SubentryKey" }],
   },
 };
 
 const testSymbol = Symbol();
 const runSymbol = Symbol();
 
-export type Command<T extends (string | PartialEntryKey)[] = (string | PartialEntryKey)[]> = {
+export type Command<T extends (string | EntryKey)[] = (string | EntryKey)[]> = {
   [testSymbol]: (obj: unknown) => obj is T;
   [runSymbol]: (
     obj: Readonly<T>,
-    indexes: Index<Key>[],
+    indexes: Index[],
     elem: hast.Element,
     ensureId: (elem: hast.Element) => string,
   ) => void;
 };
 
-export function defineCommand<T extends (string | PartialEntryKey)[]>(
+export function defineCommand<T extends (string | EntryKey)[]>(
   partialSchema: Partial<JSONSchemaType<T>>,
   runFn: Command<T>[typeof runSymbol],
 ): Command<T> {
@@ -101,7 +84,7 @@ export type CommandString = string & {
 
 const memo = new Map<string, unknown>();
 
-export function test<T extends (string | PartialEntryKey)[]>(
+export function test<T extends (string | EntryKey)[]>(
   cmd: Command<T>,
   input: string,
 ): input is CommandString {
@@ -118,7 +101,7 @@ export function test<T extends (string | PartialEntryKey)[]>(
   return cmd[testSymbol](memo.get(input));
 }
 
-export function read<T extends (string | PartialEntryKey)[]>(input: CommandString): Readonly<T> {
+export function read<T extends (string | EntryKey)[]>(input: CommandString): Readonly<T> {
   return memo.get(input) as T;
 }
 
@@ -150,10 +133,10 @@ function createHref(relPath: string | null, id: string) {
   return `${path}#${encodeURIComponent(id)}`;
 }
 
-export function run<T extends (string | PartialEntryKey)[]>(
+export function run<T extends (string | EntryKey)[]>(
   cmd: Command<T>,
   input: CommandString,
-  indexes: Index<Key>[],
+  indexes: Index[],
   tree: hast.Root,
   elem: hast.Element,
   relPath: string | null,
@@ -173,34 +156,18 @@ export function run<T extends (string | PartialEntryKey)[]>(
   );
 }
 
-export function padNull(partial: PartialKey, elem: hast.Element): Key {
-  const newElem = structuredClone(elem);
-  (function stripPosition(node: hast.ElementContent): void {
-    delete node["position"];
-    if ("children" in node) {
-      for (const child of node.children) {
-        stripPosition(child);
-      }
-    }
-  })(newElem);
-
-  const alt = JSON.stringify(newElem.children);
-  if (Array.isArray(partial)) {
-    return partial[0] === null ? [alt, partial[1]] : [toHastChildren(partial[0]), partial[1]];
-  } else {
-    return [partial === null ? alt : toHastChildren(partial), null];
-  }
+export function toModelKey([word, reading]: InputKey): Key {
+  return [toHastChildren(word), reading];
 }
 
-export function ensureEntry<TKey extends Key>(
-  indexes: Index<TKey>[],
+export function ensureEntry(
+  indexes: Index[],
   indexId: IndexId,
-  [groupKey, mainEntryKey, subentryKey]: PartialEntryKey,
-  elem: hast.Element,
-): EntryBase<TKey> {
+  [groupKey, mainEntryKey, subentryKey]: EntryKey,
+): EntryBase {
   const index = ensureIndex(indexes, indexId);
-  const group = ensureChild(index, padNull(groupKey, elem), { children: [] });
-  const mainEntry = ensureChild(group, padNull(mainEntryKey, elem), {
+  const group = ensureChild(index, toModelKey(groupKey), { children: [] });
+  const mainEntry = ensureChild(group, toModelKey(mainEntryKey), {
     children: [],
     locators: [],
     see: [],
@@ -208,7 +175,7 @@ export function ensureEntry<TKey extends Key>(
   });
   return typeof subentryKey === "undefined"
     ? mainEntry
-    : ensureChild(mainEntry, padNull(subentryKey, elem), {
+    : ensureChild(mainEntry, toModelKey(subentryKey), {
         locators: [],
         see: [],
         seeAlso: [],

@@ -4,38 +4,44 @@ import test from "node:test";
 
 import { run, test as testFn } from "../../src/command.ts";
 import { default as insertReference } from "../../src/command/insert-reference.ts";
-import { toHastChildren, type Index, type Key } from "../../src/model.ts";
+import { toHastChildren, type Index } from "../../src/model.ts";
 import { dropSequentialId } from "../test-util.ts";
 
 void test("test", () => {
   assert.ok(
     testFn(
       insertReference,
-      "see,.,[ち,[著作権,ちょさくけん]],[ち,[知的財産権,ちてきざいさんけん]]",
+      "see,.,[[ち,ち],[著作権,ちょさくけん]],[[ち,ち],[知的財産権,ちてきざいさんけん]]",
     ),
   );
   assert.ok(
     testFn(
       insertReference,
-      "see,.,[ち,著作権,[――の相続,ちょさくけんのそうぞく]],[そ,相続,一身専属]",
+      "see,.,[[ち,ち],[著作権,ちょさくけん],[――の相続,ちょさくけんのそうぞく]],[[そ,そ],[相続,そうぞく],[一身専属,いっしんせんぞく]]",
     ),
   );
   assert.ok(
     testFn(
       insertReference,
-      "seeAlso,.,[ち,[著作権,ちょさくけん]],[ち,[知的財産権,ちてきざいさんけん]]",
+      "seeAlso,.,[[ち,ち],[著作権,ちょさくけん]],[[ち,ち],[知的財産権,ちてきざいさんけん]]",
     ),
   );
   assert.ok(
     testFn(
       insertReference,
-      "seeAlso,.,[ち,著作権,[――の相続,ちょさくけんのそうぞく]],[そ,相続,一身専属]",
+      "seeAlso,.,[[ち,ち],[著作権,ちょさくけん],[――の相続,ちょさくけんのそうぞく]],[[そ,そ],[相続,そうぞく],[一身専属,いっしんせんぞく]]",
+    ),
+  );
+  assert.ok(
+    !testFn(
+      insertReference,
+      "see,.,[ち,[著作権,ちょさくけん]],[[ち,ち],[知的財産権,ちてきざいさんけん]]",
     ),
   );
 });
 
 void test("insert a main entry", () => {
-  const indexes: Index<Key>[] = [];
+  const indexes: Index[] = [];
   const targetElem: hast.Element = {
     type: "element",
     tagName: "div",
@@ -54,7 +60,7 @@ void test("insert a main entry", () => {
   run(
     insertReference,
     // @ts-expect-error branded
-    "seeAlso,.,[ち,[著作権,ちょさくけん]],[ち,[知的財産権,ちてきざいさんけん]]",
+    "seeAlso,.,[[ち,ち],[著作権,ちょさくけん]],[[ち,ち],[知的財産権,ちてきざいさんけん]]",
     indexes,
     tree,
     targetElem,
@@ -65,7 +71,7 @@ void test("insert a main entry", () => {
       id: ".",
       children: [
         {
-          key: [toHastChildren("ち"), null],
+          key: [toHastChildren("ち"), "ち"],
           children: [
             {
               key: [toHastChildren("著作権"), "ちょさくけん"],
@@ -74,7 +80,7 @@ void test("insert a main entry", () => {
               see: [],
               seeAlso: [
                 [
-                  [toHastChildren("ち"), null],
+                  [toHastChildren("ち"), "ち"],
                   [toHastChildren("知的財産権"), "ちてきざいさんけん"],
                 ],
               ],

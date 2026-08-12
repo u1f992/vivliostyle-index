@@ -1,4 +1,4 @@
-import type { IndexId, Key, EntryBase, Index, ResolvedKey, MainEntry, Subentry } from "../model.ts";
+import type { IndexId, EntryBase, Index, MainEntry, Subentry } from "../model.ts";
 import { defineCommand } from "../command.ts";
 
 import type * as hast from "hast";
@@ -11,8 +11,7 @@ export default defineCommand<ExpandCommand>(
     maxItems: 2,
     prefixItems: [{ const: "expand" }, { $ref: "#/$defs/IndexId" }],
   },
-  // @ts-expect-error resolved
-  (cmd, indexes: Index<ResolvedKey>[], elem) => {
+  (cmd, indexes: Index[], elem) => {
     const indexId = cmd[1];
     const target = indexes.find((idx) => idx.id === indexId);
     if (!target) {
@@ -55,8 +54,8 @@ export default defineCommand<ExpandCommand>(
   },
 );
 
-function generateMainEntries<TKey extends Key>(
-  mainEntries: MainEntry<TKey>[],
+function generateMainEntries(
+  mainEntries: MainEntry[],
   indexId: IndexId,
   slag: string,
 ): hast.ElementContent[] {
@@ -89,11 +88,7 @@ function generateMainEntries<TKey extends Key>(
   });
 }
 
-function generateSubentries<TKey extends Key>(
-  subentries: Subentry<TKey>[],
-  indexId: IndexId,
-  slag: string,
-): hast.Element {
+function generateSubentries(subentries: Subentry[], indexId: IndexId, slag: string): hast.Element {
   return {
     type: "element",
     tagName: "ol",
@@ -121,10 +116,7 @@ function generateSubentries<TKey extends Key>(
   };
 }
 
-function generateLocators<TKey extends Key>(
-  locators: EntryBase<TKey>["locators"],
-  className: string,
-): hast.Element {
+function generateLocators(locators: EntryBase["locators"], className: string): hast.Element {
   return {
     type: "element",
     tagName: "ol",
@@ -166,8 +158,8 @@ function generateLocators<TKey extends Key>(
   };
 }
 
-function generateReferences<TKey extends Key>(
-  references: EntryBase<TKey>["see"],
+function generateReferences(
+  references: EntryBase["see"],
   className: string,
   indexId: IndexId,
 ): hast.Element {

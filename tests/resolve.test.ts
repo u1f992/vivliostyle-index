@@ -1,137 +1,64 @@
 import assert from "node:assert";
 import test from "node:test";
 
-import { resolve } from "../src/resolve.ts";
-import { dropSequentialId } from "./test-util.ts";
-import { toHastChildren } from "../src/model.ts";
+import { toHastChildren, type Index } from "../src/model.ts";
+import { validateReferences } from "../src/resolve.ts";
 
-void test("fill group key", () => {
-  assert.deepStrictEqual(
-    dropSequentialId(
-      resolve([
+function createIndexes(targetWord: string): Index[] {
+  return [
+    {
+      id: ".",
+      children: [
         {
-          id: ".",
+          key: [toHastChildren("ち"), "ち"],
           children: [
             {
-              key: [toHastChildren("そ"), null],
-              children: [
-                {
-                  key: [toHastChildren("相続"), "そうぞく"],
-                  children: [
-                    {
-                      key: [toHastChildren("一身専属"), "いっしんせんぞく"],
-                      // @ts-expect-error sequentialId
-                      locators: [["", "startId", false]],
-                      see: [],
-                      seeAlso: [],
-                    },
-                  ],
-                  locators: [],
-                  see: [],
-                  seeAlso: [],
-                },
+              key: [toHastChildren("知的財産権"), "ちてきざいさんけん"],
+              children: [],
+              locators: [],
+              see: [],
+              seeAlso: [],
+            },
+            {
+              key: [toHastChildren("著作権"), "ちょさくけん"],
+              children: [],
+              locators: [],
+              see: [],
+              seeAlso: [
+                [
+                  "",
+                  [toHastChildren("ち"), "ち"],
+                  [toHastChildren(targetWord), "ちてきざいさんけん"],
+                ] as never,
               ],
             },
           ],
         },
-      ]),
-    ),
-    [
-      {
-        id: ".",
-        children: [
-          {
-            key: [toHastChildren("そ"), "そ"],
-            children: [
-              {
-                key: [toHastChildren("相続"), "そうぞく"],
-                children: [
-                  {
-                    key: [toHastChildren("一身専属"), "いっしんせんぞく"],
-                    locators: [["startId", false]],
-                    see: [],
-                    seeAlso: [],
-                  },
-                ],
-                locators: [],
-                see: [],
-                seeAlso: [],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  );
+      ],
+    },
+  ];
+}
+
+void test("accept references to registered entries", (context) => {
+  const warn = context.mock.method(console, "warn");
+
+  validateReferences(createIndexes("知的財産権"));
+
+  assert.strictEqual(warn.mock.callCount(), 0);
 });
 
-void test("fill seeAlso", () => {
-  assert.deepStrictEqual(
-    dropSequentialId(
-      resolve([
-        {
-          id: ".",
-          children: [
-            {
-              key: [toHastChildren("ち"), null],
-              children: [
-                {
-                  key: [toHastChildren("知的財産権"), "ちてきざいさんけん"],
-                  children: [],
-                  locators: [],
-                  see: [],
-                  seeAlso: [],
-                },
-                {
-                  key: [toHastChildren("著作権"), "ちょさくけん"],
-                  children: [],
-                  locators: [],
-                  see: [],
-                  seeAlso: [
-                    [
-                      // @ts-expect-error sequentialId
-                      "",
-                      [toHastChildren("ち"), null],
-                      [toHastChildren("知的財産権"), null],
-                    ],
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ]),
-    ),
-    [
-      {
-        id: ".",
-        children: [
-          {
-            key: [toHastChildren("ち"), "ち"],
-            children: [
-              {
-                key: [toHastChildren("知的財産権"), "ちてきざいさんけん"],
-                children: [],
-                locators: [],
-                see: [],
-                seeAlso: [],
-              },
-              {
-                key: [toHastChildren("著作権"), "ちょさくけん"],
-                children: [],
-                locators: [],
-                see: [],
-                seeAlso: [
-                  [
-                    [toHastChildren("ち"), "ち"],
-                    [toHastChildren("知的財産権"), "ちてきざいさんけん"],
-                  ],
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  );
+void test("warn about references to unregistered entries", (context) => {
+  const warn = context.mock.method(console, "warn", () => {});
+
+  validateReferences(createIndexes("工業所有権"));
+
+  assert.strictEqual(warn.mock.callCount(), 1);
+});
+
+void test("warn when a reference uses different inner HTML", (context) => {
+  const warn = context.mock.method(console, "warn", () => {});
+
+  validateReferences(createIndexes("<em>知的財産権</em>"));
+
+  assert.strictEqual(warn.mock.callCount(), 1);
 });

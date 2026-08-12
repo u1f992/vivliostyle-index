@@ -36,7 +36,7 @@ void test("uses an injected file system to read entries and trigger updates", ()
   const fileSystem: FileSystem = {
     readFileSync: (path) => {
       reads.push(path);
-      return '<span data-index="$,[a,Apple]">Apple</span>';
+      return '<span data-index="$,[[a,a],[Apple,Apple]]">Apple</span>';
     },
     touchSync: (path) => updates.push(path),
   };
@@ -57,6 +57,80 @@ void test("uses an injected file system to read entries and trigger updates", ()
   const link = select(".index-main-entry-locators a", indexRoot);
   assert.ok(link);
   assert.strictEqual(getAttribute(link, "href"), "chapter.html#%2Fhtml%2Fbody%2Fspan");
+});
+
+void test("parses a heading word as inner HTML", () => {
+  const processor = unified().use(index, {
+    entryProcessor: entryProcessor as never,
+    entryContext: "/publication",
+    indexEntryMap: { "index.md": ["chapter.md"] },
+    fileSystem: {
+      readFileSync: () =>
+        `<span data-index='$,[[き,き],["<em>京都大学</em>",きょうとだいがく]]'>京都大学</span>`,
+      touchSync: () => {},
+    },
+  });
+  const root = createRoot("expand,$");
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  const heading = select(".index-main-entry > em", root);
+  assert.ok(heading);
+  assert.strictEqual(toText(heading), "京都大学");
+});
+
+void test("links a reference to a later entry with matching inner HTML and reading", () => {
+  const processor = unified().use(index, {
+    entryProcessor: entryProcessor as never,
+    entryContext: "/publication",
+    indexEntryMap: { "index.md": ["chapter.md"] },
+    fileSystem: {
+      readFileSync: () =>
+        [
+          `<span data-index='see,$,[[た,た],[大学,だいがく]],[[き,き],["<em>京都大学</em>",きょうとだいがく]]'>大学</span>`,
+          `<span data-index='$,[[き,き],["<em>京都大学</em>",きょうとだいがく]]'>京都大学</span>`,
+        ].join(""),
+      touchSync: () => {},
+    },
+  });
+  const root = createRoot("expand,$");
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  const reference = selectAll("a", root).find((link) =>
+    getAttribute(link, "href")?.startsWith("#"),
+  );
+  assert.ok(reference);
+  const target = selectAll("li", root).find(
+    (entry) => getAttribute(entry, "class") === "index-main-entry" && select("em", entry) !== null,
+  );
+  assert.ok(target);
+  assert.strictEqual(getAttribute(reference, "href"), `#${getAttribute(target, "id")}`);
+});
+
+void test("keeps headings with different inner HTML as separate entries", () => {
+  const processor = unified().use(index, {
+    entryProcessor: entryProcessor as never,
+    entryContext: "/publication",
+    indexEntryMap: { "index.md": ["chapter.md"] },
+    fileSystem: {
+      readFileSync: () =>
+        [
+          `<span data-index='$,[[き,き],[京都大学,きょうとだいがく]]'>京都大学</span>`,
+          `<span data-index='$,[[き,き],["<em>京都大学</em>",きょうとだいがく]]'>京都大学</span>`,
+        ].join(""),
+      touchSync: () => {},
+    },
+  });
+  const root = createRoot("expand,$");
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  const entries = selectAll("li", root).filter(
+    (entry) => getAttribute(entry, "class") === "index-main-entry",
+  );
+  assert.strictEqual(entries.length, 2);
+  assert.strictEqual(entries.filter((entry) => select("em", entry) !== null).length, 1);
 });
 
 void test("does not trigger an ignored update through the injected file system", () => {
@@ -117,7 +191,7 @@ function createLocalizedIndexRoot(
 
 function createLocalizedProcessor(
   comparators?: Parameters<typeof index>[0]["comparators"],
-  contents = '<span data-index="$,[z,Z]">Z</span><span data-index="$,[ä,Ä]">Ä</span>',
+  contents = '<span data-index="$,[[z,z],[Z,Z]]">Z</span><span data-index="$,[[ä,ä],[Ä,Ä]]">Ä</span>',
 ) {
   return unified().use(index, {
     entryProcessor: entryProcessor as never,
@@ -225,10 +299,10 @@ void test("sorts repeated expansions of an index with their respective languages
 void test("does not apply a fallback comparator to an unexpanded index", () => {
   const root = createLocalizedIndexRoot("not_a_locale");
   const contents = [
-    '<span data-index="$,[z,Z]">Z</span>',
-    '<span data-index="$,[ä,Ä]">Ä</span>',
-    '<span data-index="x,[z,Z]">Z</span>',
-    '<span data-index="x,[ä,Ä]">Ä</span>',
+    '<span data-index="$,[[z,z],[Z,Z]]">Z</span>',
+    '<span data-index="$,[[ä,ä],[Ä,Ä]]">Ä</span>',
+    '<span data-index="x,[[z,z],[Z,Z]]">Z</span>',
+    '<span data-index="x,[[ä,ä],[Ä,Ä]]">Ä</span>',
   ].join("");
 
   createLocalizedProcessor({ $: defaultComparator("en") }, contents).runSync(root, {

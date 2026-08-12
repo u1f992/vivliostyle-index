@@ -5,9 +5,9 @@ import type * as hast from "hast";
 
 import { run, test as testCommand } from "../src/command.ts";
 import insertPage from "../src/command/insert-page.ts";
-import type { Index, Key } from "../src/model.ts";
+import type { Index } from "../src/model.ts";
 
-const input = "$,[R,RPA]";
+const input = "$,[[R,R],[RPA,RPA]]";
 
 function createLocator(relPath: string | null, id?: string) {
   const elem: hast.Element = {
@@ -17,7 +17,7 @@ function createLocator(relPath: string | null, id?: string) {
     children: [{ type: "text", value: "RPA" }],
   };
   const tree: hast.Root = { type: "root", children: [elem] };
-  const indexes: Index<Key>[] = [];
+  const indexes: Index[] = [];
 
   assert.ok(testCommand(insertPage, input));
   run(insertPage, input, indexes, tree, elem, relPath);

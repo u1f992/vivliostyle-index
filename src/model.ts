@@ -1,20 +1,19 @@
 import type * as hast from "hast";
+import { fromHtml } from "hast-util-from-html";
 import { toText } from "hast-util-to-text";
 
 export type IndexId = string;
 
-export type ResolvedKey = [string, string];
-export type UnresolvedKey = [string, null];
-export type Key = ResolvedKey | UnresolvedKey;
-export type HasKey<TKey extends Key> = { key: TKey };
+export type Key = [string, string];
+export type HasKey = { key: Key };
 
 type PageLocator = string;
 type RangeLocator = [PageLocator, PageLocator];
 type Locator = PageLocator | RangeLocator;
 
-type MainEntryReference<TKey extends Key> = [TKey, TKey];
-type SubentryReference<TKey extends Key> = [TKey, TKey, TKey];
-export type Reference<TKey extends Key> = MainEntryReference<TKey> | SubentryReference<TKey>;
+type MainEntryReference = [Key, Key];
+type SubentryReference = [Key, Key, Key];
+export type Reference = MainEntryReference | SubentryReference;
 
 const sequentialIdBrand = Symbol();
 type SequentialId = string & { [sequentialIdBrand]: unknown };
@@ -29,31 +28,41 @@ export function insertLocator(entry: HasLocators, locator: [Locator, boolean]) {
   entry.locators.push([getId(), ...locator]);
 }
 
-type HasReferences<TKey extends Key> = {
-  see: [SequentialId, ...Reference<TKey>][];
-  seeAlso: [SequentialId, ...Reference<TKey>][];
+type HasReferences = {
+  see: [SequentialId, ...Reference][];
+  seeAlso: [SequentialId, ...Reference][];
 };
-export function insertReference<TKey extends Key>(
-  entry: HasReferences<TKey>,
+export function insertReference(
+  entry: HasReferences,
   type: "see" | "seeAlso",
-  reference: Reference<TKey>,
+  reference: Reference,
 ) {
   entry[type].push([getId(), ...reference]);
 }
 
-export type EntryBase<TKey extends Key> = HasLocators & HasReferences<TKey>;
-export type Subentry<TKey extends Key> = HasKey<TKey> & EntryBase<TKey>;
+export type EntryBase = HasLocators & HasReferences;
+export type Subentry = HasKey & EntryBase;
 export type ParentOf<T> = { children: T[] };
-export type MainEntry<TKey extends Key> = HasKey<TKey> & EntryBase<TKey> & ParentOf<Subentry<TKey>>;
-export type Group<TKey extends Key> = HasKey<TKey> & ParentOf<MainEntry<TKey>>;
+export type MainEntry = HasKey & EntryBase & ParentOf<Subentry>;
+export type Group = HasKey & ParentOf<MainEntry>;
 
-export type Index<TKey extends Key> = { id: IndexId } & ParentOf<Group<TKey>>;
-export function ensureIndex<TKey extends Key>(indexes: Index<TKey>[], id: IndexId): Index<TKey> {
+export type Index = { id: IndexId } & ParentOf<Group>;
+export function ensureIndex(indexes: Index[], id: IndexId): Index {
   return indexes.find((idx) => idx.id === id) ?? indexes[indexes.push({ id, children: [] }) - 1]!;
 }
 
 export function toHastChildren(value: string) {
-  return JSON.stringify([{ type: "text", value } satisfies hast.Text]);
+  const root = fromHtml(value, { fragment: true });
+  function stripPosition(node: hast.Root | hast.RootContent): void {
+    delete node.position;
+    if ("children" in node) {
+      for (const child of node.children) {
+        stripPosition(child);
+      }
+    }
+  }
+  stripPosition(root);
+  return JSON.stringify(root.children);
 }
 
 export function hastChildrenToText(hastJson: string) {
@@ -64,20 +73,13 @@ export function hastChildrenToText(hastJson: string) {
   });
 }
 
-export function getChild<TKey extends Key, TChild extends HasKey<TKey>>(
-  parent: ParentOf<TChild>,
-  key: TKey,
-) {
-  return parent.children.find(
-    (child) =>
-      hastChildrenToText(child.key[0]) === hastChildrenToText(key[0]) &&
-      (key[1] === null || child.key[1] === key[1]),
-  );
+export function getChild<TChild extends HasKey>(parent: ParentOf<TChild>, key: Key) {
+  return parent.children.find((child) => child.key[0] === key[0] && child.key[1] === key[1]);
 }
 
-export function ensureChild<TKey extends Key, TChild extends HasKey<TKey>>(
+export function ensureChild<TChild extends HasKey>(
   parent: ParentOf<TChild>,
-  key: TKey,
+  key: Key,
   init: Omit<TChild, "key">,
 ) {
   return (

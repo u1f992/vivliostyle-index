@@ -9,7 +9,7 @@ export default defineCommand<InsertPageCommand>(
         type: "array",
         minItems: 2,
         maxItems: 2,
-        prefixItems: [{ $ref: "#/$defs/IndexId" }, { $ref: "#/$defs/PartialEntryKey" }],
+        prefixItems: [{ $ref: "#/$defs/IndexId" }, { $ref: "#/$defs/EntryKey" }],
       },
       {
         type: "array",
@@ -18,16 +18,13 @@ export default defineCommand<InsertPageCommand>(
         prefixItems: [
           { const: "page!" },
           { $ref: "#/$defs/IndexId" },
-          { $ref: "#/$defs/PartialEntryKey" },
+          { $ref: "#/$defs/EntryKey" },
         ],
       },
     ],
   },
   (cmd, indexes, elem, ensureId) => {
-    const [indexId, partialEntryKey] = cmd.length === 2 ? cmd : [cmd[1], cmd[2]];
-    insertLocator(ensureEntry(indexes, indexId, partialEntryKey, elem), [
-      ensureId(elem),
-      cmd.length === 3,
-    ]);
+    const [indexId, entryKey] = cmd.length === 2 ? cmd : [cmd[1], cmd[2]];
+    insertLocator(ensureEntry(indexes, indexId, entryKey), [ensureId(elem), cmd.length === 3]);
   },
 );

@@ -1,7 +1,7 @@
-import type { EntryBase, Index, Key } from "../src/model.ts";
+import type { EntryBase, Index } from "../src/model.ts";
 
-export function dropSequentialId<TKey extends Key>(indexes: Index<TKey>[]): unknown {
-  function handleEntry(entry: EntryBase<TKey>): unknown {
+export function dropSequentialId(indexes: Index[]): unknown {
+  function handleEntry(entry: EntryBase): unknown {
     return {
       ...entry,
       locators: entry.locators.map(([, locator, flag]) => [locator, flag]),

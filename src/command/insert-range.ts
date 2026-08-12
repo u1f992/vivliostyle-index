@@ -1,16 +1,15 @@
-import { type Base, defineCommand, ensureEntry, type PartialEntryKey } from "../command.ts";
-import { insertLocator, type Index, type Key } from "../model.ts";
+import { type Base, defineCommand, ensureEntry, type EntryKey } from "../command.ts";
+import { insertLocator, type Index } from "../model.ts";
 
 const __rangeStore = Symbol();
 type RangeId = string;
-type IndexesWithRangeStore = Index<Key>[] & {
+type IndexesWithRangeStore = Index[] & {
   [__rangeStore]?: {
     [key: RangeId]: {
       indexId: string;
-      partialEntryKey: PartialEntryKey;
+      entryKey: EntryKey;
       important: boolean;
       elemId: string;
-      elemStr: string;
     };
   };
 };
@@ -36,19 +35,18 @@ export const insertRangeStart = defineCommand<InsertRangeStartCommand>(
         oneOf: [{ const: "range" }, { const: "range!" }],
       },
       { $ref: "#/$defs/IndexId" },
-      { $ref: "#/$defs/PartialEntryKey" },
+      { $ref: "#/$defs/EntryKey" },
       { type: "string" },
     ],
   },
   (cmd, indexes: IndexesWithRangeStore, elem, ensureId) => {
-    const [type, indexId, partialEntryKey, rangeId] = cmd;
+    const [type, indexId, entryKey, rangeId] = cmd;
     const rangeStore = (indexes[__rangeStore] ??= {});
     rangeStore[rangeId] = {
       indexId,
-      partialEntryKey,
+      entryKey,
       important: type === "range!",
       elemId: ensureId(elem),
-      elemStr: JSON.stringify(elem),
     };
   },
 );
@@ -74,11 +72,8 @@ export const insertRangeEnd = defineCommand<InsertRangeEndCommand>(
       console.warn(err);
       return;
     }
-    const { indexId, partialEntryKey, important, elemId, elemStr } = start;
-    insertLocator(ensureEntry(indexes, indexId, partialEntryKey, JSON.parse(elemStr)), [
-      [elemId, ensureId(elem)],
-      important,
-    ]);
+    const { indexId, entryKey, important, elemId } = start;
+    insertLocator(ensureEntry(indexes, indexId, entryKey), [[elemId, ensureId(elem)], important]);
 
     delete rangeStore[rangeId];
     if (Object.keys(rangeStore).length === 0) {

@@ -10,9 +10,9 @@ import { default as insertPage } from "./command/insert-page.ts";
 import { insertRangeStart, insertRangeEnd, deleteRangeStore } from "./command/insert-range.ts";
 import { default as insertReference } from "./command/insert-reference.ts";
 import { default as expand, type ExpandCommand } from "./command/expand.ts";
-import type { Index, Key } from "./model.ts";
+import type { Index } from "./model.ts";
 import { node, type FileSystem } from "./node.ts";
-import { resolve } from "./resolve.ts";
+import { validateReferences } from "./resolve.ts";
 import { throwError } from "./util.ts";
 import { sort, byLocales, byListedOrder, type Comparators, type IndexComparator } from "./sort.ts";
 export { byLocales, byListedOrder };
@@ -32,7 +32,7 @@ export function defaultComparator(locales?: Intl.LocalesArgument): IndexComparat
   };
 }
 
-function processEntry(root: hast.Root, indexes: Index<Key>[], relPath: string | null) {
+function processEntry(root: hast.Root, indexes: Index[], relPath: string | null) {
   selectAll("[data-index]", root)
     .map((elem) => ({
       elem,
@@ -161,7 +161,7 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
 
     const dependsOn = normalizedIndexEntryMap.get(filePath);
     if (dependsOn) {
-      const indexes: Index<Key>[] = [];
+      const indexes: Index[] = [];
       const baseDir = upath.dirname(filePath);
 
       dependsOn
@@ -191,7 +191,7 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
         );
 
       deleteRangeStore(indexes);
-      const resolved = resolve(indexes);
+      validateReferences(indexes);
 
       selectAll("[data-index]", root)
         .map((elem) => ({
@@ -207,7 +207,7 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
         )
         .forEach(({ elem, data }) => {
           const [, indexId] = read<ExpandCommand>(data);
-          const target = resolved.find((index) => index.id === indexId);
+          const target = indexes.find((index) => index.id === indexId);
           if (!target) {
             run(expand, data, [], root, elem, null);
             return;

@@ -5,21 +5,20 @@ import {
   type Index,
   type IndexId,
   type MainEntry,
-  type ResolvedKey,
   type Subentry,
 } from "./model.ts";
 
-type Locator = MainEntry<ResolvedKey>["locators"][0];
-type Reference = MainEntry<ResolvedKey>["see"][0];
+type Locator = MainEntry["locators"][0];
+type Reference = MainEntry["see"][0];
 
 type Comparator<T> = NonNullable<Parameters<Array<T>["sort"]>[0]>;
 export type IndexComparator = {
-  group: Comparator<Group<ResolvedKey>>;
-  mainEntry: Comparator<MainEntry<ResolvedKey>>;
+  group: Comparator<Group>;
+  mainEntry: Comparator<MainEntry>;
   mainEntryLocator: Comparator<Locator>;
   mainEntrySee: Comparator<Reference>;
   mainEntrySeeAlso: Comparator<Reference>;
-  subentry: Comparator<Subentry<ResolvedKey>>;
+  subentry: Comparator<Subentry>;
   subentryLocator: Comparator<Locator>;
   subentrySee: Comparator<Reference>;
   subentrySeeAlso: Comparator<Reference>;
@@ -31,9 +30,9 @@ export const byListedOrder: Comparator<Locator> & Comparator<Reference> = (a, b)
 
 export function byLocales(
   locales: Intl.LocalesArgument,
-): Comparator<HasKey<ResolvedKey>> & Comparator<Reference> {
+): Comparator<HasKey> & Comparator<Reference> {
   const collator = new Intl.Collator(locales);
-  return function self(a, b): ReturnType<Comparator<HasKey<ResolvedKey> | Reference>> {
+  return function self(a, b): ReturnType<Comparator<HasKey | Reference>> {
     if (Array.isArray(a) && Array.isArray(b)) {
       const groupKeyCompare = self({ key: a[1] }, { key: b[1] });
       if (groupKeyCompare !== 0) {
@@ -63,7 +62,7 @@ export function byLocales(
   };
 }
 
-export function sort(indexes: Index<ResolvedKey>[], comparators: Comparators) {
+export function sort(indexes: Index[], comparators: Comparators) {
   const newIndexes = structuredClone(indexes);
   for (const index of newIndexes) {
     const comparator = comparators[index.id];

@@ -9,18 +9,21 @@ import {
   deleteRangeStore,
 } from "../../src/command/insert-range.ts";
 import { dropSequentialId } from "../test-util.ts";
-import { toHastChildren, type Index, type Key } from "../../src/model.ts";
+import { toHastChildren, type Index } from "../../src/model.ts";
 
 void test("test", () => {
-  assert.ok(testFn(insertRangeStart, "range,.,[し,[自由利用,じゆうりよう]],r0"));
-  assert.ok(testFn(insertRangeStart, "range,.,[そ,相続,[相続人,そうぞくにん]],r0"));
-  assert.ok(testFn(insertRangeStart, "range!,.,[し,[自由利用,じゆうりよう]],r0"));
-  assert.ok(testFn(insertRangeStart, "range!,.,[そ,相続,[相続人,そうぞくにん]],r0"));
+  assert.ok(testFn(insertRangeStart, "range,.,[[し,し],[自由利用,じゆうりよう]],r0"));
+  assert.ok(testFn(insertRangeStart, "range,.,[[そ,そ],[相続,そうぞく],[相続人,そうぞくにん]],r0"));
+  assert.ok(testFn(insertRangeStart, "range!,.,[[し,し],[自由利用,じゆうりよう]],r0"));
+  assert.ok(
+    testFn(insertRangeStart, "range!,.,[[そ,そ],[相続,そうぞく],[相続人,そうぞくにん]],r0"),
+  );
+  assert.ok(!testFn(insertRangeStart, "range,.,[し,[自由利用,じゆうりよう]],r0"));
   assert.ok(testFn(insertRangeEnd, "/range,r0"));
 });
 
 void test("insert a main entry", () => {
-  const indexes: Index<Key>[] = [];
+  const indexes: Index[] = [];
   const startElem: hast.Element = {
     type: "element",
     tagName: "span",
@@ -44,7 +47,7 @@ void test("insert a main entry", () => {
   run(
     insertRangeStart,
     // @ts-expect-error branded
-    "range,.,[し,[自由利用,じゆうりよう]],r0",
+    "range,.,[[し,し],[自由利用,じゆうりよう]],r0",
     indexes,
     tree,
     startElem,
@@ -65,7 +68,7 @@ void test("insert a main entry", () => {
       id: ".",
       children: [
         {
-          key: [toHastChildren("し"), null],
+          key: [toHastChildren("し"), "し"],
           children: [
             {
               key: [toHastChildren("自由利用"), "じゆうりよう"],
@@ -84,12 +87,12 @@ void test("insert a main entry", () => {
 });
 
 void test("insert a locator to an existing main entry", () => {
-  const indexes: Index<Key>[] = [
+  const indexes: Index[] = [
     {
       id: ".",
       children: [
         {
-          key: [toHastChildren("し"), null],
+          key: [toHastChildren("し"), "し"],
           children: [
             {
               key: [toHastChildren("自由利用"), "じゆうりよう"],
@@ -133,7 +136,7 @@ void test("insert a locator to an existing main entry", () => {
   run(
     insertRangeStart,
     // @ts-expect-error branded
-    "range,.,[し,[自由利用,じゆうりよう]],r0",
+    "range,.,[[し,し],[自由利用,じゆうりよう]],r0",
     indexes,
     tree,
     startElem,
@@ -154,7 +157,7 @@ void test("insert a locator to an existing main entry", () => {
       id: ".",
       children: [
         {
-          key: [toHastChildren("し"), null],
+          key: [toHastChildren("し"), "し"],
           children: [
             {
               key: [toHastChildren("自由利用"), "じゆうりよう"],
@@ -174,7 +177,7 @@ void test("insert a locator to an existing main entry", () => {
 });
 
 void test("insert a subentry", () => {
-  const indexes: Index<Key>[] = [];
+  const indexes: Index[] = [];
   const startElem: hast.Element = {
     type: "element",
     tagName: "span",
@@ -198,7 +201,7 @@ void test("insert a subentry", () => {
   run(
     insertRangeStart,
     // @ts-expect-error branded
-    "range,.,[そ,[相続,そうぞく],[一身専属,いっしんせんぞく]],r0",
+    "range,.,[[そ,そ],[相続,そうぞく],[一身専属,いっしんせんぞく]],r0",
     indexes,
     tree,
     startElem,
@@ -219,7 +222,7 @@ void test("insert a subentry", () => {
       id: ".",
       children: [
         {
-          key: [toHastChildren("そ"), null],
+          key: [toHastChildren("そ"), "そ"],
           children: [
             {
               key: [toHastChildren("相続"), "そうぞく"],
@@ -245,7 +248,7 @@ void test("insert a subentry", () => {
 });
 
 void test("rangeStart only - no locators added", () => {
-  const indexes: Index<Key>[] = [];
+  const indexes: Index[] = [];
   const startElem: hast.Element = {
     type: "element",
     tagName: "span",
@@ -264,7 +267,7 @@ void test("rangeStart only - no locators added", () => {
   run(
     insertRangeStart,
     // @ts-expect-error branded
-    "range,.,[し,[自由利用,じゆうりよう]],r0",
+    "range,.,[[し,し],[自由利用,じゆうりよう]],r0",
     indexes,
     tree,
     startElem,
@@ -275,7 +278,7 @@ void test("rangeStart only - no locators added", () => {
 });
 
 void test("rangeEnd only - no locators added", () => {
-  const indexes: Index<Key>[] = [];
+  const indexes: Index[] = [];
   const endElem: hast.Element = {
     type: "element",
     tagName: "span",
