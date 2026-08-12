@@ -8,10 +8,10 @@ import { selectAll } from "hast-util-select";
 import type * as unified from "unified";
 import upath from "upath";
 
-import { run, test, type Command, type CommandString } from "./command.ts";
+import { read, run, test, type Command, type CommandString } from "./command.ts";
 import expand from "./command/expand.ts";
 import { default as insertPage } from "./command/insert-page.ts";
-import { insertRangeStart, insertRangeEnd, deleteRangeStore } from "./command/insert-range.ts";
+import { insertRange, type InsertRangeCommand } from "./command/insert-range.ts";
 import { default as insertReference } from "./command/insert-reference.ts";
 import type { Index } from "./model.ts";
 import { node, type FileSystem } from "./node.ts";
@@ -63,15 +63,19 @@ type Target = {
 type TargetKey = string;
 
 type Attachment = {
+  sourcePath: string;
+  sourceElementId: string;
   target: Target;
   targetKey: TargetKey;
   command: CommandString;
   commandIndex: number;
   locatorHref: string;
+  rangeEndTarget?: Target;
 };
 
 type SourceSnapshot = {
   attachments: Attachment[];
+  elementIds: string[];
 };
 
 type BuiltIndex = {
@@ -87,12 +91,8 @@ type State = {
   indexes: Map<TargetKey, BuiltIndex>;
 };
 
-const commands = [
-  insertPage,
-  insertRangeStart,
-  insertRangeEnd,
-  insertReference,
-] as unknown as Command[];
+const commands = [insertPage, insertRange, insertReference] as unknown as Command[];
+const rangeCommandIndex = commands.indexOf(insertRange as unknown as Command);
 
 function directoryUrl(path: string): URL {
   const normalized = upath.normalize(path);
@@ -220,16 +220,69 @@ function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnaps
     }
 
     const targetKey = createTargetKey(target);
+    const sourceElementId = ensureId(root, elem);
+    let rangeEndTarget: Target | undefined;
+    if (commandIndex === rangeCommandIndex) {
+      const rangeEndReference = read<InsertRangeCommand>(command as CommandString)[2];
+      try {
+        rangeEndTarget = resolveTarget(rangeEndReference, baseUrl);
+        if (rangeEndTarget.elementId === "") {
+          throw new TypeError();
+        }
+      } catch {
+        console.warn(`invalid range end reference: ${rangeEndReference}`);
+        continue;
+      }
+    }
     attachments.push({
+      sourcePath,
+      sourceElementId,
       target,
       targetKey,
       command: command as CommandString,
       commandIndex,
-      locatorHref: createLocatorHref(sourcePath, target.documentPath, ensureId(root, elem)),
+      locatorHref: createLocatorHref(sourcePath, target.documentPath, sourceElementId),
+      ...(rangeEndTarget === undefined ? {} : { rangeEndTarget }),
     });
   }
 
-  return { attachments };
+  const elementIds = selectAll("[id]", root).flatMap((element) => {
+    const id = getAttribute(element, "id");
+    return id === null ? [] : [id];
+  });
+  return { attachments, elementIds };
+}
+
+function resolveRangeEndHref(state: State, attachment: Attachment): string | undefined {
+  const rangeEndTarget = attachment.rangeEndTarget;
+  if (rangeEndTarget === undefined) {
+    return undefined;
+  }
+  const rangeEndSource = state.sources.get(rangeEndTarget.documentPath);
+  if (!rangeEndSource?.elementIds.includes(rangeEndTarget.elementId)) {
+    console.warn(
+      `range end target ${rangeEndTarget.documentPath}#${rangeEndTarget.elementId} does not exist`,
+    );
+    return undefined;
+  }
+  const sourceEntryIndex = state.entryPaths.indexOf(attachment.sourcePath);
+  const endEntryIndex = state.entryPaths.indexOf(rangeEndTarget.documentPath);
+  const endPrecedesSource = endEntryIndex < sourceEntryIndex;
+  const endDoesNotFollowSourceElement =
+    endEntryIndex === sourceEntryIndex &&
+    rangeEndSource.elementIds.indexOf(rangeEndTarget.elementId) <=
+      rangeEndSource.elementIds.indexOf(attachment.sourceElementId);
+  if (endPrecedesSource || endDoesNotFollowSourceElement) {
+    console.warn(
+      `range end target ${rangeEndTarget.documentPath}#${rangeEndTarget.elementId} does not follow its start`,
+    );
+    return undefined;
+  }
+  return createLocatorHref(
+    rangeEndTarget.documentPath,
+    attachment.target.documentPath,
+    rangeEndTarget.elementId,
+  );
 }
 
 function rebuildIndexes(state: State, log: (message: string) => void): void {
@@ -241,6 +294,10 @@ function rebuildIndexes(state: State, log: (message: string) => void): void {
       continue;
     }
     for (const attachment of snapshot.attachments) {
+      const rangeEndHref = resolveRangeEndHref(state, attachment);
+      if (attachment.rangeEndTarget !== undefined && rangeEndHref === undefined) {
+        continue;
+      }
       let builtIndex = indexes.get(attachment.targetKey);
       if (!builtIndex) {
         builtIndex = { target: attachment.target, index: { children: [] } };
@@ -251,12 +308,12 @@ function rebuildIndexes(state: State, log: (message: string) => void): void {
         attachment.command,
         builtIndex.index,
         attachment.locatorHref,
+        rangeEndHref,
       );
     }
   }
 
   for (const { target, index } of indexes.values()) {
-    deleteRangeStore(index);
     validateReferences(index);
     if (!state.entryPathSet.has(target.documentPath)) {
       log(
@@ -299,14 +356,24 @@ function sourceSnapshotsEqual(
 }
 
 function affectedTargetPaths(
+  state: State,
+  sourcePath: string,
   previous: SourceSnapshot | undefined,
   current: SourceSnapshot,
 ): Set<string> {
-  return new Set(
+  const targetPaths = new Set(
     [...(previous?.attachments ?? []), ...current.attachments].map(
       (attachment) => attachment.target.documentPath,
     ),
   );
+  for (const snapshot of state.sources.values()) {
+    for (const attachment of snapshot.attachments) {
+      if (attachment.rangeEndTarget?.documentPath === sourcePath) {
+        targetPaths.add(attachment.target.documentPath);
+      }
+    }
+  }
+  return targetPaths;
 }
 
 function findTargetElement(root: hast.Root, elementId: string): hast.Element | undefined {
@@ -374,7 +441,12 @@ export function createPlugin({
       if (!sourceSnapshotsEqual(previousSnapshot, currentSnapshot)) {
         state.sources.set(documentPath, currentSnapshot);
         rebuildIndexes(state, log);
-        for (const targetPath of affectedTargetPaths(previousSnapshot, currentSnapshot)) {
+        for (const targetPath of affectedTargetPaths(
+          state,
+          documentPath,
+          previousSnapshot,
+          currentSnapshot,
+        )) {
           if (targetPath !== documentPath && state.entryPathSet.has(targetPath)) {
             fileSystem.touchSync(targetPath);
           }

@@ -351,13 +351,13 @@ void test("moves an attachment between fragments in the same document", () => {
   assert.deepStrictEqual(locatorLinks(newTarget), ["#%2Fhtml%2Fbody%2Fspan"]);
 });
 
-void test("keeps equal range IDs separate between index targets", () => {
+void test("keeps range end references separate between index targets", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?command=range,[[a,a],[Apple,Apple]],r0#first">Apple</span>',
-      '<span data-index="index.md?command=range,[[b,b],[Banana,Banana]],r0#second">Banana</span>',
-      '<span data-index="index.md?command=/range,r0#first"></span>',
-      '<span data-index="index.md?command=/range,r0#second"></span>',
+      "<span data-index=\"index.md?command=range,[[a,a],[Apple,Apple]],'%23apple-end'#first\">Apple</span>",
+      "<span data-index=\"index.md?command=range,[[b,b],[Banana,Banana]],'%23banana-end'#second\">Banana</span>",
+      '<span id="apple-end"></span>',
+      '<span id="banana-end"></span>',
     ].join(""),
     "/publication/index.md": '<nav id="first"></nav><nav id="second"></nav>',
   };
@@ -382,10 +382,9 @@ void test("keeps equal range IDs separate between index targets", () => {
 void test("builds a range whose markers are in different entries", () => {
   const files = {
     "/publication/001.md":
-      '<span id="range-start" data-index="index.md?command=range,[[a,a],[Apple,Apple]],r0#index">Apple</span>',
+      '<span id="range-start" data-index="index.md?command=range,[[a,a],[Apple,Apple]],100.md%23range-end#index">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
-    "/publication/100.md":
-      '<span id="range-end" data-index="index.md?command=/range,r0#index"></span>',
+    "/publication/100.md": '<span id="range-end"></span>',
   };
   const { processor } = createProcessor({
     entries: ["001.md", "index.md", "100.md"],
@@ -396,6 +395,133 @@ void test("builds a range whose markers are in different entries", () => {
   processor.runSync(root, { path: "/publication/index.md" });
 
   assert.deepStrictEqual(locatorLinks(root), ["001.html#range-start", "100.html#range-end"]);
+});
+
+void test("warns and ignores a range whose end target does not exist", (context) => {
+  const warn = context.mock.method(console, "warn", () => {});
+  const files = {
+    "/publication/chapter.md":
+      "<span data-index=\"index.md?command=range,[[a,a],[Apple,Apple]],'%23missing'#index\">Apple</span>",
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["chapter.md", "index.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(locatorLinks(root), []);
+  assert.strictEqual(warn.mock.callCount(), 1);
+  assert.match(String(warn.mock.calls[0]?.arguments[0]), /does not exist/v);
+});
+
+void test("warns and ignores a range end reference without a fragment", (context) => {
+  const warn = context.mock.method(console, "warn", () => {});
+  const files = {
+    "/publication/chapter.md":
+      '<span data-index="index.md?command=range,[[a,a],[Apple,Apple]],end.md#index">Apple</span>',
+    "/publication/end.md": '<span id="range-end"></span>',
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["chapter.md", "end.md", "index.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(locatorLinks(root), []);
+  assert.strictEqual(warn.mock.callCount(), 1);
+  assert.match(String(warn.mock.calls[0]?.arguments[0]), /invalid range end reference/v);
+});
+
+void test("warns and ignores a range whose end precedes its start in the same entry", (context) => {
+  const warn = context.mock.method(console, "warn", () => {});
+  const files = {
+    "/publication/chapter.md": [
+      '<span id="range-end"></span>',
+      "<span data-index=\"index.md?command=range,[[a,a],[Apple,Apple]],'%23range-end'#index\">Apple</span>",
+    ].join(""),
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["chapter.md", "index.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(locatorLinks(root), []);
+  assert.strictEqual(warn.mock.callCount(), 1);
+  assert.match(String(warn.mock.calls[0]?.arguments[0]), /does not follow its start/v);
+});
+
+void test("warns and ignores a range whose end is its start", (context) => {
+  const warn = context.mock.method(console, "warn", () => {});
+  const files = {
+    "/publication/chapter.md":
+      '<span id="range-start" data-index="index.md?command=range,[[a,a],[Apple,Apple]],\'%23range-start\'#index">Apple</span>',
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["chapter.md", "index.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(locatorLinks(root), []);
+  assert.strictEqual(warn.mock.callCount(), 1);
+  assert.match(String(warn.mock.calls[0]?.arguments[0]), /does not follow its start/v);
+});
+
+void test("warns and ignores a range whose end is in an earlier entry", (context) => {
+  const warn = context.mock.method(console, "warn", () => {});
+  const files = {
+    "/publication/001.md": '<span id="range-end"></span>',
+    "/publication/100.md":
+      '<span data-index="index.md?command=range,[[a,a],[Apple,Apple]],001.md%23range-end#index">Apple</span>',
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["001.md", "100.md", "index.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(locatorLinks(root), []);
+  assert.strictEqual(warn.mock.callCount(), 1);
+  assert.match(String(warn.mock.calls[0]?.arguments[0]), /does not follow its start/v);
+});
+
+void test("touches an index target after its range end changes", (context) => {
+  context.mock.method(console, "warn", () => {});
+  const updates: string[] = [];
+  const files = {
+    "/publication/chapter.md":
+      '<span data-index="index.md?command=range,[[a,a],[Apple,Apple]],end.md%23range-end#index">Apple</span>',
+    "/publication/end.md": '<span id="range-end"></span>',
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["chapter.md", "end.md", "index.md"],
+    files,
+    updates,
+  });
+
+  processor.runSync(fromHtml(files["/publication/end.md"]), {
+    path: "/publication/end.md",
+  });
+  processor.runSync(fromHtml(""), { path: "/publication/end.md" });
+
+  assert.deepStrictEqual(updates, ["/publication/index.md"]);
 });
 
 void test("warns and ignores index references that cannot be normalized", (context) => {

@@ -39,7 +39,7 @@ const runSymbol = Symbol();
 
 export type Command<T extends (string | EntryKey)[] = (string | EntryKey)[]> = {
   [testSymbol]: (obj: unknown) => obj is T;
-  [runSymbol]: (obj: Readonly<T>, index: Index, locatorHref: string) => void;
+  [runSymbol]: (obj: Readonly<T>, index: Index, locatorHref: string, rangeEndHref?: string) => void;
 };
 
 export function defineCommand<T extends (string | EntryKey)[]>(
@@ -92,6 +92,7 @@ export function run<T extends (string | EntryKey)[]>(
   input: CommandString,
   index: Index,
   locatorHref: string,
+  rangeEndHref?: string,
 ) {
   if (!memo.has(input)) {
     let parsed;
@@ -103,7 +104,7 @@ export function run<T extends (string | EntryKey)[]>(
     }
     memo.set(input, parsed);
   }
-  cmd[runSymbol](memo.get(input) as T, index, locatorHref);
+  cmd[runSymbol](memo.get(input) as T, index, locatorHref, rangeEndHref);
 }
 
 export function toModelKey([word, reading]: InputKey): Key {
