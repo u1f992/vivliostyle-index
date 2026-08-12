@@ -13,20 +13,18 @@ type Locator = MainEntry<ResolvedKey>["locators"][0];
 type Reference = MainEntry<ResolvedKey>["see"][0];
 
 type Comparator<T> = NonNullable<Parameters<Array<T>["sort"]>[0]>;
-export type Comparators = Record<
-  IndexId,
-  {
-    group: Comparator<Group<ResolvedKey>>;
-    mainEntry: Comparator<MainEntry<ResolvedKey>>;
-    mainEntryLocator: Comparator<Locator>;
-    mainEntrySee: Comparator<Reference>;
-    mainEntrySeeAlso: Comparator<Reference>;
-    subentry: Comparator<Subentry<ResolvedKey>>;
-    subentryLocator: Comparator<Locator>;
-    subentrySee: Comparator<Reference>;
-    subentrySeeAlso: Comparator<Reference>;
-  }
->;
+export type IndexComparator = {
+  group: Comparator<Group<ResolvedKey>>;
+  mainEntry: Comparator<MainEntry<ResolvedKey>>;
+  mainEntryLocator: Comparator<Locator>;
+  mainEntrySee: Comparator<Reference>;
+  mainEntrySeeAlso: Comparator<Reference>;
+  subentry: Comparator<Subentry<ResolvedKey>>;
+  subentryLocator: Comparator<Locator>;
+  subentrySee: Comparator<Reference>;
+  subentrySeeAlso: Comparator<Reference>;
+};
+export type Comparators = Partial<Record<IndexId, IndexComparator>>;
 
 export const byListedOrder: Comparator<Locator> & Comparator<Reference> = (a, b) =>
   a[0].localeCompare(b[0]);

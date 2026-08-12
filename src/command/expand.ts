@@ -3,7 +3,7 @@ import { defineCommand } from "../command.ts";
 
 import type * as hast from "hast";
 
-type ExpandCommand = ["expand", IndexId];
+export type ExpandCommand = ["expand", IndexId];
 export default defineCommand<ExpandCommand>(
   {
     type: "array",

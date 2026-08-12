@@ -1,5 +1,5 @@
 import { defineConfig, VFM } from "@vivliostyle/cli";
-import { index, defaultComparator } from "@u1f992/vivliostyle-index";
+import { index } from "@u1f992/vivliostyle-index";
 
 export default defineConfig({
   title: "example",
@@ -12,9 +12,6 @@ export default defineConfig({
       entryProcessor: VFM(opt, meta),
       indexEntryMap: {
         "index.md": ["001-050.md", "051-099.md", "100-150.md"],
-      },
-      comparators: {
-        $: defaultComparator("ja"),
       },
       log: console.debug,
     }),

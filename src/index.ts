@@ -5,20 +5,20 @@ import { selectAll } from "hast-util-select";
 import type * as unified from "unified";
 import upath from "upath";
 
-import { run, test, type Command } from "./command.ts";
+import { read, run, test, type Command, type CommandString } from "./command.ts";
 import { default as insertPage } from "./command/insert-page.ts";
 import { insertRangeStart, insertRangeEnd, deleteRangeStore } from "./command/insert-range.ts";
 import { default as insertReference } from "./command/insert-reference.ts";
-import { default as expand } from "./command/expand.ts";
+import { default as expand, type ExpandCommand } from "./command/expand.ts";
 import type { Index, Key } from "./model.ts";
 import { node, type FileSystem } from "./node.ts";
 import { resolve } from "./resolve.ts";
 import { throwError } from "./util.ts";
-import { sort, byLocales, byListedOrder, type Comparators } from "./sort.ts";
+import { sort, byLocales, byListedOrder, type Comparators, type IndexComparator } from "./sort.ts";
 export { byLocales, byListedOrder };
 export { node, type FileSystem } from "./node.ts";
 
-export function defaultComparator(locales?: Intl.LocalesArgument): Comparators[string] {
+export function defaultComparator(locales?: Intl.LocalesArgument): IndexComparator {
   return {
     group: byLocales(locales),
     mainEntry: byLocales(locales),
@@ -63,13 +63,35 @@ function processEntry(root: hast.Root, indexes: Index<Key>[], relPath: string | 
     );
 }
 
+function findClosestLang(
+  root: hast.Root | hast.Element,
+  target: hast.Element,
+  inheritedLang?: string,
+): string | undefined {
+  const lang =
+    root.type === "element" ? (getAttribute(root, "lang") ?? inheritedLang) : inheritedLang;
+  if (root === target) {
+    return lang;
+  }
+  for (const child of root.children) {
+    if (child.type !== "element") {
+      continue;
+    }
+    const found = findClosestLang(child, target, lang);
+    if (found !== undefined) {
+      return found;
+    }
+  }
+  return undefined;
+}
+
 type Entry = { path: string; ignoreUpdate: boolean };
 
 export type Config = {
   entryProcessor: unified.Processor;
   entryContext?: string;
   indexEntryMap: Readonly<{ [index: string]: readonly (string | Entry)[] }>;
-  comparators: Comparators;
+  comparators?: Comparators;
   fileSystem?: Readonly<FileSystem>;
   log?: (msg: string) => void;
 };
@@ -78,7 +100,7 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
   entryProcessor,
   entryContext,
   indexEntryMap,
-  comparators,
+  comparators = {},
   fileSystem = node,
   log,
 }) => {
@@ -169,7 +191,7 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
         );
 
       deleteRangeStore(indexes);
-      const resolved = sort(resolve(indexes), comparators);
+      const resolved = resolve(indexes);
 
       selectAll("[data-index]", root)
         .map((elem) => ({
@@ -180,18 +202,21 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
               "data === null: won't happen. it's likely a bug in selectAll() or getAttribute()",
             ]),
         }))
-        .filter(({ data }) => test(expand, data))
-        .forEach(({ elem, data }) =>
-          run(
-            expand,
-            // @ts-expect-error branded
-            data,
-            resolved,
-            root,
-            elem,
-            null,
-          ),
-        );
+        .filter((value): value is typeof value & { data: CommandString } =>
+          test(expand, value.data),
+        )
+        .forEach(({ elem, data }) => {
+          const [, indexId] = read<ExpandCommand>(data);
+          const target = resolved.find((index) => index.id === indexId);
+          if (!target) {
+            run(expand, data, [], root, elem, null);
+            return;
+          }
+          const configuredComparator = comparators[indexId];
+          const comparator = configuredComparator ?? defaultComparator(findClosestLang(root, elem));
+          const sorted = sort([target], { [indexId]: comparator });
+          run(expand, data, sorted, root, elem, null);
+        });
     }
   };
 };

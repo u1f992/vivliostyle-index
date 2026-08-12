@@ -118,6 +118,10 @@ export function test<T extends (string | PartialEntryKey)[]>(
   return cmd[testSymbol](memo.get(input));
 }
 
+export function read<T extends (string | PartialEntryKey)[]>(input: CommandString): Readonly<T> {
+  return memo.get(input) as T;
+}
+
 function ensureId(tree: Readonly<hast.Root>, elem: hast.Element) {
   let id = getAttribute(elem, "id");
   if (id !== null) {
