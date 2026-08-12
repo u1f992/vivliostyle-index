@@ -4,10 +4,10 @@
   "description": "unified plugin that integrates automatic index generation into Vivliostyle CLI workflows.",
   "main": "dist/index.js",
   "scripts": {
-    "lint": "oxlint --fix src",
-    "format": "oxfmt src",
-    "build": "tsc && tsc --noEmit --ignoreConfig oxfmt.config.ts oxlint.config.ts",
-    "test": "node --test \"dist/**/*.test.js\"",
+    "lint": "oxlint --fix src tests",
+    "format": "oxfmt src tests",
+    "build": "tsc && tsc -p tests && tsc --noEmit --ignoreConfig oxfmt.config.ts oxlint.config.ts",
+    "test": "node --test \"tests/**/*.test.ts\"",
     "example": "cd example && npx vivliostyle preview"
   },
   "keywords": [],

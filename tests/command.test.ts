@@ -3,9 +3,9 @@ import test from "node:test";
 
 import type * as hast from "hast";
 
-import { run, test as testCommand } from "./command.js";
-import insertPage from "./command/insert-page.js";
-import type { Index, Key } from "./model.js";
+import { run, test as testCommand } from "../src/command.ts";
+import insertPage from "../src/command/insert-page.ts";
+import type { Index, Key } from "../src/model.ts";
 
 const input = "$,[R,RPA]";
 

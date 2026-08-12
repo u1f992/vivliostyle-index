@@ -8,7 +8,7 @@ import {
   type UnresolvedKey,
   getChild,
   hastChildrenToText,
-} from "./model.js";
+} from "./model.ts";
 
 function resolveChildren<T extends HasKey<Key>>(
   parent: ParentOf<T>,

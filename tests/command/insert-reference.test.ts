@@ -2,10 +2,10 @@ import type * as hast from "hast";
 import assert from "node:assert";
 import test from "node:test";
 
-import { run, test as testFn } from "../command.js";
-import { default as insertReference } from "./insert-reference.js";
-import { toHastChildren, type Index, type Key } from "../model.js";
-import { dropSequentialId } from "../test-util.js";
+import { run, test as testFn } from "../../src/command.ts";
+import { default as insertReference } from "../../src/command/insert-reference.ts";
+import { toHastChildren, type Index, type Key } from "../../src/model.ts";
+import { dropSequentialId } from "../test-util.ts";
 
 void test("test", () => {
   assert.ok(

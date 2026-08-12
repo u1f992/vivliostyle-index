@@ -1,5 +1,5 @@
-import type { IndexId, Key, EntryBase, Index, ResolvedKey, MainEntry, Subentry } from "../model.js";
-import { defineCommand } from "../command.js";
+import type { IndexId, Key, EntryBase, Index, ResolvedKey, MainEntry, Subentry } from "../model.ts";
+import { defineCommand } from "../command.ts";
 
 import type * as hast from "hast";
 

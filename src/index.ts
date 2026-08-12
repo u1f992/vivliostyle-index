@@ -6,15 +6,15 @@ import fs from "node:fs";
 import type * as unified from "unified";
 import upath from "upath";
 
-import { run, test, type Command } from "./command.js";
-import { default as insertPage } from "./command/insert-page.js";
-import { insertRangeStart, insertRangeEnd, deleteRangeStore } from "./command/insert-range.js";
-import { default as insertReference } from "./command/insert-reference.js";
-import { default as expand } from "./command/expand.js";
-import type { Index, Key } from "./model.js";
-import { resolve } from "./resolve.js";
-import { throwError, touchSync } from "./util.js";
-import { sort, byLocales, byListedOrder, type Comparators } from "./sort.js";
+import { run, test, type Command } from "./command.ts";
+import { default as insertPage } from "./command/insert-page.ts";
+import { insertRangeStart, insertRangeEnd, deleteRangeStore } from "./command/insert-range.ts";
+import { default as insertReference } from "./command/insert-reference.ts";
+import { default as expand } from "./command/expand.ts";
+import type { Index, Key } from "./model.ts";
+import { resolve } from "./resolve.ts";
+import { throwError, touchSync } from "./util.ts";
+import { sort, byLocales, byListedOrder, type Comparators } from "./sort.ts";
 export { byLocales, byListedOrder };
 
 export function defaultComparator(locales?: Intl.LocalesArgument): Comparators[string] {

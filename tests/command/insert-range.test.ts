@@ -2,10 +2,14 @@ import type * as hast from "hast";
 import assert from "node:assert";
 import test from "node:test";
 
-import { test as testFn, run } from "../command.js";
-import { insertRangeStart, insertRangeEnd, deleteRangeStore } from "./insert-range.js";
-import { dropSequentialId } from "../test-util.js";
-import { toHastChildren, type Index, type Key } from "../model.js";
+import { test as testFn, run } from "../../src/command.ts";
+import {
+  insertRangeStart,
+  insertRangeEnd,
+  deleteRangeStore,
+} from "../../src/command/insert-range.ts";
+import { dropSequentialId } from "../test-util.ts";
+import { toHastChildren, type Index, type Key } from "../../src/model.ts";
 
 void test("test", () => {
   assert.ok(testFn(insertRangeStart, "range,.,[し,[自由利用,じゆうりよう]],r0"));

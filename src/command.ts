@@ -7,7 +7,7 @@ import {
   type IndexId,
   type Key,
   type ResolvedKey,
-} from "./model.js";
+} from "./model.ts";
 
 import { Ajv2020 as Ajv, type JSONSchemaType } from "ajv/dist/2020.js";
 import type * as hast from "hast";

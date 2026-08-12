@@ -1,8 +1,8 @@
 import assert from "node:assert";
 import test from "node:test";
 
-import { test as testFn } from "../command.js";
-import { default as insertPage } from "./insert-page.js";
+import { test as testFn } from "../../src/command.ts";
+import { default as insertPage } from "../../src/command/insert-page.ts";
 
 void test("test", () => {
   assert.ok(testFn(insertPage, ".,[し,自由利用]"));

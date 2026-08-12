@@ -4,8 +4,8 @@ import {
   defineCommand,
   ensureEntry,
   padNull,
-} from "../command.js";
-import { ensureIndex, getChild, insertReference } from "../model.js";
+} from "../command.ts";
+import { ensureIndex, getChild, insertReference } from "../model.ts";
 
 type InsertReferenceCommand = ["see" | "seeAlso", ...Base, PartialEntryKey];
 export default defineCommand<InsertReferenceCommand>(

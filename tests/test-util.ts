@@ -1,4 +1,4 @@
-import type { EntryBase, Index, Key } from "./model.js";
+import type { EntryBase, Index, Key } from "../src/model.ts";
 
 export function dropSequentialId<TKey extends Key>(indexes: Index<TKey>[]): unknown {
   function handleEntry(entry: EntryBase<TKey>): unknown {

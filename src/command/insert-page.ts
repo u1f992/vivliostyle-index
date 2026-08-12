@@ -1,5 +1,5 @@
-import { type Base, defineCommand, ensureEntry } from "../command.js";
-import { insertLocator } from "../model.js";
+import { type Base, defineCommand, ensureEntry } from "../command.ts";
+import { insertLocator } from "../model.ts";
 
 type InsertPageCommand = [...Base] | ["page!", ...Base];
 export default defineCommand<InsertPageCommand>(

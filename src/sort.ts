@@ -7,7 +7,7 @@ import {
   type MainEntry,
   type ResolvedKey,
   type Subentry,
-} from "./model.js";
+} from "./model.ts";
 
 type Locator = MainEntry<ResolvedKey>["locators"][0];
 type Reference = MainEntry<ResolvedKey>["see"][0];

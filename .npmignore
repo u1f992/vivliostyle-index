@@ -1,6 +1,7 @@
 .github
 example
 src
+tests
 dist/**/*.test.*
 dist/**/test-util.*
 *.config.js

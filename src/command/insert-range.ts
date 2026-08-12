@@ -1,5 +1,5 @@
-import { type Base, defineCommand, ensureEntry, type PartialEntryKey } from "../command.js";
-import { insertLocator, type Index, type Key } from "../model.js";
+import { type Base, defineCommand, ensureEntry, type PartialEntryKey } from "../command.ts";
+import { insertLocator, type Index, type Key } from "../model.ts";
 
 const __rangeStore = Symbol();
 type RangeId = string;

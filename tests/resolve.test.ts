@@ -1,9 +1,9 @@
 import assert from "node:assert";
 import test from "node:test";
 
-import { resolve } from "./resolve.js";
-import { dropSequentialId } from "./test-util.js";
-import { toHastChildren } from "./model.js";
+import { resolve } from "../src/resolve.ts";
+import { dropSequentialId } from "./test-util.ts";
+import { toHastChildren } from "../src/model.ts";
 
 void test("fill group key", () => {
   assert.deepStrictEqual(

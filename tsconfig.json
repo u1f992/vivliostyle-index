@@ -40,6 +40,10 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
+
+    // Interoperability with Node.js Type Stripping
+    "erasableSyntaxOnly": true,
+    "rewriteRelativeImportExtensions": true,
   },
   "include": ["src"],
 }
