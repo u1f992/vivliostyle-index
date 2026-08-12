@@ -2,7 +2,6 @@ import type * as hast from "hast";
 import { fromHtml } from "hast-util-from-html";
 import { getAttribute } from "hast-util-get-attribute";
 import { selectAll } from "hast-util-select";
-import fs from "node:fs";
 import type * as unified from "unified";
 import upath from "upath";
 
@@ -12,10 +11,12 @@ import { insertRangeStart, insertRangeEnd, deleteRangeStore } from "./command/in
 import { default as insertReference } from "./command/insert-reference.ts";
 import { default as expand } from "./command/expand.ts";
 import type { Index, Key } from "./model.ts";
+import { node, type FileSystem } from "./node.ts";
 import { resolve } from "./resolve.ts";
-import { throwError, touchSync } from "./util.ts";
+import { throwError } from "./util.ts";
 import { sort, byLocales, byListedOrder, type Comparators } from "./sort.ts";
 export { byLocales, byListedOrder };
+export { node, type FileSystem } from "./node.ts";
 
 export function defaultComparator(locales?: Intl.LocalesArgument): Comparators[string] {
   return {
@@ -69,6 +70,7 @@ export type Config = {
   entryContext?: string;
   indexEntryMap: Readonly<{ [index: string]: readonly (string | Entry)[] }>;
   comparators: Comparators;
+  fileSystem?: Readonly<FileSystem>;
   log?: (msg: string) => void;
 };
 
@@ -77,6 +79,7 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
   entryContext,
   indexEntryMap,
   comparators,
+  fileSystem = node,
   log,
 }) => {
   log ??= () => {};
@@ -130,7 +133,7 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
           log(
             `[vivliostyle-index] ${upath.relative(ctx, filePath)} affects ${upath.relative(ctx, indexPath)}`,
           );
-          touchSync(indexPath);
+          fileSystem.touchSync(indexPath);
         });
     }
 
@@ -142,9 +145,7 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
       dependsOn
         .map(({ entryPath }) => ({
           entryPath,
-          contents: fs.readFileSync(entryPath, {
-            encoding: "utf-8",
-          }),
+          contents: fileSystem.readFileSync(entryPath),
         }))
         .map(({ entryPath, contents }) => ({
           entryPath,
