@@ -21,6 +21,8 @@ import { validateReferences } from "./resolve.ts";
 import { sort, byLocales, byListedOrder, type IndexComparator } from "./sort.ts";
 
 export { byLocales, byListedOrder };
+export { CommandSyntaxError, parseCommand } from "./command-parser.ts";
+export type { ParsedCommand, ParsedEntry } from "./command-parser.ts";
 export type { FileSystem } from "./file-system.ts";
 export { nodeFileSystem } from "./node-file-system.ts";
 export { logMessages } from "./log-messages.ts";
