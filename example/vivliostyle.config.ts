@@ -1,10 +1,7 @@
-// @ts-check
-
-import { VFM } from "@vivliostyle/vfm";
+import { defineConfig, VFM } from "@vivliostyle/cli";
 import { index, defaultComparator } from "@u1f992/vivliostyle-index";
 
-/** @type {import('@vivliostyle/cli').VivliostyleConfigSchema} */
-const vivliostyleConfig = {
+export default defineConfig({
   title: "example",
   author: "u1f992",
   language: "ja",
@@ -21,6 +18,4 @@ const vivliostyleConfig = {
       },
       log: console.debug,
     }),
-};
-
-export default vivliostyleConfig;
+});

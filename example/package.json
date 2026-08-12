@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@vivliostyle/cli": "^9.6.0",
-    "@u1f992/vivliostyle-index": "file:.."
+    "@u1f992/vivliostyle-index": "file:..",
+    "@vivliostyle/cli": "^11.1.0"
   }
 }
