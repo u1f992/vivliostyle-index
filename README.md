@@ -1,24 +1,22 @@
 # @u1f992/vivliostyle-index
 
-[unified](https://github.com/unifiedjs/unified) plugin that integrates automatic index generation into [Vivliostyle CLI](https://github.com/vivliostyle/vivliostyle-cli) workflows.
+A [unified](https://github.com/unifiedjs/unified) plugin for generating indexes in [Vivliostyle CLI](https://github.com/vivliostyle/vivliostyle-cli) builds.
 
-This project seeks to align with the requirements presented in 藤田節子's『[本の索引の作り方](http://www.chijinshokan.co.jp/Books/ISBN978-4-8052-0932-5.htm)』(地人書館) and [SIST 13　索引作成](https://jipsti.jst.go.jp/sist/handbook/sist13/sist13_m.htm).
+The project uses [本の索引の作り方](http://www.chijinshokan.co.jp/Books/ISBN978-4-8052-0932-5.htm) by 藤田節子 (Chijin Shokan) and [SIST 13 索引作成](https://jipsti.jst.go.jp/sist/handbook/sist13/sist13_m.htm) as references for its indexing rules.
 
 ## Usage
 
-The basic concept is to embed index manipulation commands in the `command` query parameter of a URL stored in the `data-index` attribute. The URL's document path and fragment identify the element where the index is generated.
+The instruction syntax is MakeIndex/upmendex-inspired. Put an instruction in the `q` query parameter of the URL in a `data-index` attribute. The URL path and fragment identify the element that receives the generated index. The HTML parser decodes the attribute before the URL parser reads `q`. Percent-encode any instruction character that URL query parsing would otherwise alter or treat as syntax. This includes literal `#`, `&`, `+`, and `%`, written as `%23`, `%26`, `%2B`, and `%25`, respectively. Characters preserved by query parsing can remain unencoded; the examples use this minimal form. Finally, escape the resulting URL for use in an HTML attribute.
 
-The command body is a YAML list with top-level brackets omitted. Token and escaping rules follow YAML conventions, plus URL query and HTML attribute character encoding. For example, to make `null` a heading word in a `Key`, write `["null",reading]`, then encode it for the query and attribute contexts.
+| Format | Description |
+| --- | --- |
+| `<entry>` | Adds a page locator. Creates the target index and entry if needed. |
+| `<entry>\|!` | Adds an important page locator. |
+| `<entry>\|(<endReference>` | Adds a range locator that ends at `<endReference>`. |
+| `<entry>\|!(<endReference>` | Adds an important range locator. |
+| `<entry>\|-><target>` | Adds a "see" reference. Creates `<entry>` but not `<target>`. |
+| `<entry>\|=><target>` | Adds a "see also" reference. Creates `<entry>` but not `<target>`. |
 
-| Format                       | Description                                                                                                                           |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `<heading>`                  | Adds a locator (page). Creates the index and heading specified by the URL and `<heading>` if they do not exist.                        |
-| `page!,<heading>`            | Adds a high-importance locator (page). Creates the index and heading specified by the URL and `<heading>` if they do not exist.        |
-| `range,<heading>,<endReference>`  | Adds a locator (range) ending at the element identified by `<endReference>`.                                                      |
-| `range!,<heading>,<endReference>` | Adds a high-importance locator (range) ending at the element identified by `<endReference>`.                                      |
-| `see,<heading>,<target>`     | Adds a "see" reference. Creates the index and heading specified by the URL and `<heading>`, but `<target>` is not automatically created. |
-| `seeAlso,<heading>,<target>` | Adds a "see also" reference. Creates the index and heading specified by the URL and `<heading>`, but `<target>` is not automatically created. |
+`<entry>` and `<target>` contain two or three keys: `<key>!<key>` or `<key>!<key>!<key>`. The keys specify the group heading, main heading, and optional subheading in that order. A `<key>` has the form `<reading>@<innerHTML>`. If `@<innerHTML>` is omitted, the reading is also used as the inner HTML. `\@`, `\!`, `\|`, and `\\` represent literal `@`, `!`, `|`, and `\`. Keys match only if they have the same reading and original `<innerHTML>` string.
 
-Furthermore, `<heading>` and `<target>` follow the format `[<key>, <key>] | [<key>, <key>, <key>]`. Each `<key>` is either an innerHTML string or a tuple of `[<innerHTML>, <reading>]`; the string form uses the same value as its reading. Keys match only when both the original innerHTML string and reading match. Taking two keys corresponds to group heading and main heading, while taking three keys corresponds to group heading, main heading, and subheading.
-
-`<endReference>` has the form `[<documentPath>]#<elementId>` and is resolved relative to the document containing the range command. Omit `<documentPath>` for an end element in the same document. A fragment-only reference must be quoted as a YAML string, and because the reference is part of the `command` query parameter, its `#` must be URL-encoded. For example, `'#end'` is written as `'%23end'` in `data-index`. The end element must exist and strictly follow the element containing the range command in entry and document order. Otherwise, the range command is ignored with a warning.
+`<endReference>` has the form `[<documentPath>]#<elementId>` and is resolved relative to the document containing the range instruction. Omit `<documentPath>` when the end element is in the same document. Because the reference is inside the `q` value, encode its `#` as `%23`. Any query in `<endReference>` is discarded after URL resolution. The end element must exist and come after the start element in both entry order and document order. Otherwise, the range instruction is ignored with a warning.

@@ -9,11 +9,9 @@ import type * as unified from "unified";
 import upath from "upath";
 import type { VFile, VFileCompatible } from "vfile";
 
-import { parse, read, run, test, type Command, type CommandString } from "./command.ts";
+import { applyPageCommand, applyRangeCommand, applyReferenceCommand } from "./apply-command.ts";
+import { CommandSyntaxError, parseCommand, type ParsedCommand } from "./command-parser.ts";
 import expand from "./command/expand.ts";
-import { default as insertPage } from "./command/insert-page.ts";
-import { insertRange, type InsertRangeCommand } from "./command/insert-range.ts";
-import { default as insertReference } from "./command/insert-reference.ts";
 import type { FileSystem } from "./file-system.ts";
 import type { Index } from "./model.ts";
 import { nodeFileSystem } from "./node-file-system.ts";
@@ -80,8 +78,7 @@ type Attachment = {
   sourceElementId: string;
   target: Target;
   targetKey: TargetKey;
-  command: CommandString;
-  commandIndex: number;
+  command: ParsedCommand;
   locatorHref: string;
   rangeEndTarget?: Target;
 };
@@ -107,15 +104,18 @@ type State = {
   diagnostics: Map<string, Diagnostic[]>;
 };
 
-const commands = [insertPage, insertRange, insertReference] as unknown as Command[];
-const rangeCommandIndex = commands.indexOf(insertRange as unknown as Command);
-
-function resolveTarget(reference: string, baseUrl: URL): Target {
-  const url = new URL(reference, baseUrl);
+function createTarget(url: URL): Target {
+  const documentUrl = new URL(url);
+  documentUrl.search = "";
+  documentUrl.hash = "";
   return {
-    documentPath: upath.normalize(fileURLToPath(url)),
+    documentPath: upath.normalize(fileURLToPath(documentUrl)),
     elementId: decodeURIComponent(url.hash.slice(1)),
   };
+}
+
+function resolveTarget(reference: string, baseUrl: URL): Target {
+  return createTarget(new URL(reference, baseUrl));
 }
 
 function createTargetKey(target: Target): TargetKey {
@@ -209,7 +209,7 @@ function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnaps
     let target: Target;
     try {
       url = new URL(reference, baseUrl);
-      target = resolveTarget(reference, baseUrl);
+      target = createTarget(url);
     } catch {
       diagnostics.push({
         reason: `invalid index reference: ${reference}`,
@@ -218,22 +218,20 @@ function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnaps
       continue;
     }
 
-    const command = url.searchParams.get("command");
-    if (command === null) {
+    const commandSource = url.searchParams.get("q");
+    if (commandSource === null) {
       continue;
     }
-    if (!parse(command)) {
+    let command: ParsedCommand;
+    try {
+      command = parseCommand(commandSource);
+    } catch (error) {
       diagnostics.push({
-        reason: `cannot parse index command: ${command}`,
+        reason:
+          error instanceof CommandSyntaxError
+            ? error.message
+            : `cannot parse index command: ${commandSource}`,
         ruleId: "command-parse-error",
-      });
-      continue;
-    }
-    const commandIndex = commands.findIndex((candidate) => test(candidate, command));
-    if (commandIndex === -1) {
-      diagnostics.push({
-        reason: `unknown index command: ${command}`,
-        ruleId: "unknown-command",
       });
       continue;
     }
@@ -241,16 +239,15 @@ function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnaps
     const targetKey = createTargetKey(target);
     const sourceElementId = ensureId(root, elem);
     let rangeEndTarget: Target | undefined;
-    if (commandIndex === rangeCommandIndex) {
-      const rangeEndReference = read<InsertRangeCommand>(command as CommandString)[2];
+    if (command.type === "range") {
       try {
-        rangeEndTarget = resolveTarget(rangeEndReference, baseUrl);
+        rangeEndTarget = resolveTarget(command.endReference, baseUrl);
         if (rangeEndTarget.elementId === "") {
           throw new TypeError();
         }
       } catch {
         diagnostics.push({
-          reason: `invalid range end reference: ${rangeEndReference}`,
+          reason: `invalid range end reference: ${command.endReference}`,
           ruleId: "invalid-range-end-reference",
         });
         continue;
@@ -261,8 +258,7 @@ function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnaps
       sourceElementId,
       target,
       targetKey,
-      command: command as CommandString,
-      commandIndex,
+      command,
       locatorHref: createLocatorHref(sourcePath, target.documentPath, sourceElementId),
       ...(rangeEndTarget === undefined ? {} : { rangeEndTarget }),
     });
@@ -340,8 +336,11 @@ function rebuildIndexes(state: State): void {
       continue;
     }
     for (const attachment of snapshot.attachments) {
-      const rangeEndHref = resolveRangeEndHref(state, attachment, diagnostics);
-      if (attachment.rangeEndTarget !== undefined && rangeEndHref === undefined) {
+      const rangeEndHref =
+        attachment.command.type === "range"
+          ? resolveRangeEndHref(state, attachment, diagnostics)
+          : undefined;
+      if (attachment.command.type === "range" && rangeEndHref === undefined) {
         continue;
       }
       let builtIndex = indexes.get(attachment.targetKey);
@@ -353,13 +352,25 @@ function rebuildIndexes(state: State): void {
         };
         indexes.set(attachment.targetKey, builtIndex);
       }
-      run(
-        commands[attachment.commandIndex]!,
-        attachment.command,
-        builtIndex.index,
-        attachment.locatorHref,
-        rangeEndHref,
-      );
+      switch (attachment.command.type) {
+        case "page":
+          applyPageCommand(builtIndex.index, attachment.command, attachment.locatorHref);
+          break;
+        case "range":
+          if (rangeEndHref !== undefined) {
+            applyRangeCommand(
+              builtIndex.index,
+              attachment.command,
+              attachment.locatorHref,
+              rangeEndHref,
+            );
+          }
+          break;
+        case "see":
+        case "seeAlso":
+          applyReferenceCommand(builtIndex.index, attachment.command);
+          break;
+      }
     }
   }
 
@@ -475,7 +486,6 @@ function emitDiagnostics(file: VFile, diagnostics: readonly Diagnostic[]): void 
 }
 
 export function createIndexPlugin({
-  // Match the field name in Vivliostyle CLI's config.
   entry: entries,
   entryContext,
   comparators = [],

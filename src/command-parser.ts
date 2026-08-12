@@ -1,10 +1,6 @@
-import type { Key } from "./model.ts";
+import type { EntryAddress, Key } from "./model.ts";
 
-export type ParsedEntry = Readonly<{
-  group: Key;
-  mainEntry: Key;
-  subentry?: Key;
-}>;
+export type ParsedEntry = EntryAddress;
 
 export type ParsedCommand =
   | Readonly<{

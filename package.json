@@ -31,13 +31,11 @@
     "vfile": "^4.2.1"
   },
   "dependencies": {
-    "ajv": "^8.20.0",
     "hast-util-from-html": "^1.0.2",
     "hast-util-get-attribute": "^1.0.0",
     "hast-util-get-xpath": "^1.0.0",
     "hast-util-select": "^5.0.5",
     "hast-util-to-text": "^3.1.2",
-    "upath": "^2.0.1",
-    "yaml": "^2.9.0"
+    "upath": "^2.0.1"
   }
 }

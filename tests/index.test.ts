@@ -81,11 +81,9 @@ void test("reports anonymous files through VFile", () => {
 
 void test("renders a complete index before later source entries are transformed", () => {
   const files = {
-    "/publication/001.md":
-      '<span data-index="index.md?command=[[a,a],[Apple,Apple]]#index">Apple</span>',
+    "/publication/001.md": '<span data-index="index.md?q=a!Apple#index">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
-    "/publication/100.md":
-      '<span data-index="index.md?command=[[z,z],[Zebra,Zebra]]#index">Zebra</span>',
+    "/publication/100.md": '<span data-index="index.md?q=z!Zebra#index">Zebra</span>',
   };
   const { processor, reads } = createProcessor({
     entries: ["001.md", "index.md", "100.md"],
@@ -110,7 +108,7 @@ void test("renders an index after source entries that follow it in the document"
   const path = "/publication/chapter.md";
   const contents = [
     '<nav id="index"></nav>',
-    '<span data-index="?command=[[a,a],[Apple,Apple]]#index">Apple</span>',
+    '<span data-index="?q=a!Apple#index">Apple</span>',
   ].join("");
   const { processor } = createProcessor({
     entries: ["chapter.md"],
@@ -126,8 +124,8 @@ void test("renders an index after source entries that follow it in the document"
 void test("keeps target fragments as distinct indexes", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?command=[[a,a],[Apple,Apple]]#subject">Apple</span>',
-      '<span data-index="index.md?command=[[t,t],[Ada,Ada]]#person">Ada</span>',
+      '<span data-index="index.md?q=a!Apple#subject">Apple</span>',
+      '<span data-index="index.md?q=t!Ada#person">Ada</span>',
     ].join(""),
     "/publication/index.md": '<nav id="subject"></nav><nav id="person"></nav>',
   };
@@ -152,8 +150,8 @@ void test("keeps target fragments as distinct indexes", () => {
 void test("uses a comparator selected by path and element ID", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?command=[[z,z],[Z,Z]]#index">Z</span>',
-      '<span data-index="index.md?command=[[ä,ä],[Ä,Ä]]#index">Ä</span>',
+      '<span data-index="index.md?q=z!Z#index">Z</span>',
+      '<span data-index="index.md?q=ä!Ä#index">Ä</span>',
     ].join(""),
     "/publication/index.md": '<section lang="sv"><nav id="index"></nav></section>',
   };
@@ -172,8 +170,8 @@ void test("uses a comparator selected by path and element ID", () => {
 void test("uses the last comparator configured for an index target", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?command=[[z,z],[Z,Z]]#index">Z</span>',
-      '<span data-index="index.md?command=[[ä,ä],[Ä,Ä]]#index">Ä</span>',
+      '<span data-index="index.md?q=z!Z#index">Z</span>',
+      '<span data-index="index.md?q=ä!Ä#index">Ä</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index"></nav>',
   };
@@ -195,8 +193,8 @@ void test("uses the last comparator configured for an index target", () => {
 void test("uses the closest language when no comparator is configured", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?command=[[z,z],[Z,Z]]#index">Z</span>',
-      '<span data-index="index.md?command=[[ä,ä],[Ä,Ä]]#index">Ä</span>',
+      '<span data-index="index.md?q=z!Z#index">Z</span>',
+      '<span data-index="index.md?q=ä!Ä#index">Ä</span>',
     ].join(""),
     "/publication/index.md":
       '<html lang="en"><section lang="sv"><nav id="index"></nav></section></html>',
@@ -214,7 +212,8 @@ void test("uses the closest language when no comparator is configured", () => {
 
 void test("parses a heading word as inner HTML", () => {
   const files = {
-    "/publication/chapter.md": `<span data-index='index.md?command=[[き,き],["<em>京都大学</em>",きょうとだいがく]]#index'>京都大学</span>`,
+    "/publication/chapter.md":
+      '<span data-index="index.md?q=き!きょうとだいがく@%3Cem%3E京都大学%3C%2Fem%3E#index">京都大学</span>',
     "/publication/index.md": '<nav id="index"></nav>',
   };
   const { processor } = createProcessor({
@@ -230,11 +229,33 @@ void test("parses a heading word as inner HTML", () => {
   assert.strictEqual(toText(heading), "京都大学");
 });
 
+void test("decodes a URL-encoded DSL query value", () => {
+  const files = {
+    "/publication/chapter.md":
+      '<span data-index="index.md?q=a%5C%40b%2Bc!c%5C%7Cd%40%3Cem%3EC%5C%7CD%20%26amp%3B%20E%2BF%3C%2Fem%3E#index">C|D &amp; E+F</span>',
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  const groupHeading = select("li.index-group", root);
+  assert.ok(groupHeading);
+  assert.match(toText(groupHeading), /^a@b\+c/);
+  const heading = select(".index-main-entry > em", root);
+  assert.ok(heading);
+  assert.strictEqual(toText(heading), "C|D & E+F");
+});
+
 void test("links a reference to a later entry", () => {
   const files = {
     "/publication/chapter.md": [
-      `<span data-index='index.md?command=see,[[た,た],[大学,だいがく]],[[き,き],["<em>京都大学</em>",きょうとだいがく]]#index'>大学</span>`,
-      `<span data-index='index.md?command=[[き,き],["<em>京都大学</em>",きょうとだいがく]]#index'>京都大学</span>`,
+      '<span data-index="index.md?q=た!だいがく@大学|->き!きょうとだいがく@%3Cem%3E京都大学%3C%2Fem%3E#index">大学</span>',
+      '<span data-index="index.md?q=き!きょうとだいがく@%3Cem%3E京都大学%3C%2Fem%3E#index">京都大学</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index"></nav>',
   };
@@ -260,8 +281,7 @@ void test("links a reference to a later entry", () => {
 void test("touches an affected target after a source changes", () => {
   const updates: string[] = [];
   const files = {
-    "/publication/chapter.md":
-      '<span data-index="index.md?command=[[a,a],[Apple,Apple]]#index">Apple</span>',
+    "/publication/chapter.md": '<span data-index="index.md?q=a!Apple#index">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
   };
   const { processor } = createProcessor({
@@ -273,10 +293,9 @@ void test("touches an affected target after a source changes", () => {
   processor.runSync(fromHtml(files["/publication/chapter.md"]), {
     path: "/publication/chapter.md",
   });
-  processor.runSync(
-    fromHtml('<span data-index="index.md?command=[[b,b],[Banana,Banana]]#index">Banana</span>'),
-    { path: "/publication/chapter.md" },
-  );
+  processor.runSync(fromHtml('<span data-index="index.md?q=b!Banana#index">Banana</span>'), {
+    path: "/publication/chapter.md",
+  });
 
   assert.deepStrictEqual(updates, ["/publication/index.md"]);
 });
@@ -284,8 +303,7 @@ void test("touches an affected target after a source changes", () => {
 void test("removes the last attachment from its index", () => {
   const updates: string[] = [];
   const files = {
-    "/publication/chapter.md":
-      '<span data-index="index.md?command=[[a,a],[Apple,Apple]]#index">Apple</span>',
+    "/publication/chapter.md": '<span data-index="index.md?q=a!Apple#index">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
   };
   const { processor } = createProcessor({
@@ -308,8 +326,7 @@ void test("removes the last attachment from its index", () => {
 void test("moves an attachment from an old target document to a new one", () => {
   const updates: string[] = [];
   const files = {
-    "/publication/chapter.md":
-      '<span data-index="old.md?command=[[a,a],[Apple,Apple]]#old">Apple</span>',
+    "/publication/chapter.md": '<span data-index="old.md?q=a!Apple#old">Apple</span>',
     "/publication/old.md": '<nav id="old"></nav>',
     "/publication/new.md": '<nav id="new"></nav>',
   };
@@ -322,10 +339,9 @@ void test("moves an attachment from an old target document to a new one", () => 
   processor.runSync(fromHtml(files["/publication/chapter.md"]), {
     path: "/publication/chapter.md",
   });
-  processor.runSync(
-    fromHtml('<span data-index="new.md?command=[[a,a],[Apple,Apple]]#new">Apple</span>'),
-    { path: "/publication/chapter.md" },
-  );
+  processor.runSync(fromHtml('<span data-index="new.md?q=a!Apple#new">Apple</span>'), {
+    path: "/publication/chapter.md",
+  });
 
   const oldRoot = fromHtml(files["/publication/old.md"]);
   const newRoot = fromHtml(files["/publication/new.md"]);
@@ -342,7 +358,7 @@ void test("moves an attachment between fragments in the same document", () => {
   const initialContents = [
     '<nav id="old"></nav>',
     '<nav id="new"></nav>',
-    '<span data-index="?command=[[a,a],[Apple,Apple]]#old">Apple</span>',
+    '<span data-index="?q=a!Apple#old">Apple</span>',
   ].join("");
   const { processor } = createProcessor({
     entries: ["chapter.md"],
@@ -350,12 +366,7 @@ void test("moves an attachment between fragments in the same document", () => {
   });
 
   processor.runSync(fromHtml(initialContents), { path });
-  const currentRoot = fromHtml(
-    initialContents.replace(
-      "?command=[[a,a],[Apple,Apple]]#old",
-      "?command=[[a,a],[Apple,Apple]]#new",
-    ),
-  );
+  const currentRoot = fromHtml(initialContents.replace("?q=a!Apple#old", "?q=a!Apple#new"));
   processor.runSync(currentRoot, { path });
 
   const oldTarget = select("#old", currentRoot);
@@ -369,8 +380,8 @@ void test("moves an attachment between fragments in the same document", () => {
 void test("keeps range end references separate between index targets", () => {
   const files = {
     "/publication/chapter.md": [
-      "<span data-index=\"index.md?command=range,[[a,a],[Apple,Apple]],'%23apple-end'#first\">Apple</span>",
-      "<span data-index=\"index.md?command=range,[[b,b],[Banana,Banana]],'%23banana-end'#second\">Banana</span>",
+      '<span data-index="index.md?q=a!Apple|(%23apple-end#first">Apple</span>',
+      '<span data-index="index.md?q=b!Banana|(%23banana-end#second">Banana</span>',
       '<span id="apple-end"></span>',
       '<span id="banana-end"></span>',
     ].join(""),
@@ -397,7 +408,7 @@ void test("keeps range end references separate between index targets", () => {
 void test("builds a range whose markers are in different entries", () => {
   const files = {
     "/publication/001.md":
-      '<span id="range-start" data-index="index.md?command=range,[[a,a],[Apple,Apple]],100.md%23range-end#index">Apple</span>',
+      '<span id="range-start" data-index="index.md?q=a!Apple|(100.md%23range-end#index">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
     "/publication/100.md": '<span id="range-end"></span>',
   };
@@ -412,10 +423,28 @@ void test("builds a range whose markers are in different entries", () => {
   assert.deepStrictEqual(locatorLinks(root), ["001.html#range-start", "100.html#range-end"]);
 });
 
+void test("discards a range end query when resolving its document target", () => {
+  const files = {
+    "/publication/chapter.md":
+      '<span id="range-start" data-index="index.md?q=a!Apple|(end.md%3Fq%3Dx%23range-end#index">Apple</span>',
+    "/publication/end.md": '<span id="range-end"></span>',
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["chapter.md", "end.md", "index.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#range-start", "end.html#range-end"]);
+});
+
 void test("reports and ignores a range whose end target does not exist", () => {
   const files = {
     "/publication/chapter.md":
-      "<span data-index=\"index.md?command=range,[[a,a],[Apple,Apple]],'%23missing'#index\">Apple</span>",
+      '<span data-index="index.md?q=a!Apple|(%23missing#index">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
   };
   const { processor } = createProcessor({
@@ -436,8 +465,7 @@ void test("reports and ignores a range whose end target does not exist", () => {
 
 void test("reports and ignores a range end reference without a fragment", () => {
   const files = {
-    "/publication/chapter.md":
-      '<span data-index="index.md?command=range,[[a,a],[Apple,Apple]],end.md#index">Apple</span>',
+    "/publication/chapter.md": '<span data-index="index.md?q=a!Apple|(end.md#index">Apple</span>',
     "/publication/end.md": '<span id="range-end"></span>',
     "/publication/index.md": '<nav id="index"></nav>',
   };
@@ -461,7 +489,7 @@ void test("reports and ignores a range whose end precedes its start in the same 
   const files = {
     "/publication/chapter.md": [
       '<span id="range-end"></span>',
-      "<span data-index=\"index.md?command=range,[[a,a],[Apple,Apple]],'%23range-end'#index\">Apple</span>",
+      '<span data-index="index.md?q=a!Apple|(%23range-end#index">Apple</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index"></nav>',
   };
@@ -484,7 +512,7 @@ void test("reports and ignores a range whose end precedes its start in the same 
 void test("reports and ignores a range whose end is its start", () => {
   const files = {
     "/publication/chapter.md":
-      '<span id="range-start" data-index="index.md?command=range,[[a,a],[Apple,Apple]],\'%23range-start\'#index">Apple</span>',
+      '<span id="range-start" data-index="index.md?q=a!Apple|(%23range-start#index">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
   };
   const { processor } = createProcessor({
@@ -507,7 +535,7 @@ void test("reports and ignores a range whose end is in an earlier entry", () => 
   const files = {
     "/publication/001.md": '<span id="range-end"></span>',
     "/publication/100.md":
-      '<span data-index="index.md?command=range,[[a,a],[Apple,Apple]],001.md%23range-end#index">Apple</span>',
+      '<span data-index="index.md?q=a!Apple|(001.md%23range-end#index">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
   };
   const { processor } = createProcessor({
@@ -530,7 +558,7 @@ void test("touches an index target after its range end changes", () => {
   const updates: string[] = [];
   const files = {
     "/publication/chapter.md":
-      '<span data-index="index.md?command=range,[[a,a],[Apple,Apple]],end.md%23range-end#index">Apple</span>',
+      '<span data-index="index.md?q=a!Apple|(end.md%23range-end#index">Apple</span>',
     "/publication/end.md": '<span id="range-end"></span>',
     "/publication/index.md": '<nav id="index"></nav>',
   };
@@ -551,8 +579,8 @@ void test("touches an index target after its range end changes", () => {
 void test("reports and ignores index references that cannot be normalized", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="https://example.test/index.md?command=[[a,a],[Apple,Apple]]#index">Apple</span>',
-      '<span data-index="index.md?command=[[b,b],[Banana,Banana]]#%zz">Banana</span>',
+      '<span data-index="https://example.test/index.md?q=a!Apple#index">Apple</span>',
+      '<span data-index="index.md?q=b!Banana#%zz">Banana</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index"></nav>',
   };
@@ -571,11 +599,11 @@ void test("reports and ignores index references that cannot be normalized", () =
   assert.ok(file.messages.every((message) => message.ruleId === "invalid-index-reference"));
 });
 
-void test("reports malformed and unknown index commands", () => {
+void test("reports malformed index instructions", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?command=%5B#index">Malformed</span>',
-      '<span data-index="index.md?command=/range,r0#index">Unknown</span>',
+      '<span data-index="index.md?q=%5B#index">Malformed</span>',
+      '<span data-index="index.md?q=/range,r0#index">Unknown</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index"></nav>',
   };
@@ -592,14 +620,13 @@ void test("reports malformed and unknown index commands", () => {
 
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
-    ["command-parse-error", "unknown-command"],
+    ["command-parse-error", "command-parse-error"],
   );
 });
 
 void test("reports an index target outside entries on its source file", () => {
   const files = {
-    "/publication/chapter.md":
-      '<span data-index="outside.md?command=[[a,a],[Apple,Apple]]#index">Apple</span>',
+    "/publication/chapter.md": '<span data-index="outside.md?q=a!Apple#index">Apple</span>',
   };
   const { processor } = createProcessor({
     entries: ["chapter.md"],
@@ -616,7 +643,7 @@ void test("reports an index target outside entries on its source file", () => {
 void test("reports an invalid entry reference on its index file", () => {
   const files = {
     "/publication/chapter.md":
-      '<span data-index="index.md?command=see,[[a,a],[Apple,Apple]],[[b,b],[Banana,Banana]]#index">Apple</span>',
+      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
   };
   const { processor } = createProcessor({
@@ -633,8 +660,7 @@ void test("reports an invalid entry reference on its index file", () => {
 
 void test("reports an index reference without a fragment as a missing target", () => {
   const files = {
-    "/publication/chapter.md":
-      '<span data-index="index.md?command=[[a,a],[Apple,Apple]]">Apple</span>',
+    "/publication/chapter.md": '<span data-index="index.md?q=a!Apple">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
   };
   const { processor } = createProcessor({
@@ -653,8 +679,7 @@ void test("reports an index reference without a fragment as a missing target", (
 
 void test("uses the same generated locator ID during discovery and transformation", () => {
   const files = {
-    "/publication/chapter.md":
-      '<span data-index="index.md?command=[[a,a],[Apple,Apple]]#index">Apple</span>',
+    "/publication/chapter.md": '<span data-index="index.md?q=a!Apple#index">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
   };
   const { processor } = createProcessor({
@@ -677,7 +702,7 @@ void test("uses the same generated locator ID during discovery and transformatio
 void test("encodes locator paths and fragments", () => {
   const files = {
     "/publication/章 #1.md":
-      '<span id="索引語" data-index="索引/index.md?command=[[さ,さ],[索引語,さくいんご]]#index">索引語</span>',
+      '<span id="索引語" data-index="索引/index.md?q=さ!さくいんご@索引語#index">索引語</span>',
     "/publication/索引/index.md": '<nav id="index"></nav>',
   };
   const { processor } = createProcessor({
@@ -696,7 +721,7 @@ void test("encodes locator paths and fragments", () => {
 void test("resolves entries and index targets above the entry context", () => {
   const files = {
     "/publication/chapter.md":
-      '<span data-index="../../indexes/index.md?command=[[a,a],[Apple,Apple]]#index">Apple</span>',
+      '<span data-index="../../indexes/index.md?q=a!Apple#index">Apple</span>',
     "/indexes/index.md": '<nav id="index"></nav>',
   };
   const { processor } = createProcessor({

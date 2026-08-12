@@ -11,11 +11,13 @@ type RangeLocator = Readonly<{
 }>;
 type Locator = PageLocator | RangeLocator;
 
-type ReferenceTarget = Readonly<{
+export type EntryAddress = Readonly<{
   group: Key;
   mainEntry: Key;
   subentry?: Key;
 }>;
+
+type ReferenceTarget = EntryAddress;
 
 const sequentialIdBrand = Symbol();
 type SequentialId = string & { [sequentialIdBrand]: unknown };
@@ -80,4 +82,21 @@ export function ensureChild<TChild extends HasKey>(
       } as TChild) - 1
     ]!
   );
+}
+
+export function ensureEntry(index: Index, address: EntryAddress): EntryBase {
+  const group = ensureChild(index, address.group, { children: [] });
+  const mainEntry = ensureChild(group, address.mainEntry, {
+    children: [],
+    locators: [],
+    see: [],
+    seeAlso: [],
+  });
+  return address.subentry === undefined
+    ? mainEntry
+    : ensureChild(mainEntry, address.subentry, {
+        locators: [],
+        see: [],
+        seeAlso: [],
+      });
 }
