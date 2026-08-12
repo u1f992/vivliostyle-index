@@ -1,9 +1,4 @@
-import {
-  type Base,
-  defineCommand,
-  ensureEntry,
-  type PartialEntryKey,
-} from "../command.js";
+import { type Base, defineCommand, ensureEntry, type PartialEntryKey } from "../command.js";
 import { insertLocator, type Index, type Key } from "../model.js";
 
 const __rangeStore = Symbol();
@@ -24,12 +19,10 @@ export function deleteRangeStore(indexes: IndexesWithRangeStore) {
   const rangeStore = indexes[__rangeStore];
   if (rangeStore) {
     for (const rangeId of Object.keys(rangeStore)) {
-      console.warn(
-        `range start found for id=${rangeId} but no matching end marker exists`,
-      );
+      console.warn(`range start found for id=${rangeId} but no matching end marker exists`);
     }
   }
-  delete indexes[__rangeStore];
+  Reflect.deleteProperty(indexes, __rangeStore);
 }
 
 type InsertRangeStartCommand = ["range" | "range!", ...Base, RangeId];
@@ -82,14 +75,14 @@ export const insertRangeEnd = defineCommand<InsertRangeEndCommand>(
       return;
     }
     const { indexId, partialEntryKey, important, elemId, elemStr } = start;
-    insertLocator(
-      ensureEntry(indexes, indexId, partialEntryKey, JSON.parse(elemStr)),
-      [[elemId, ensureId(elem)], important],
-    );
+    insertLocator(ensureEntry(indexes, indexId, partialEntryKey, JSON.parse(elemStr)), [
+      [elemId, ensureId(elem)],
+      important,
+    ]);
 
     delete rangeStore[rangeId];
     if (Object.keys(rangeStore).length === 0) {
-      delete indexes[__rangeStore];
+      Reflect.deleteProperty(indexes, __rangeStore);
     }
   },
 );

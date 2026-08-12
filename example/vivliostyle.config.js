@@ -19,7 +19,6 @@ const vivliostyleConfig = {
       comparators: {
         $: defaultComparator("ja"),
       },
-      // eslint-disable-next-line no-undef
       log: console.debug,
     }),
 };

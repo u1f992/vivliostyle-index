@@ -5,7 +5,7 @@ import { resolve } from "./resolve.js";
 import { dropSequentialId } from "./test-util.js";
 import { toHastChildren } from "./model.js";
 
-test("fill group key", () => {
+void test("fill group key", () => {
   assert.deepStrictEqual(
     dropSequentialId(
       resolve([
@@ -65,7 +65,7 @@ test("fill group key", () => {
   );
 });
 
-test("fill seeAlso", () => {
+void test("fill seeAlso", () => {
   assert.deepStrictEqual(
     dropSequentialId(
       resolve([

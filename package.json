@@ -4,9 +4,9 @@
   "description": "unified plugin that integrates automatic index generation into Vivliostyle CLI workflows.",
   "main": "dist/index.js",
   "scripts": {
-    "lint": "eslint --fix \"src/**/*.ts\"",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "build": "tsc && tsc --noEmit prettier.config.ts",
+    "lint": "oxlint --fix src",
+    "format": "oxfmt src",
+    "build": "tsc && tsc --noEmit --ignoreConfig oxfmt.config.ts oxlint.config.ts",
     "test": "node --test \"dist/**/*.test.js\"",
     "example": "cd example && npx vivliostyle preview"
   },
@@ -19,13 +19,12 @@
   },
   "type": "module",
   "devDependencies": {
-    "@eslint/js": "^9.34.0",
     "@types/hast": "^2.3.10",
     "@types/node": "^24.3.0",
-    "eslint": "^9.35.0",
-    "prettier": "^3.9.6",
-    "typescript": "^5.9.2",
-    "typescript-eslint": "^8.42.0",
+    "oxfmt": "^0.63.0",
+    "oxlint": "^1.78.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "typescript": "^7.0.2",
     "unified": "^9.0.0"
   },
   "dependencies": {

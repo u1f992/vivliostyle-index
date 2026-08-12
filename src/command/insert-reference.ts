@@ -32,20 +32,14 @@ export default defineCommand<InsertReferenceCommand>(
     const groupKey = padNull(groupPartialKey, elem);
     const mainKey = padNull(mainEntryPartialKey, elem);
     const subentryKey =
-      typeof subentryPartialKey === "undefined"
-        ? undefined
-        : padNull(subentryPartialKey, elem);
+      typeof subentryPartialKey === "undefined" ? undefined : padNull(subentryPartialKey, elem);
     const group = getChild(index, groupKey);
     if (!group) {
       insertReference(
         entry,
         type,
         // @ts-expect-error spread
-        [
-          groupKey,
-          mainKey,
-          ...(typeof subentryKey === "undefined" ? [] : [subentryKey]),
-        ],
+        [groupKey, mainKey, ...(typeof subentryKey === "undefined" ? [] : [subentryKey])],
       );
     } else {
       const mainEntry = getChild(group, mainKey);
@@ -54,11 +48,7 @@ export default defineCommand<InsertReferenceCommand>(
           entry,
           type,
           // @ts-expect-error spread
-          [
-            group.key,
-            mainKey,
-            ...(typeof subentryKey === "undefined" ? [] : [subentryKey]),
-          ],
+          [group.key, mainKey, ...(typeof subentryKey === "undefined" ? [] : [subentryKey])],
         );
       } else {
         if (typeof subentryKey === "undefined") {

@@ -27,8 +27,7 @@ function resolveChildren<T extends HasKey<Key>>(
 
   for (const u of unresolved as T[]) {
     const existing = resolved.find(
-      (item) =>
-        hastChildrenToText(item.key[0]) === hastChildrenToText(u.key[0]),
+      (item) => hastChildrenToText(item.key[0]) === hastChildrenToText(u.key[0]),
     ) as T | undefined;
     if (existing) {
       for (const prop of mergeProps) {
@@ -113,16 +112,10 @@ export function resolve(indexes: Index<Key>[]): Index<ResolvedKey>[] {
 
     for (let j = 0; j < index.children.length; j++) {
       const group = index.children[j]!;
-      resolveChildren(
-        group,
-        new Set(["children", "locators", "see", "seeAlso"]),
-      );
+      resolveChildren(group, new Set(["children", "locators", "see", "seeAlso"]));
 
       for (let k = 0; k < group.children.length; k++) {
-        resolveChildren(
-          group.children[k]!,
-          new Set(["locators", "see", "seeAlso"]),
-        );
+        resolveChildren(group.children[k]!, new Set(["locators", "see", "seeAlso"]));
       }
     }
     resolveReferences(index);

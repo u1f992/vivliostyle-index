@@ -7,7 +7,7 @@ import { default as insertReference } from "./insert-reference.js";
 import { toHastChildren, type Index, type Key } from "../model.js";
 import { dropSequentialId } from "../test-util.js";
 
-test("test", () => {
+void test("test", () => {
   assert.ok(
     testFn(
       insertReference,
@@ -34,7 +34,7 @@ test("test", () => {
   );
 });
 
-test("insert a main entry", () => {
+void test("insert a main entry", () => {
   const indexes: Index<Key>[] = [];
   const targetElem: hast.Element = {
     type: "element",
@@ -47,9 +47,7 @@ test("insert a main entry", () => {
       {
         type: "element",
         tagName: "html",
-        children: [
-          { type: "element", tagName: "body", children: [targetElem] },
-        ],
+        children: [{ type: "element", tagName: "body", children: [targetElem] }],
       },
     ],
   };

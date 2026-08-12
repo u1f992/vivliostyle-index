@@ -1,9 +1,10 @@
 .github
-.vscode
 example
 src
 dist/**/*.test.*
 dist/**/test-util.*
 *.config.js
+oxfmt.config.ts
+oxlint.config.ts
 tsconfig.json
 *.tgz

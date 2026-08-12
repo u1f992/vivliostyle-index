@@ -8,11 +8,7 @@ import upath from "upath";
 
 import { run, test, type Command } from "./command.js";
 import { default as insertPage } from "./command/insert-page.js";
-import {
-  insertRangeStart,
-  insertRangeEnd,
-  deleteRangeStore,
-} from "./command/insert-range.js";
+import { insertRangeStart, insertRangeEnd, deleteRangeStore } from "./command/insert-range.js";
 import { default as insertReference } from "./command/insert-reference.js";
 import { default as expand } from "./command/expand.js";
 import type { Index, Key } from "./model.js";
@@ -21,9 +17,7 @@ import { throwError, touchSync } from "./util.js";
 import { sort, byLocales, byListedOrder, type Comparators } from "./sort.js";
 export { byLocales, byListedOrder };
 
-export function defaultComparator(
-  locales?: Intl.LocalesArgument,
-): Comparators[string] {
+export function defaultComparator(locales?: Intl.LocalesArgument): Comparators[string] {
   return {
     group: byLocales(locales),
     mainEntry: byLocales(locales),
@@ -37,11 +31,7 @@ export function defaultComparator(
   };
 }
 
-function processEntry(
-  root: hast.Root,
-  indexes: Index<Key>[],
-  relPath: string | null,
-) {
+function processEntry(root: hast.Root, indexes: Index<Key>[], relPath: string | null) {
   selectAll("[data-index]", root)
     .map((elem) => ({
       elem,
@@ -55,12 +45,7 @@ function processEntry(
       elem,
       data,
       cmd: (
-        [
-          insertPage,
-          insertRangeStart,
-          insertRangeEnd,
-          insertReference,
-        ] as unknown as Command[]
+        [insertPage, insertRangeStart, insertRangeEnd, insertReference] as unknown as Command[]
       ).find((cmd) => test(cmd, data)),
     }))
     .filter((obj): obj is typeof obj & { cmd: Command } => !!obj.cmd)
@@ -140,10 +125,7 @@ export const index: unified.Plugin<[Readonly<Config>]> = ({
 
       // trigger hot reload
       affects
-        .filter(
-          ({ indexPath, ignoreUpdate }) =>
-            indexPath !== filePath && !ignoreUpdate,
-        )
+        .filter(({ indexPath, ignoreUpdate }) => indexPath !== filePath && !ignoreUpdate)
         .forEach(({ indexPath }) => {
           log(
             `[vivliostyle-index] ${upath.relative(ctx, filePath)} affects ${upath.relative(ctx, indexPath)}`,

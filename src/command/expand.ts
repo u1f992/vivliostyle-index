@@ -1,12 +1,4 @@
-import type {
-  IndexId,
-  Key,
-  EntryBase,
-  Index,
-  ResolvedKey,
-  MainEntry,
-  Subentry,
-} from "../model.js";
+import type { IndexId, Key, EntryBase, Index, ResolvedKey, MainEntry, Subentry } from "../model.js";
 import { defineCommand } from "../command.js";
 
 import type * as hast from "hast";
@@ -86,13 +78,7 @@ function generateMainEntries<TKey extends Key>(
           ? [generateReferences(mainEntry.see, "index-main-entry-see", indexId)]
           : []),
         ...(mainEntry.seeAlso.length !== 0
-          ? [
-              generateReferences(
-                mainEntry.seeAlso,
-                "index-main-entry-see-also",
-                indexId,
-              ),
-            ]
+          ? [generateReferences(mainEntry.seeAlso, "index-main-entry-see-also", indexId)]
           : []),
         ...(mainEntry.children.length !== 0
           ? [generateSubentries(mainEntry.children, indexId, currentSlag)]
@@ -128,13 +114,7 @@ function generateSubentries<TKey extends Key>(
           ? [generateReferences(subentry.see, "index-subentry-see", indexId)]
           : []),
         ...(subentry.seeAlso.length !== 0
-          ? [
-              generateReferences(
-                subentry.seeAlso,
-                "index-subentry-see-also",
-                indexId,
-              ),
-            ]
+          ? [generateReferences(subentry.seeAlso, "index-subentry-see-also", indexId)]
           : []),
       ],
     })),
@@ -152,7 +132,7 @@ function generateLocators<TKey extends Key>(
     children: locators.map(([, locator, important]) => ({
       type: "element",
       tagName: "li",
-      properties: { ...(important ? { className: "important" } : {}) },
+      properties: important ? { className: "important" } : {},
       children: Array.isArray(locator)
         ? [
             {

@@ -47,10 +47,7 @@ const $defs = {
     type: "array",
     minItems: 2,
     maxItems: 2,
-    prefixItems: [
-      { $ref: "#/$defs/PartialKey" },
-      { $ref: "#/$defs/PartialKey" },
-    ],
+    prefixItems: [{ $ref: "#/$defs/PartialKey" }, { $ref: "#/$defs/PartialKey" }],
   },
   PartialSubentryKey: {
     type: "array",
@@ -63,21 +60,14 @@ const $defs = {
     ],
   },
   PartialEntryKey: {
-    oneOf: [
-      { $ref: "#/$defs/PartialMainEntryKey" },
-      { $ref: "#/$defs/PartialSubentryKey" },
-    ],
+    oneOf: [{ $ref: "#/$defs/PartialMainEntryKey" }, { $ref: "#/$defs/PartialSubentryKey" }],
   },
 };
 
 const testSymbol = Symbol();
 const runSymbol = Symbol();
 
-export type Command<
-  T extends (string | IndexId | PartialEntryKey)[] = (
-    string | IndexId | PartialEntryKey
-  )[],
-> = {
+export type Command<T extends (string | PartialEntryKey)[] = (string | PartialEntryKey)[]> = {
   [testSymbol]: (obj: unknown) => obj is T;
   [runSymbol]: (
     obj: Readonly<T>,
@@ -87,7 +77,7 @@ export type Command<
   ) => void;
 };
 
-export function defineCommand<T extends (string | IndexId | PartialEntryKey)[]>(
+export function defineCommand<T extends (string | PartialEntryKey)[]>(
   partialSchema: Partial<JSONSchemaType<T>>,
   runFn: Command<T>[typeof runSymbol],
 ): Command<T> {
@@ -105,16 +95,16 @@ export function defineCommand<T extends (string | IndexId | PartialEntryKey)[]>(
 }
 
 const commandStringBrand = Symbol();
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type CommandString<T extends (string | IndexId | PartialEntryKey)[]> =
-  string & { [commandStringBrand]: unknown };
+export type CommandString = string & {
+  [commandStringBrand]: unknown;
+};
 
 const memo = new Map<string, unknown>();
 
-export function test<T extends (string | IndexId | PartialEntryKey)[]>(
+export function test<T extends (string | PartialEntryKey)[]>(
   cmd: Command<T>,
   input: string,
-): input is CommandString<T> {
+): input is CommandString {
   if (!memo.has(input)) {
     let parsed;
     try {
@@ -156,9 +146,9 @@ function createHref(relPath: string | null, id: string) {
   return `${path}#${encodeURIComponent(id)}`;
 }
 
-export function run<T extends (string | IndexId | PartialEntryKey)[]>(
+export function run<T extends (string | PartialEntryKey)[]>(
   cmd: Command<T>,
-  input: CommandString<T>,
+  input: CommandString,
   indexes: Index<Key>[],
   tree: hast.Root,
   elem: hast.Element,
@@ -192,9 +182,7 @@ export function padNull(partial: PartialKey, elem: hast.Element): Key {
 
   const alt = JSON.stringify(newElem.children);
   if (Array.isArray(partial)) {
-    return partial[0] === null
-      ? [alt, partial[1]]
-      : [toHastChildren(partial[0]), partial[1]];
+    return partial[0] === null ? [alt, partial[1]] : [toHastChildren(partial[0]), partial[1]];
   } else {
     return [partial === null ? alt : toHastChildren(partial), null];
   }

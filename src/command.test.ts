@@ -34,27 +34,24 @@ function createLocator(relPath: string | null, id?: string) {
   return locator[1];
 }
 
-test("encodes a non-ASCII relative path and XPath fragment", () => {
+void test("encodes a non-ASCII relative path and XPath fragment", () => {
   assert.strictEqual(
     createLocator("01-日本語.html"),
     "01-%E6%97%A5%E6%9C%AC%E8%AA%9E.html#%2Fspan",
   );
 });
 
-test("encodes each relative path segment", () => {
-  assert.strictEqual(
-    createLocator("../章 #1.html"),
-    "../%E7%AB%A0%20%231.html#%2Fspan",
-  );
+void test("encodes each relative path segment", () => {
+  assert.strictEqual(createLocator("../章 #1.html"), "../%E7%AB%A0%20%231.html#%2Fspan");
 });
 
-test("encodes a non-ASCII element ID", () => {
+void test("encodes a non-ASCII element ID", () => {
   assert.strictEqual(
     createLocator("chapter.html", "索引語"),
     "chapter.html#%E7%B4%A2%E5%BC%95%E8%AA%9E",
   );
 });
 
-test("creates a fragment-only URL for the same document", () => {
+void test("creates a fragment-only URL for the same document", () => {
   assert.strictEqual(createLocator(null), "#%2Fspan");
 });

@@ -28,19 +28,14 @@ export type Comparators = Record<
   }
 >;
 
-export const byListedOrder: Comparator<Locator> & Comparator<Reference> = (
-  a,
-  b,
-) => a[0].localeCompare(b[0]);
+export const byListedOrder: Comparator<Locator> & Comparator<Reference> = (a, b) =>
+  a[0].localeCompare(b[0]);
 
 export function byLocales(
   locales: Intl.LocalesArgument,
 ): Comparator<HasKey<ResolvedKey>> & Comparator<Reference> {
   const collator = new Intl.Collator(locales);
-  return function self(
-    a,
-    b,
-  ): ReturnType<Comparator<HasKey<ResolvedKey> | Reference>> {
+  return function self(a, b): ReturnType<Comparator<HasKey<ResolvedKey> | Reference>> {
     if (Array.isArray(a) && Array.isArray(b)) {
       const groupKeyCompare = self({ key: a[1] }, { key: b[1] });
       if (groupKeyCompare !== 0) {
@@ -64,10 +59,7 @@ export function byLocales(
       const key1Compare = collator.compare(a.key[1], b.key[1]);
       return key1Compare !== 0
         ? key1Compare
-        : collator.compare(
-            hastChildrenToText(a.key[0]),
-            hastChildrenToText(b.key[0]),
-          );
+        : collator.compare(hastChildrenToText(a.key[0]), hastChildrenToText(b.key[0]));
     }
     return 0;
   };

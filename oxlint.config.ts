@@ -1,0 +1,16 @@
+import { defineConfig } from "oxlint";
+
+export default defineConfig({
+  plugins: ["typescript", "unicorn", "oxc"],
+  categories: {
+    correctness: "error",
+  },
+  rules: {},
+  env: {
+    builtin: true,
+  },
+  options: {
+    typeAware: true,
+    denyWarnings: true,
+  },
+});
