@@ -7,7 +7,7 @@ import { getXPath } from "hast-util-get-xpath";
 import { selectAll } from "hast-util-select";
 import type * as unified from "unified";
 import upath from "upath";
-import type { VFile } from "vfile";
+import type { VFile, VFileCompatible } from "vfile";
 
 import { parse, read, run, test, type Command, type CommandString } from "./command.ts";
 import expand from "./command/expand.ts";
@@ -396,8 +396,9 @@ function initializeState(
   const sources = new Map<string, SourceSnapshot>();
   for (const entryPath of state.entryPaths) {
     const contents = fileSystem.readFileSync(entryPath);
-    const processor = createEntryProcessor({ path: entryPath, contents });
-    const html = processor.processSync({ path: entryPath, contents }).toString();
+    const input = { path: entryPath, contents } satisfies VFileCompatible;
+    const processor = createEntryProcessor(input);
+    const html = processor.processSync(input).toString();
     sources.set(entryPath, collectSourceSnapshot(fromHtml(html), entryPath));
   }
 
