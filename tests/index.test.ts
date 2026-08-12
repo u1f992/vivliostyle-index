@@ -10,7 +10,7 @@ import unified from "unified";
 import VFile from "vfile";
 
 import {
-  createPlugin,
+  createIndexPlugin,
   defaultComparator,
   type Comparators,
   type FileSystem,
@@ -48,7 +48,7 @@ function createProcessor({
   updates?: string[];
 }) {
   const { fileSystem, reads } = createFileSystem(files, updates);
-  const plugin = createPlugin({
+  const plugin = createIndexPlugin({
     entry: entries,
     entryContext: "/publication",
     ...(comparators === undefined ? {} : { comparators }),
@@ -174,7 +174,7 @@ void test("uses a comparator addressed by a URL containing a query", () => {
 void test("rejects comparator references that normalize to the same target", () => {
   assert.throws(
     () =>
-      createPlugin({
+      createIndexPlugin({
         entry: ["index.md"],
         entryContext: "/publication",
         comparators: {

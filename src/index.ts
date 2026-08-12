@@ -478,7 +478,7 @@ function emitDiagnostics(file: VFile, diagnostics: readonly Diagnostic[]): void 
   }
 }
 
-export function createPlugin({
+export function createIndexPlugin({
   // Match the field name in Vivliostyle CLI's config.
   entry: entries,
   entryContext,
