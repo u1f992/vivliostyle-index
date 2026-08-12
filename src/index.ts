@@ -14,13 +14,15 @@ import expand from "./command/expand.ts";
 import { default as insertPage } from "./command/insert-page.ts";
 import { insertRange, type InsertRangeCommand } from "./command/insert-range.ts";
 import { default as insertReference } from "./command/insert-reference.ts";
+import type { FileSystem } from "./file-system.ts";
 import type { Index } from "./model.ts";
-import { node, type FileSystem } from "./node.ts";
+import { nodeFileSystem } from "./node-file-system.ts";
 import { validateReferences } from "./resolve.ts";
 import { sort, byLocales, byListedOrder, type IndexComparator } from "./sort.ts";
 
 export { byLocales, byListedOrder };
-export { node, type FileSystem } from "./node.ts";
+export type { FileSystem } from "./file-system.ts";
+export { nodeFileSystem } from "./node-file-system.ts";
 export { logMessages } from "./log-messages.ts";
 
 export function defaultComparator(locales?: Intl.LocalesArgument): IndexComparator {
@@ -483,7 +485,7 @@ export function createIndexPlugin({
   entry: entries,
   entryContext,
   comparators = {},
-  fileSystem = node,
+  fileSystem = nodeFileSystem,
 }: Readonly<CreatePluginOptions>): unified.Plugin<[Readonly<PluginOptions>]> {
   const context = upath.resolve(process.cwd(), entryContext ?? ".");
   const entryPaths = entries.map((entry) => upath.resolve(context, entry));
