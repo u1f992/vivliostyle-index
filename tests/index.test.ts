@@ -7,6 +7,7 @@ import { getAttribute } from "hast-util-get-attribute";
 import { select, selectAll } from "hast-util-select";
 import { toText } from "hast-util-to-text";
 import unified from "unified";
+import VFile from "vfile";
 
 import {
   createPlugin,
@@ -40,13 +41,11 @@ function createProcessor({
   files,
   comparators,
   updates,
-  log,
 }: {
   entries: readonly string[];
   files: Readonly<Record<string, string>>;
   comparators?: Comparators;
   updates?: string[];
-  log?: (message: string) => void;
 }) {
   const { fileSystem, reads } = createFileSystem(files, updates);
   const plugin = createPlugin({
@@ -54,7 +53,6 @@ function createProcessor({
     entryContext: "/publication",
     ...(comparators === undefined ? {} : { comparators }),
     fileSystem,
-    ...(log === undefined ? {} : { log }),
   });
   const processor = unified().use(plugin, {
     createEntryProcessor: () => entryProcessor as never,
@@ -69,6 +67,17 @@ function locatorLinks(root: hast.Root | hast.Element) {
 function groupHeadings(root: hast.Root | hast.Element) {
   return selectAll("li.index-group", root).map((group) => toText(group).slice(0, 1));
 }
+
+void test("reports anonymous files through VFile", () => {
+  const { processor } = createProcessor({ entries: [], files: {} });
+  const file = VFile();
+
+  processor.runSync(fromHtml(""), file);
+
+  assert.strictEqual(file.messages.length, 1);
+  assert.strictEqual(file.messages[0]?.source, "vivliostyle-index");
+  assert.strictEqual(file.messages[0]?.ruleId, "anonymous-file");
+});
 
 void test("renders a complete index before later source entries are transformed", () => {
   const files = {
@@ -397,8 +406,7 @@ void test("builds a range whose markers are in different entries", () => {
   assert.deepStrictEqual(locatorLinks(root), ["001.html#range-start", "100.html#range-end"]);
 });
 
-void test("warns and ignores a range whose end target does not exist", (context) => {
-  const warn = context.mock.method(console, "warn", () => {});
+void test("reports and ignores a range whose end target does not exist", () => {
   const files = {
     "/publication/chapter.md":
       "<span data-index=\"index.md?command=range,[[a,a],[Apple,Apple]],'%23missing'#index\">Apple</span>",
@@ -411,14 +419,16 @@ void test("warns and ignores a range whose end target does not exist", (context)
   const root = fromHtml(files["/publication/index.md"]);
 
   processor.runSync(root, { path: "/publication/index.md" });
+  const file = VFile({ path: "/publication/chapter.md" });
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
 
   assert.deepStrictEqual(locatorLinks(root), []);
-  assert.strictEqual(warn.mock.callCount(), 1);
-  assert.match(String(warn.mock.calls[0]?.arguments[0]), /does not exist/v);
+  assert.strictEqual(file.messages.length, 1);
+  assert.match(file.messages[0]?.reason ?? "", /does not exist/v);
+  assert.strictEqual(file.messages[0]?.ruleId, "missing-range-end");
 });
 
-void test("warns and ignores a range end reference without a fragment", (context) => {
-  const warn = context.mock.method(console, "warn", () => {});
+void test("reports and ignores a range end reference without a fragment", () => {
   const files = {
     "/publication/chapter.md":
       '<span data-index="index.md?command=range,[[a,a],[Apple,Apple]],end.md#index">Apple</span>',
@@ -432,14 +442,16 @@ void test("warns and ignores a range end reference without a fragment", (context
   const root = fromHtml(files["/publication/index.md"]);
 
   processor.runSync(root, { path: "/publication/index.md" });
+  const file = VFile({ path: "/publication/chapter.md" });
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
 
   assert.deepStrictEqual(locatorLinks(root), []);
-  assert.strictEqual(warn.mock.callCount(), 1);
-  assert.match(String(warn.mock.calls[0]?.arguments[0]), /invalid range end reference/v);
+  assert.strictEqual(file.messages.length, 1);
+  assert.match(file.messages[0]?.reason ?? "", /invalid range end reference/v);
+  assert.strictEqual(file.messages[0]?.ruleId, "invalid-range-end-reference");
 });
 
-void test("warns and ignores a range whose end precedes its start in the same entry", (context) => {
-  const warn = context.mock.method(console, "warn", () => {});
+void test("reports and ignores a range whose end precedes its start in the same entry", () => {
   const files = {
     "/publication/chapter.md": [
       '<span id="range-end"></span>',
@@ -454,14 +466,16 @@ void test("warns and ignores a range whose end precedes its start in the same en
   const root = fromHtml(files["/publication/index.md"]);
 
   processor.runSync(root, { path: "/publication/index.md" });
+  const file = VFile({ path: "/publication/chapter.md" });
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
 
   assert.deepStrictEqual(locatorLinks(root), []);
-  assert.strictEqual(warn.mock.callCount(), 1);
-  assert.match(String(warn.mock.calls[0]?.arguments[0]), /does not follow its start/v);
+  assert.strictEqual(file.messages.length, 1);
+  assert.match(file.messages[0]?.reason ?? "", /does not follow its start/v);
+  assert.strictEqual(file.messages[0]?.ruleId, "range-end-order");
 });
 
-void test("warns and ignores a range whose end is its start", (context) => {
-  const warn = context.mock.method(console, "warn", () => {});
+void test("reports and ignores a range whose end is its start", () => {
   const files = {
     "/publication/chapter.md":
       '<span id="range-start" data-index="index.md?command=range,[[a,a],[Apple,Apple]],\'%23range-start\'#index">Apple</span>',
@@ -474,14 +488,16 @@ void test("warns and ignores a range whose end is its start", (context) => {
   const root = fromHtml(files["/publication/index.md"]);
 
   processor.runSync(root, { path: "/publication/index.md" });
+  const file = VFile({ path: "/publication/chapter.md" });
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
 
   assert.deepStrictEqual(locatorLinks(root), []);
-  assert.strictEqual(warn.mock.callCount(), 1);
-  assert.match(String(warn.mock.calls[0]?.arguments[0]), /does not follow its start/v);
+  assert.strictEqual(file.messages.length, 1);
+  assert.match(file.messages[0]?.reason ?? "", /does not follow its start/v);
+  assert.strictEqual(file.messages[0]?.ruleId, "range-end-order");
 });
 
-void test("warns and ignores a range whose end is in an earlier entry", (context) => {
-  const warn = context.mock.method(console, "warn", () => {});
+void test("reports and ignores a range whose end is in an earlier entry", () => {
   const files = {
     "/publication/001.md": '<span id="range-end"></span>',
     "/publication/100.md":
@@ -495,14 +511,16 @@ void test("warns and ignores a range whose end is in an earlier entry", (context
   const root = fromHtml(files["/publication/index.md"]);
 
   processor.runSync(root, { path: "/publication/index.md" });
+  const file = VFile({ path: "/publication/100.md" });
+  processor.runSync(fromHtml(files["/publication/100.md"]), file);
 
   assert.deepStrictEqual(locatorLinks(root), []);
-  assert.strictEqual(warn.mock.callCount(), 1);
-  assert.match(String(warn.mock.calls[0]?.arguments[0]), /does not follow its start/v);
+  assert.strictEqual(file.messages.length, 1);
+  assert.match(file.messages[0]?.reason ?? "", /does not follow its start/v);
+  assert.strictEqual(file.messages[0]?.ruleId, "range-end-order");
 });
 
-void test("touches an index target after its range end changes", (context) => {
-  context.mock.method(console, "warn", () => {});
+void test("touches an index target after its range end changes", () => {
   const updates: string[] = [];
   const files = {
     "/publication/chapter.md":
@@ -521,11 +539,10 @@ void test("touches an index target after its range end changes", (context) => {
   });
   processor.runSync(fromHtml(""), { path: "/publication/end.md" });
 
-  assert.deepStrictEqual(updates, ["/publication/index.md"]);
+  assert.deepStrictEqual(updates, ["/publication/chapter.md", "/publication/index.md"]);
 });
 
-void test("warns and ignores index references that cannot be normalized", (context) => {
-  const warn = context.mock.method(console, "warn", () => {});
+void test("reports and ignores index references that cannot be normalized", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="https://example.test/index.md?command=[[a,a],[Apple,Apple]]#index">Apple</span>',
@@ -540,14 +557,75 @@ void test("warns and ignores index references that cannot be normalized", (conte
   const root = fromHtml(files["/publication/index.md"]);
 
   processor.runSync(root, { path: "/publication/index.md" });
+  const file = VFile({ path: "/publication/chapter.md" });
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
 
   assert.deepStrictEqual(locatorLinks(root), []);
-  assert.strictEqual(warn.mock.callCount(), 2);
+  assert.strictEqual(file.messages.length, 2);
+  assert.ok(file.messages.every((message) => message.ruleId === "invalid-index-reference"));
 });
 
-void test("reports an index reference without a fragment as a missing target", (context) => {
-  const warn = context.mock.method(console, "warn", () => {});
-  const logs: string[] = [];
+void test("reports malformed and unknown index commands", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span data-index="index.md?command=%5B#index">Malformed</span>',
+      '<span data-index="index.md?command=/range,r0#index">Unknown</span>',
+    ].join(""),
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["chapter.md", "index.md"],
+    files,
+  });
+  processor.runSync(fromHtml(files["/publication/index.md"]), {
+    path: "/publication/index.md",
+  });
+  const file = VFile({ path: "/publication/chapter.md" });
+
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
+
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["command-parse-error", "unknown-command"],
+  );
+});
+
+void test("reports an index target outside entries on its source file", () => {
+  const files = {
+    "/publication/chapter.md":
+      '<span data-index="outside.md?command=[[a,a],[Apple,Apple]]#index">Apple</span>',
+  };
+  const { processor } = createProcessor({
+    entries: ["chapter.md"],
+    files,
+  });
+  const file = VFile({ path: "/publication/chapter.md" });
+
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
+
+  assert.strictEqual(file.messages.length, 1);
+  assert.strictEqual(file.messages[0]?.ruleId, "target-not-in-entries");
+});
+
+void test("reports an invalid entry reference on its index file", () => {
+  const files = {
+    "/publication/chapter.md":
+      '<span data-index="index.md?command=see,[[a,a],[Apple,Apple]],[[b,b],[Banana,Banana]]#index">Apple</span>',
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["chapter.md", "index.md"],
+    files,
+  });
+  const file = VFile({ path: "/publication/index.md" });
+
+  processor.runSync(fromHtml(files["/publication/index.md"]), file);
+
+  assert.strictEqual(file.messages.length, 1);
+  assert.strictEqual(file.messages[0]?.ruleId, "invalid-reference");
+});
+
+void test("reports an index reference without a fragment as a missing target", () => {
   const files = {
     "/publication/chapter.md":
       '<span data-index="index.md?command=[[a,a],[Apple,Apple]]">Apple</span>',
@@ -556,17 +634,15 @@ void test("reports an index reference without a fragment as a missing target", (
   const { processor } = createProcessor({
     entries: ["chapter.md", "index.md"],
     files,
-    log: (message) => logs.push(message),
   });
   const root = fromHtml(files["/publication/index.md"]);
+  const file = VFile({ path: "/publication/index.md" });
 
-  processor.runSync(root, { path: "/publication/index.md" });
+  processor.runSync(root, file);
 
   assert.deepStrictEqual(locatorLinks(root), []);
-  assert.strictEqual(warn.mock.callCount(), 0);
-  assert.deepStrictEqual(logs, [
-    "[vivliostyle-index] index target /publication/index.md# does not exist",
-  ]);
+  assert.strictEqual(file.messages.length, 1);
+  assert.strictEqual(file.messages[0]?.ruleId, "missing-index-target");
 });
 
 void test("uses the same generated locator ID during discovery and transformation", () => {

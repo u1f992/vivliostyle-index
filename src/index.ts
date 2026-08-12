@@ -7,8 +7,9 @@ import { getXPath } from "hast-util-get-xpath";
 import { selectAll } from "hast-util-select";
 import type * as unified from "unified";
 import upath from "upath";
+import type { VFile } from "vfile";
 
-import { read, run, test, type Command, type CommandString } from "./command.ts";
+import { parse, read, run, test, type Command, type CommandString } from "./command.ts";
 import expand from "./command/expand.ts";
 import { default as insertPage } from "./command/insert-page.ts";
 import { insertRange, type InsertRangeCommand } from "./command/insert-range.ts";
@@ -20,6 +21,7 @@ import { sort, byLocales, byListedOrder, type IndexComparator } from "./sort.ts"
 
 export { byLocales, byListedOrder };
 export { node, type FileSystem } from "./node.ts";
+export { logMessages } from "./log-messages.ts";
 
 export function defaultComparator(locales?: Intl.LocalesArgument): IndexComparator {
   return {
@@ -43,7 +45,6 @@ export type CreatePluginOptions = {
   entryContext?: string;
   comparators?: Comparators;
   fileSystem?: Readonly<FileSystem>;
-  log?: (message: string) => void;
 };
 
 export type EntryProcessorInput = {
@@ -62,6 +63,11 @@ type Target = {
 
 type TargetKey = string;
 
+type Diagnostic = {
+  reason: string;
+  ruleId: string;
+};
+
 type Attachment = {
   sourcePath: string;
   sourceElementId: string;
@@ -75,12 +81,14 @@ type Attachment = {
 
 type SourceSnapshot = {
   attachments: Attachment[];
+  diagnostics: Diagnostic[];
   elementIds: string[];
 };
 
 type BuiltIndex = {
   target: Target;
   index: Index;
+  sourcePath: string;
 };
 
 type State = {
@@ -89,6 +97,7 @@ type State = {
   entryPathSet: Set<string>;
   sources: Map<string, SourceSnapshot>;
   indexes: Map<TargetKey, BuiltIndex>;
+  diagnostics: Map<string, Diagnostic[]>;
 };
 
 const commands = [insertPage, insertRange, insertReference] as unknown as Command[];
@@ -193,6 +202,7 @@ function createLocatorHref(sourcePath: string, targetPath: string, id: string): 
 function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnapshot {
   const baseUrl = pathToFileURL(sourcePath);
   const attachments: Attachment[] = [];
+  const diagnostics: Diagnostic[] = [];
 
   for (const elem of selectAll("[data-index]", root)) {
     const reference = getAttribute(elem, "data-index");
@@ -206,7 +216,10 @@ function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnaps
       url = new URL(reference, baseUrl);
       target = resolveTarget(reference, baseUrl);
     } catch {
-      console.warn(`invalid index reference: ${reference}`);
+      diagnostics.push({
+        reason: `invalid index reference: ${reference}`,
+        ruleId: "invalid-index-reference",
+      });
       continue;
     }
 
@@ -214,8 +227,19 @@ function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnaps
     if (command === null) {
       continue;
     }
+    if (!parse(command)) {
+      diagnostics.push({
+        reason: `cannot parse index command: ${command}`,
+        ruleId: "command-parse-error",
+      });
+      continue;
+    }
     const commandIndex = commands.findIndex((candidate) => test(candidate, command));
     if (commandIndex === -1) {
+      diagnostics.push({
+        reason: `unknown index command: ${command}`,
+        ruleId: "unknown-command",
+      });
       continue;
     }
 
@@ -230,7 +254,10 @@ function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnaps
           throw new TypeError();
         }
       } catch {
-        console.warn(`invalid range end reference: ${rangeEndReference}`);
+        diagnostics.push({
+          reason: `invalid range end reference: ${rangeEndReference}`,
+          ruleId: "invalid-range-end-reference",
+        });
         continue;
       }
     }
@@ -250,19 +277,37 @@ function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnaps
     const id = getAttribute(element, "id");
     return id === null ? [] : [id];
   });
-  return { attachments, elementIds };
+  return { attachments, diagnostics, elementIds };
 }
 
-function resolveRangeEndHref(state: State, attachment: Attachment): string | undefined {
+function addDiagnostic(
+  diagnostics: Map<string, Diagnostic[]>,
+  documentPath: string,
+  diagnostic: Diagnostic,
+): void {
+  const documentDiagnostics = diagnostics.get(documentPath);
+  if (documentDiagnostics) {
+    documentDiagnostics.push(diagnostic);
+  } else {
+    diagnostics.set(documentPath, [diagnostic]);
+  }
+}
+
+function resolveRangeEndHref(
+  state: State,
+  attachment: Attachment,
+  diagnostics: Map<string, Diagnostic[]>,
+): string | undefined {
   const rangeEndTarget = attachment.rangeEndTarget;
   if (rangeEndTarget === undefined) {
     return undefined;
   }
   const rangeEndSource = state.sources.get(rangeEndTarget.documentPath);
   if (!rangeEndSource?.elementIds.includes(rangeEndTarget.elementId)) {
-    console.warn(
-      `range end target ${rangeEndTarget.documentPath}#${rangeEndTarget.elementId} does not exist`,
-    );
+    addDiagnostic(diagnostics, attachment.sourcePath, {
+      reason: `range end target ${rangeEndTarget.documentPath}#${rangeEndTarget.elementId} does not exist`,
+      ruleId: "missing-range-end",
+    });
     return undefined;
   }
   const sourceEntryIndex = state.entryPaths.indexOf(attachment.sourcePath);
@@ -273,9 +318,10 @@ function resolveRangeEndHref(state: State, attachment: Attachment): string | und
     rangeEndSource.elementIds.indexOf(rangeEndTarget.elementId) <=
       rangeEndSource.elementIds.indexOf(attachment.sourceElementId);
   if (endPrecedesSource || endDoesNotFollowSourceElement) {
-    console.warn(
-      `range end target ${rangeEndTarget.documentPath}#${rangeEndTarget.elementId} does not follow its start`,
-    );
+    addDiagnostic(diagnostics, attachment.sourcePath, {
+      reason: `range end target ${rangeEndTarget.documentPath}#${rangeEndTarget.elementId} does not follow its start`,
+      ruleId: "range-end-order",
+    });
     return undefined;
   }
   return createLocatorHref(
@@ -285,8 +331,13 @@ function resolveRangeEndHref(state: State, attachment: Attachment): string | und
   );
 }
 
-function rebuildIndexes(state: State, log: (message: string) => void): void {
+function rebuildIndexes(state: State): void {
   const indexes = new Map<TargetKey, BuiltIndex>();
+  const diagnostics = new Map<string, Diagnostic[]>();
+
+  for (const [sourcePath, snapshot] of state.sources) {
+    diagnostics.set(sourcePath, [...snapshot.diagnostics]);
+  }
 
   for (const entryPath of state.entryPaths) {
     const snapshot = state.sources.get(entryPath);
@@ -294,13 +345,17 @@ function rebuildIndexes(state: State, log: (message: string) => void): void {
       continue;
     }
     for (const attachment of snapshot.attachments) {
-      const rangeEndHref = resolveRangeEndHref(state, attachment);
+      const rangeEndHref = resolveRangeEndHref(state, attachment, diagnostics);
       if (attachment.rangeEndTarget !== undefined && rangeEndHref === undefined) {
         continue;
       }
       let builtIndex = indexes.get(attachment.targetKey);
       if (!builtIndex) {
-        builtIndex = { target: attachment.target, index: { children: [] } };
+        builtIndex = {
+          target: attachment.target,
+          index: { children: [] },
+          sourcePath: attachment.sourcePath,
+        };
         indexes.set(attachment.targetKey, builtIndex);
       }
       run(
@@ -313,23 +368,33 @@ function rebuildIndexes(state: State, log: (message: string) => void): void {
     }
   }
 
-  for (const { target, index } of indexes.values()) {
-    validateReferences(index);
-    if (!state.entryPathSet.has(target.documentPath)) {
-      log(
-        `[vivliostyle-index] index target ${target.documentPath}#${target.elementId} is not included in entries`,
+  for (const { target, index, sourcePath } of indexes.values()) {
+    for (const reason of validateReferences(index)) {
+      addDiagnostic(
+        diagnostics,
+        state.entryPathSet.has(target.documentPath) ? target.documentPath : sourcePath,
+        {
+          reason,
+          ruleId: "invalid-reference",
+        },
       );
+    }
+    if (!state.entryPathSet.has(target.documentPath)) {
+      addDiagnostic(diagnostics, sourcePath, {
+        reason: `index target ${target.documentPath}#${target.elementId} is not included in entries`,
+        ruleId: "target-not-in-entries",
+      });
     }
   }
 
   state.indexes = indexes;
+  state.diagnostics = diagnostics;
 }
 
 function initializeState(
   state: State,
   fileSystem: Readonly<FileSystem>,
   createEntryProcessor: PluginOptions["createEntryProcessor"],
-  log: (message: string) => void,
 ): void {
   if (state.initialized) {
     return;
@@ -344,7 +409,7 @@ function initializeState(
   }
 
   state.sources = sources;
-  rebuildIndexes(state, log);
+  rebuildIndexes(state);
   state.initialized = true;
 }
 
@@ -355,7 +420,7 @@ function sourceSnapshotsEqual(
   return previous !== undefined && JSON.stringify(previous) === JSON.stringify(current);
 }
 
-function affectedTargetPaths(
+function affectedDocumentPaths(
   state: State,
   sourcePath: string,
   previous: SourceSnapshot | undefined,
@@ -369,6 +434,7 @@ function affectedTargetPaths(
   for (const snapshot of state.sources.values()) {
     for (const attachment of snapshot.attachments) {
       if (attachment.rangeEndTarget?.documentPath === sourcePath) {
+        targetPaths.add(attachment.sourcePath);
         targetPaths.add(attachment.target.documentPath);
       }
     }
@@ -385,7 +451,7 @@ function renderIndexes(
   documentPath: string,
   indexes: ReadonlyMap<TargetKey, BuiltIndex>,
   comparators: ReadonlyMap<TargetKey, IndexComparator>,
-  log: (message: string) => void,
+  file: VFile,
 ): void {
   for (const [targetKey, { target, index }] of indexes) {
     if (target.documentPath !== documentPath) {
@@ -393,8 +459,10 @@ function renderIndexes(
     }
     const element = findTargetElement(root, target.elementId);
     if (!element) {
-      log(
-        `[vivliostyle-index] index target ${target.documentPath}#${target.elementId} does not exist`,
+      file.message(
+        `index target ${target.documentPath}#${target.elementId} does not exist`,
+        undefined,
+        "vivliostyle-index:missing-index-target",
       );
       continue;
     }
@@ -404,12 +472,17 @@ function renderIndexes(
   }
 }
 
+function emitDiagnostics(file: VFile, diagnostics: readonly Diagnostic[]): void {
+  for (const diagnostic of diagnostics) {
+    file.message(diagnostic.reason, undefined, `vivliostyle-index:${diagnostic.ruleId}`);
+  }
+}
+
 export function createPlugin({
   entries,
   entryContext,
   comparators = {},
   fileSystem = node,
-  log = () => {},
 }: Readonly<CreatePluginOptions>): unified.Plugin<[Readonly<PluginOptions>]> {
   const context = upath.resolve(process.cwd(), entryContext ?? ".");
   const entryPaths = entries.map((entry) => upath.resolve(context, entry));
@@ -419,6 +492,7 @@ export function createPlugin({
     entryPathSet: new Set(entryPaths),
     sources: new Map(),
     indexes: new Map(),
+    diagnostics: new Map(),
   };
   const normalizedComparators = normalizeComparators(comparators, context);
 
@@ -426,22 +500,24 @@ export function createPlugin({
     return (tree, file) => {
       const rawPath = file.path;
       if (typeof rawPath === "undefined") {
-        log(
-          "[vivliostyle-index] cannot extract index entries from anonymous files or render indexes into anonymous files.",
+        file.message(
+          "cannot extract index entries from anonymous files or render indexes into anonymous files",
+          undefined,
+          "vivliostyle-index:anonymous-file",
         );
         return;
       }
 
       const documentPath = upath.resolve(rawPath);
       const root = tree as hast.Root;
-      initializeState(state, fileSystem, createEntryProcessor, log);
+      initializeState(state, fileSystem, createEntryProcessor);
 
       const previousSnapshot = state.sources.get(documentPath);
       const currentSnapshot = collectSourceSnapshot(root, documentPath);
       if (!sourceSnapshotsEqual(previousSnapshot, currentSnapshot)) {
         state.sources.set(documentPath, currentSnapshot);
-        rebuildIndexes(state, log);
-        for (const targetPath of affectedTargetPaths(
+        rebuildIndexes(state);
+        for (const targetPath of affectedDocumentPaths(
           state,
           documentPath,
           previousSnapshot,
@@ -453,7 +529,8 @@ export function createPlugin({
         }
       }
 
-      renderIndexes(root, documentPath, state.indexes, normalizedComparators, log);
+      emitDiagnostics(file, state.diagnostics.get(documentPath) ?? []);
+      renderIndexes(root, documentPath, state.indexes, normalizedComparators, file);
     };
   };
 }

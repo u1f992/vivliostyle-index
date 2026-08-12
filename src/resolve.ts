@@ -1,6 +1,7 @@
 import { type Index, type Reference, getChild } from "./model.ts";
 
-export function validateReferences(index: Index) {
+export function validateReferences(index: Index): string[] {
+  const diagnostics: string[] = [];
   const references: [string, ...Reference][] = [];
   for (const group of index.children) {
     for (const mainEntry of group.children) {
@@ -16,14 +17,14 @@ export function validateReferences(index: Index) {
     const [, groupKey, mainEntryKey, subentryKey] = reference;
     const group = getChild(index, groupKey);
     if (!group) {
-      console.warn(
+      diagnostics.push(
         `index does not contain group=[${groupKey[0]},${groupKey[1]}]. link will likely be invalid.`,
       );
       continue;
     }
     const mainEntry = getChild(group, mainEntryKey);
     if (!mainEntry) {
-      console.warn(
+      diagnostics.push(
         `index does not contain group=[${groupKey[0]},${groupKey[1]}],mainEntry=[${mainEntryKey[0]},${mainEntryKey[1]}]. link will likely be invalid.`,
       );
       continue;
@@ -31,11 +32,11 @@ export function validateReferences(index: Index) {
     if (subentryKey) {
       const subentry = getChild(mainEntry, subentryKey);
       if (!subentry) {
-        console.warn(
+        diagnostics.push(
           `index does not contain group=[${groupKey[0]},${groupKey[1]}],mainEntry=[${mainEntryKey[0]},${mainEntryKey[1]}],subEntry=[${subentryKey[0]},${subentryKey[1]}]. link will likely be invalid.`,
         );
-        continue;
       }
     }
   }
+  return diagnostics;
 }

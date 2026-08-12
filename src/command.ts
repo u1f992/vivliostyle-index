@@ -64,21 +64,26 @@ export type CommandString = string & {
   [commandStringBrand]: unknown;
 };
 
+const parseError = Symbol();
 const memo = new Map<string, unknown>();
+
+export function parse(input: string): boolean {
+  if (!memo.has(input)) {
+    try {
+      memo.set(input, YAML.parse(`[${input}]`));
+    } catch {
+      memo.set(input, parseError);
+    }
+  }
+  return memo.get(input) !== parseError;
+}
 
 export function test<T extends (string | EntryKey)[]>(
   cmd: Command<T>,
   input: string,
 ): input is CommandString {
-  if (!memo.has(input)) {
-    let parsed;
-    try {
-      parsed = YAML.parse(`[${input}]`);
-    } catch {
-      console.warn(`parse error: ${input}`);
-      return false;
-    }
-    memo.set(input, parsed);
+  if (!parse(input)) {
+    return false;
   }
   return cmd[testSymbol](memo.get(input));
 }
@@ -94,15 +99,8 @@ export function run<T extends (string | EntryKey)[]>(
   locatorHref: string,
   rangeEndHref?: string,
 ) {
-  if (!memo.has(input)) {
-    let parsed;
-    try {
-      parsed = YAML.parse(`[${input}]`);
-    } catch {
-      console.warn(`parse error: ${input}`);
-      return;
-    }
-    memo.set(input, parsed);
+  if (!parse(input)) {
+    return;
   }
   cmd[runSymbol](memo.get(input) as T, index, locatorHref, rangeEndHref);
 }

@@ -36,26 +36,14 @@ function createIndex(targetWord: string): Index {
   };
 }
 
-void test("accepts references to registered entries", (context) => {
-  const warn = context.mock.method(console, "warn");
-
-  validateReferences(createIndex("知的財産権"));
-
-  assert.strictEqual(warn.mock.callCount(), 0);
+void test("accepts references to registered entries", () => {
+  assert.deepStrictEqual(validateReferences(createIndex("知的財産権")), []);
 });
 
-void test("warns about references to unregistered entries", (context) => {
-  const warn = context.mock.method(console, "warn", () => {});
-
-  validateReferences(createIndex("工業所有権"));
-
-  assert.strictEqual(warn.mock.callCount(), 1);
+void test("reports references to unregistered entries", () => {
+  assert.strictEqual(validateReferences(createIndex("工業所有権")).length, 1);
 });
 
-void test("warns when a reference uses different inner HTML", (context) => {
-  const warn = context.mock.method(console, "warn", () => {});
-
-  validateReferences(createIndex("<em>知的財産権</em>"));
-
-  assert.strictEqual(warn.mock.callCount(), 1);
+void test("reports a reference that uses different inner HTML", () => {
+  assert.strictEqual(validateReferences(createIndex("<em>知的財産権</em>")).length, 1);
 });
