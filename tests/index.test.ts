@@ -6,7 +6,6 @@ import { fromHtml } from "hast-util-from-html";
 import { getAttribute } from "hast-util-get-attribute";
 import { select, selectAll } from "hast-util-select";
 import { toText } from "hast-util-to-text";
-import { VFM } from "@vivliostyle/vfm";
 import unified from "unified";
 
 import {
@@ -444,32 +443,21 @@ void test("reports an index reference without a fragment as a missing target", (
   ]);
 });
 
-void test("uses the same generated locator ID during VFM discovery and transformation", () => {
+void test("uses the same generated locator ID during discovery and transformation", () => {
   const files = {
     "/publication/chapter.md":
       '<span data-index="index.md?command=[[a,a],[Apple,Apple]]#index">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
   };
-  const { fileSystem } = createFileSystem(files);
-  const plugin = createPlugin({
+  const { processor } = createProcessor({
     entries: ["chapter.md", "index.md"],
-    entryContext: "/publication",
-    fileSystem,
-  });
-  const processor = VFM().use(plugin, {
-    createEntryProcessor: () => VFM(),
+    files,
   });
 
-  const indexRoot = fromHtml(
-    processor
-      .processSync({ path: "/publication/index.md", contents: files["/publication/index.md"] })
-      .toString(),
-  );
-  const chapterRoot = fromHtml(
-    processor
-      .processSync({ path: "/publication/chapter.md", contents: files["/publication/chapter.md"] })
-      .toString(),
-  );
+  const indexRoot = fromHtml(files["/publication/index.md"]);
+  const chapterRoot = fromHtml(files["/publication/chapter.md"]);
+  processor.runSync(indexRoot, { path: "/publication/index.md" });
+  processor.runSync(chapterRoot, { path: "/publication/chapter.md" });
   const sourceElement = select("[data-index]", chapterRoot);
   assert.ok(sourceElement);
   const sourceId = getAttribute(sourceElement, "id");
