@@ -20,6 +20,9 @@ export const insertRange = defineCommand<InsertRangeCommand>(
       return;
     }
     const [type, entryKey] = cmd;
-    insertLocator(ensureEntry(index, entryKey), [[locatorHref, rangeEndHref], type === "range!"]);
+    insertLocator(ensureEntry(index, entryKey), {
+      locator: { start: locatorHref, end: rangeEndHref },
+      important: type === "range!",
+    });
   },
 );

@@ -4,7 +4,7 @@ import test from "node:test";
 import { run, test as testCommand } from "../../src/command.ts";
 import { insertRange } from "../../src/command/insert-range.ts";
 import type { Index } from "../../src/model.ts";
-import { dropSequentialId } from "../test-util.ts";
+import { dropSequences } from "../test-util.ts";
 
 void test("accepts range commands", () => {
   assert.ok(testCommand(insertRange, "range,[[し,し],[自由利用,じゆうりよう]],'#end'"));
@@ -22,15 +22,20 @@ void test("inserts a range locator", () => {
   assert.ok(testCommand(insertRange, command));
   run(insertRange, command, index, "chapter.html#start", "chapter.html#end");
 
-  assert.deepStrictEqual(dropSequentialId(index), {
+  assert.deepStrictEqual(dropSequences(index), {
     children: [
       {
-        key: ["し", "し"],
+        key: { html: "し", reading: "し" },
         children: [
           {
-            key: ["自由利用", "じゆうりよう"],
+            key: { html: "自由利用", reading: "じゆうりよう" },
             children: [],
-            locators: [[["chapter.html#start", "chapter.html#end"], false]],
+            locators: [
+              {
+                locator: { start: "chapter.html#start", end: "chapter.html#end" },
+                important: false,
+              },
+            ],
             see: [],
             seeAlso: [],
           },

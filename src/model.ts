@@ -1,13 +1,21 @@
-export type Key = [string, string];
+export type Key = Readonly<{
+  html: string;
+  reading: string;
+}>;
 export type HasKey = { key: Key };
 
 type PageLocator = string;
-type RangeLocator = [PageLocator, PageLocator];
+type RangeLocator = Readonly<{
+  start: PageLocator;
+  end: PageLocator;
+}>;
 type Locator = PageLocator | RangeLocator;
 
-type MainEntryReference = [Key, Key];
-type SubentryReference = [Key, Key, Key];
-export type Reference = MainEntryReference | SubentryReference;
+type ReferenceTarget = Readonly<{
+  group: Key;
+  mainEntry: Key;
+  subentry?: Key;
+}>;
 
 const sequentialIdBrand = Symbol();
 type SequentialId = string & { [sequentialIdBrand]: unknown };
@@ -17,21 +25,31 @@ function getId(): SequentialId {
   return counter.toString().padStart(16, "0") as SequentialId;
 }
 
-type HasLocators = { locators: [SequentialId, Locator, boolean][] };
-export function insertLocator(entry: HasLocators, locator: [Locator, boolean]) {
-  entry.locators.push([getId(), ...locator]);
+type LocatorEntry = Readonly<{
+  sequence: SequentialId;
+  locator: Locator;
+  important: boolean;
+}>;
+type LocatorInput = Omit<LocatorEntry, "sequence">;
+type HasLocators = { locators: LocatorEntry[] };
+export function insertLocator(entry: HasLocators, input: LocatorInput) {
+  entry.locators.push({ sequence: getId(), ...input });
 }
 
+type ReferenceEntry = Readonly<{
+  sequence: SequentialId;
+  target: ReferenceTarget;
+}>;
 type HasReferences = {
-  see: [SequentialId, ...Reference][];
-  seeAlso: [SequentialId, ...Reference][];
+  see: ReferenceEntry[];
+  seeAlso: ReferenceEntry[];
 };
 export function insertReference(
   entry: HasReferences,
   type: "see" | "seeAlso",
-  reference: Reference,
+  target: ReferenceTarget,
 ) {
-  entry[type].push([getId(), ...reference]);
+  entry[type].push({ sequence: getId(), target });
 }
 
 export type EntryBase = HasLocators & HasReferences;
@@ -43,7 +61,9 @@ export type Group = HasKey & ParentOf<MainEntry>;
 export type Index = ParentOf<Group>;
 
 export function getChild<TChild extends HasKey>(parent: ParentOf<TChild>, key: Key) {
-  return parent.children.find((child) => child.key[0] === key[0] && child.key[1] === key[1]);
+  return parent.children.find(
+    (child) => child.key.html === key.html && child.key.reading === key.reading,
+  );
 }
 
 export function ensureChild<TChild extends HasKey>(

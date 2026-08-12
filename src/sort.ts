@@ -17,37 +17,42 @@ export type IndexComparator = {
   subentrySeeAlso: Comparator<Reference>;
 };
 export const byListedOrder: Comparator<Locator> & Comparator<Reference> = (a, b) =>
-  a[0].localeCompare(b[0]);
+  a.sequence.localeCompare(b.sequence);
 
 export function byLocales(
   locales: Intl.LocalesArgument,
 ): Comparator<HasKey> & Comparator<Reference> {
   const collator = new Intl.Collator(locales);
-  return function self(a, b): ReturnType<Comparator<HasKey | Reference>> {
-    if (Array.isArray(a) && Array.isArray(b)) {
-      const groupKeyCompare = self({ key: a[1] }, { key: b[1] });
+  const compareKeys = (a: HasKey["key"], b: HasKey["key"]) => {
+    const readingCompare = collator.compare(a.reading, b.reading);
+    return readingCompare !== 0
+      ? readingCompare
+      : collator.compare(fragmentToText(a.html), fragmentToText(b.html));
+  };
+  return function compare(a, b): ReturnType<Comparator<HasKey | Reference>> {
+    if ("target" in a && "target" in b) {
+      const groupKeyCompare = compareKeys(a.target.group, b.target.group);
       if (groupKeyCompare !== 0) {
         return groupKeyCompare;
       }
-      const mainKeyCompare = self({ key: a[2] }, { key: b[2] });
+      const mainKeyCompare = compareKeys(a.target.mainEntry, b.target.mainEntry);
       if (mainKeyCompare !== 0) {
         return mainKeyCompare;
       }
-      if (a[3] && b[3]) {
-        return self({ key: a[3] }, { key: b[3] });
+      const aSubentry = a.target.subentry;
+      const bSubentry = b.target.subentry;
+      if (aSubentry !== undefined && bSubentry !== undefined) {
+        return compareKeys(aSubentry, bSubentry);
       }
-      if (a[3] && !b[3]) {
+      if (aSubentry !== undefined && bSubentry === undefined) {
         return 1;
-      } else if (!a[3] && b[3]) {
+      } else if (aSubentry === undefined && bSubentry !== undefined) {
         return -1;
       } else {
         return 0;
       }
-    } else if (!Array.isArray(a) && !Array.isArray(b)) {
-      const key1Compare = collator.compare(a.key[1], b.key[1]);
-      return key1Compare !== 0
-        ? key1Compare
-        : collator.compare(fragmentToText(a.key[0]), fragmentToText(b.key[0]));
+    } else if ("key" in a && "key" in b) {
+      return compareKeys(a.key, b.key);
     }
     return 0;
   };

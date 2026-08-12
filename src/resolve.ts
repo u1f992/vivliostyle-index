@@ -1,8 +1,8 @@
-import { type Index, type Reference, getChild } from "./model.ts";
+import { type EntryBase, type Index, getChild } from "./model.ts";
 
 export function validateReferences(index: Index): string[] {
   const diagnostics: string[] = [];
-  const references: [string, ...Reference][] = [];
+  const references: EntryBase["see"] = [];
   for (const group of index.children) {
     for (const mainEntry of group.children) {
       references.push(...mainEntry.see);
@@ -13,19 +13,19 @@ export function validateReferences(index: Index): string[] {
       }
     }
   }
-  for (const reference of references) {
-    const [, groupKey, mainEntryKey, subentryKey] = reference;
+  for (const { target } of references) {
+    const { group: groupKey, mainEntry: mainEntryKey, subentry: subentryKey } = target;
     const group = getChild(index, groupKey);
     if (!group) {
       diagnostics.push(
-        `index does not contain group=[${groupKey[0]},${groupKey[1]}]. link will likely be invalid.`,
+        `index does not contain group=${JSON.stringify(groupKey)}. link will likely be invalid.`,
       );
       continue;
     }
     const mainEntry = getChild(group, mainEntryKey);
     if (!mainEntry) {
       diagnostics.push(
-        `index does not contain group=[${groupKey[0]},${groupKey[1]}],mainEntry=[${mainEntryKey[0]},${mainEntryKey[1]}]. link will likely be invalid.`,
+        `index does not contain group=${JSON.stringify(groupKey)},mainEntry=${JSON.stringify(mainEntryKey)}. link will likely be invalid.`,
       );
       continue;
     }
@@ -33,7 +33,7 @@ export function validateReferences(index: Index): string[] {
       const subentry = getChild(mainEntry, subentryKey);
       if (!subentry) {
         diagnostics.push(
-          `index does not contain group=[${groupKey[0]},${groupKey[1]}],mainEntry=[${mainEntryKey[0]},${mainEntryKey[1]}],subEntry=[${subentryKey[0]},${subentryKey[1]}]. link will likely be invalid.`,
+          `index does not contain group=${JSON.stringify(groupKey)},mainEntry=${JSON.stringify(mainEntryKey)},subEntry=${JSON.stringify(subentryKey)}. link will likely be invalid.`,
         );
       }
     }

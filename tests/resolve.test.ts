@@ -8,21 +8,29 @@ function createIndex(targetWord: string): Index {
   return {
     children: [
       {
-        key: ["ち", "ち"],
+        key: { html: "ち", reading: "ち" },
         children: [
           {
-            key: ["知的財産権", "ちてきざいさんけん"],
+            key: { html: "知的財産権", reading: "ちてきざいさんけん" },
             children: [],
             locators: [],
             see: [],
             seeAlso: [],
           },
           {
-            key: ["著作権", "ちょさくけん"],
+            key: { html: "著作権", reading: "ちょさくけん" },
             children: [],
             locators: [],
             see: [],
-            seeAlso: [["", ["ち", "ち"], [targetWord, "ちてきざいさんけん"]] as never],
+            seeAlso: [
+              {
+                sequence: "" as never,
+                target: {
+                  group: { html: "ち", reading: "ち" },
+                  mainEntry: { html: targetWord, reading: "ちてきざいさんけん" },
+                },
+              },
+            ],
           },
         ],
       },

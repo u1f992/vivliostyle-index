@@ -17,7 +17,7 @@ export default function expand(index: Index, elem: hast.Element, elementId: stri
       tagName: "li",
       properties: { className: "index-group" },
       children: [
-        ...parseFragment(group.key[0]),
+        ...parseFragment(group.key.html),
         {
           type: "element",
           tagName: "ol",
@@ -51,7 +51,7 @@ function generateMainEntries(
         id: currentSlag,
       },
       children: [
-        ...parseFragment(mainEntry.key[0]),
+        ...parseFragment(mainEntry.key.html),
         ...(mainEntry.locators.length !== 0
           ? [generateLocators(mainEntry.locators, "index-main-entry-locators")]
           : []),
@@ -83,7 +83,7 @@ function generateSubentries(subentries: Subentry[], elementId: string, slag: str
         id: `${slag}--${JSON.stringify(subentry.key)}`,
       },
       children: [
-        ...parseFragment(subentry.key[0]),
+        ...parseFragment(subentry.key.html),
         ...(subentry.locators.length !== 0
           ? [generateLocators(subentry.locators, "index-subentry-locators")]
           : []),
@@ -103,39 +103,40 @@ function generateLocators(locators: EntryBase["locators"], className: string): h
     type: "element",
     tagName: "ol",
     properties: { className },
-    children: locators.map(([, locator, important]) => ({
+    children: locators.map(({ locator, important }) => ({
       type: "element",
       tagName: "li",
       properties: important ? { className: "important" } : {},
-      children: Array.isArray(locator)
-        ? [
-            {
-              type: "element",
-              tagName: "a",
-              properties: { href: locator[0] },
-              children: [],
-            },
-            {
-              type: "element",
-              tagName: "span",
-              properties: { className: className + "-separator" },
-              children: [],
-            },
-            {
-              type: "element",
-              tagName: "a",
-              properties: { href: locator[1] },
-              children: [],
-            },
-          ]
-        : [
-            {
-              type: "element",
-              tagName: "a",
-              properties: { href: locator },
-              children: [],
-            },
-          ],
+      children:
+        typeof locator === "string"
+          ? [
+              {
+                type: "element",
+                tagName: "a",
+                properties: { href: locator },
+                children: [],
+              },
+            ]
+          : [
+              {
+                type: "element",
+                tagName: "a",
+                properties: { href: locator.start },
+                children: [],
+              },
+              {
+                type: "element",
+                tagName: "span",
+                properties: { className: className + "-separator" },
+                children: [],
+              },
+              {
+                type: "element",
+                tagName: "a",
+                properties: { href: locator.end },
+                children: [],
+              },
+            ],
     })),
   };
 }
@@ -149,19 +150,19 @@ function generateReferences(
     type: "element",
     tagName: "ol",
     properties: { className },
-    children: references.map(([, ...reference]) => ({
+    children: references.map(({ target }) => ({
       type: "element",
       tagName: "li",
       children:
-        reference.length === 2
+        target.subentry === undefined
           ? [
               {
                 type: "element",
                 tagName: "a",
                 properties: {
-                  href: `#${elementId}--${JSON.stringify(reference[0])}--${JSON.stringify(reference[1])}`,
+                  href: `#${elementId}--${JSON.stringify(target.group)}--${JSON.stringify(target.mainEntry)}`,
                 },
-                children: parseFragment(reference[1][0]),
+                children: parseFragment(target.mainEntry.html),
               },
             ]
           : [
@@ -169,13 +170,13 @@ function generateReferences(
                 type: "element",
                 tagName: "a",
                 properties: {
-                  href: `#${elementId}--${JSON.stringify(reference[0])}--${JSON.stringify(reference[1])}--${JSON.stringify(reference[2])}`,
+                  href: `#${elementId}--${JSON.stringify(target.group)}--${JSON.stringify(target.mainEntry)}--${JSON.stringify(target.subentry)}`,
                 },
                 children: [
                   {
                     type: "element",
                     tagName: "span",
-                    children: parseFragment(reference[1][0]),
+                    children: parseFragment(target.mainEntry.html),
                   },
                   {
                     type: "element",
@@ -186,7 +187,7 @@ function generateReferences(
                   {
                     type: "element",
                     tagName: "span",
-                    children: parseFragment(reference[2][0]),
+                    children: parseFragment(target.subentry.html),
                   },
                 ],
               },

@@ -4,7 +4,7 @@ import test from "node:test";
 import { run, test as testCommand } from "../../src/command.ts";
 import insertReference from "../../src/command/insert-reference.ts";
 import type { Index } from "../../src/model.ts";
-import { dropSequentialId } from "../test-util.ts";
+import { dropSequences } from "../test-util.ts";
 
 void test("accepts main-entry and subentry references", () => {
   assert.ok(
@@ -34,21 +34,23 @@ void test("inserts a reference", () => {
   assert.ok(testCommand(insertReference, input));
   run(insertReference, input, index, "");
 
-  assert.deepStrictEqual(dropSequentialId(index), {
+  assert.deepStrictEqual(dropSequences(index), {
     children: [
       {
-        key: ["ち", "ち"],
+        key: { html: "ち", reading: "ち" },
         children: [
           {
-            key: ["著作権", "ちょさくけん"],
+            key: { html: "著作権", reading: "ちょさくけん" },
             children: [],
             locators: [],
             see: [],
             seeAlso: [
-              [
-                ["ち", "ち"],
-                ["知的財産権", "ちてきざいさんけん"],
-              ],
+              {
+                target: {
+                  group: { html: "ち", reading: "ち" },
+                  mainEntry: { html: "知的財産権", reading: "ちてきざいさんけん" },
+                },
+              },
             ],
           },
         ],

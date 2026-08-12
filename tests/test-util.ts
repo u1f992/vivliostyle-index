@@ -1,12 +1,12 @@
 import type { EntryBase, Index } from "../src/model.ts";
 
-export function dropSequentialId(index: Index): unknown {
+export function dropSequences(index: Index): unknown {
   function handleEntry(entry: EntryBase): unknown {
     return {
       ...entry,
-      locators: entry.locators.map(([, locator, flag]) => [locator, flag]),
-      see: entry.see.map(([, ...rest]) => rest),
-      seeAlso: entry.seeAlso.map(([, ...rest]) => rest),
+      locators: entry.locators.map(({ sequence: _, ...rest }) => rest),
+      see: entry.see.map(({ sequence: _, ...rest }) => rest),
+      seeAlso: entry.seeAlso.map(({ sequence: _, ...rest }) => rest),
     };
   }
   return {

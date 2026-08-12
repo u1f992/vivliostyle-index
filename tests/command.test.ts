@@ -12,7 +12,7 @@ void test("inserts the supplied locator URL", () => {
   assert.ok(testCommand(insertPage, input));
   run(insertPage, input, index, "chapter.html#RPA");
 
-  assert.strictEqual(index.children[0]?.children[0]?.locators[0]?.[1], "chapter.html#RPA");
+  assert.strictEqual(index.children[0]?.children[0]?.locators[0]?.locator, "chapter.html#RPA");
 });
 
 void test("uses a string key as both its heading and sort value", () => {
@@ -22,8 +22,8 @@ void test("uses a string key as both its heading and sort value", () => {
   assert.ok(testCommand(insertPage, input));
   run(insertPage, input, index, "chapter.html#RPA");
 
-  assert.deepStrictEqual(index.children[0]?.key, ["R", "R"]);
-  assert.deepStrictEqual(index.children[0]?.children[0]?.key, ["RPA", "RPA"]);
+  assert.deepStrictEqual(index.children[0]?.key, { html: "R", reading: "R" });
+  assert.deepStrictEqual(index.children[0]?.children[0]?.key, { html: "RPA", reading: "RPA" });
 });
 
 void test("keeps original HTML fragments as distinct keys", () => {
@@ -39,8 +39,8 @@ void test("keeps original HTML fragments as distinct keys", () => {
   assert.deepStrictEqual(
     index.children[0]?.children.map((entry) => entry.key),
     [
-      ["<em>RPA</em>", "RPA"],
-      ["<EM>RPA</EM>", "RPA"],
+      { html: "<em>RPA</em>", reading: "RPA" },
+      { html: "<EM>RPA</EM>", reading: "RPA" },
     ],
   );
 });

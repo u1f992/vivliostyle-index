@@ -12,10 +12,10 @@ void test("renders an index into the target element", () => {
   const index: Index = {
     children: [
       {
-        key: ["ち", "ち"],
+        key: { html: "ち", reading: "ち" },
         children: [
           {
-            key: ["著作権", "ちょさくけん"],
+            key: { html: "著作権", reading: "ちょさくけん" },
             children: [],
             locators: [],
             see: [],

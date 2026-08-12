@@ -6,7 +6,7 @@ import YAML from "yaml";
 const ajv = new Ajv();
 const $schema = "https://json-schema.org/draft/2020-12/schema";
 
-type InputKey = string | [string, string];
+type InputKey = string | [html: string, reading: string];
 type MainEntryKey = [InputKey, InputKey];
 type SubentryKey = [InputKey, InputKey, InputKey];
 export type EntryKey = MainEntryKey | SubentryKey;
@@ -111,8 +111,8 @@ export function run<T extends (string | EntryKey)[]>(
 }
 
 export function toModelKey(inputKey: InputKey): Key {
-  const [word, reading] = typeof inputKey === "string" ? [inputKey, inputKey] : inputKey;
-  return [word, reading];
+  const [html, reading] = typeof inputKey === "string" ? [inputKey, inputKey] : inputKey;
+  return { html, reading };
 }
 
 export function ensureEntry(

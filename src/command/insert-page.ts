@@ -21,6 +21,9 @@ export default defineCommand<InsertPageCommand>(
   },
   (cmd, index, locatorHref) => {
     const entryKey = cmd.length === 1 ? cmd[0] : cmd[1];
-    insertLocator(ensureEntry(index, entryKey), [locatorHref, cmd.length === 2]);
+    insertLocator(ensureEntry(index, entryKey), {
+      locator: locatorHref,
+      important: cmd.length === 2,
+    });
   },
 );
