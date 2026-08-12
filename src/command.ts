@@ -1,17 +1,6 @@
-import {
-  ensureChild,
-  ensureIndex,
-  toHastChildren,
-  type EntryBase,
-  type Index,
-  type IndexId,
-  type Key,
-} from "./model.ts";
+import { ensureChild, toHastChildren, type EntryBase, type Index, type Key } from "./model.ts";
 
 import { Ajv2020 as Ajv, type JSONSchemaType } from "ajv/dist/2020.js";
-import type * as hast from "hast";
-import { getAttribute } from "hast-util-get-attribute";
-import { getXPath } from "hast-util-get-xpath";
 import YAML from "yaml";
 
 const ajv = new Ajv();
@@ -21,9 +10,7 @@ type InputKey = [string, string];
 type MainEntryKey = [InputKey, InputKey];
 type SubentryKey = [InputKey, InputKey, InputKey];
 export type EntryKey = MainEntryKey | SubentryKey;
-export type Base = [IndexId, EntryKey];
 const $defs = {
-  IndexId: { type: "string" },
   Key: {
     type: "array",
     minItems: 2,
@@ -52,12 +39,7 @@ const runSymbol = Symbol();
 
 export type Command<T extends (string | EntryKey)[] = (string | EntryKey)[]> = {
   [testSymbol]: (obj: unknown) => obj is T;
-  [runSymbol]: (
-    obj: Readonly<T>,
-    indexes: Index[],
-    elem: hast.Element,
-    ensureId: (elem: hast.Element) => string,
-  ) => void;
+  [runSymbol]: (obj: Readonly<T>, index: Index, locatorHref: string) => void;
 };
 
 export function defineCommand<T extends (string | EntryKey)[]>(
@@ -105,41 +87,11 @@ export function read<T extends (string | EntryKey)[]>(input: CommandString): Rea
   return memo.get(input) as T;
 }
 
-function ensureId(tree: Readonly<hast.Root>, elem: hast.Element) {
-  let id = getAttribute(elem, "id");
-  if (id !== null) {
-    return id;
-  }
-
-  id = getXPath(tree, elem);
-  if (id !== null) {
-    if (elem.properties) {
-      elem.properties["id"] = id;
-    } else {
-      elem.properties = { id };
-    }
-    return id;
-  }
-
-  throw new Error("id === null: won't happen. it's likely a bug in getXPath()");
-}
-
-function encodeRelativePath(path: string) {
-  return path.split("/").map(encodeURIComponent).join("/");
-}
-
-function createHref(relPath: string | null, id: string) {
-  const path = relPath === null ? "" : encodeRelativePath(relPath);
-  return `${path}#${encodeURIComponent(id)}`;
-}
-
 export function run<T extends (string | EntryKey)[]>(
   cmd: Command<T>,
   input: CommandString,
-  indexes: Index[],
-  tree: hast.Root,
-  elem: hast.Element,
-  relPath: string | null,
+  index: Index,
+  locatorHref: string,
 ) {
   if (!memo.has(input)) {
     let parsed;
@@ -151,9 +103,7 @@ export function run<T extends (string | EntryKey)[]>(
     }
     memo.set(input, parsed);
   }
-  cmd[runSymbol](memo.get(input) as T, indexes, elem, (el) =>
-    createHref(relPath, ensureId(tree, el)),
-  );
+  cmd[runSymbol](memo.get(input) as T, index, locatorHref);
 }
 
 export function toModelKey([word, reading]: InputKey): Key {
@@ -161,11 +111,9 @@ export function toModelKey([word, reading]: InputKey): Key {
 }
 
 export function ensureEntry(
-  indexes: Index[],
-  indexId: IndexId,
+  index: Index,
   [groupKey, mainEntryKey, subentryKey]: EntryKey,
 ): EntryBase {
-  const index = ensureIndex(indexes, indexId);
   const group = ensureChild(index, toModelKey(groupKey), { children: [] });
   const mainEntry = ensureChild(group, toModelKey(mainEntryKey), {
     children: [],

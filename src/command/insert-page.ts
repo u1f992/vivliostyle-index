@@ -1,30 +1,26 @@
-import { type Base, defineCommand, ensureEntry } from "../command.ts";
+import { defineCommand, ensureEntry, type EntryKey } from "../command.ts";
 import { insertLocator } from "../model.ts";
 
-type InsertPageCommand = [...Base] | ["page!", ...Base];
+type InsertPageCommand = [EntryKey] | ["page!", EntryKey];
 export default defineCommand<InsertPageCommand>(
   {
     oneOf: [
       {
         type: "array",
-        minItems: 2,
-        maxItems: 2,
-        prefixItems: [{ $ref: "#/$defs/IndexId" }, { $ref: "#/$defs/EntryKey" }],
+        minItems: 1,
+        maxItems: 1,
+        prefixItems: [{ $ref: "#/$defs/EntryKey" }],
       },
       {
         type: "array",
-        minItems: 3,
-        maxItems: 3,
-        prefixItems: [
-          { const: "page!" },
-          { $ref: "#/$defs/IndexId" },
-          { $ref: "#/$defs/EntryKey" },
-        ],
+        minItems: 2,
+        maxItems: 2,
+        prefixItems: [{ const: "page!" }, { $ref: "#/$defs/EntryKey" }],
       },
     ],
   },
-  (cmd, indexes, elem, ensureId) => {
-    const [indexId, entryKey] = cmd.length === 2 ? cmd : [cmd[1], cmd[2]];
-    insertLocator(ensureEntry(indexes, indexId, entryKey), [ensureId(elem), cmd.length === 3]);
+  (cmd, index, locatorHref) => {
+    const entryKey = cmd.length === 1 ? cmd[0] : cmd[1];
+    insertLocator(ensureEntry(index, entryKey), [locatorHref, cmd.length === 2]);
   },
 );

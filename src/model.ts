@@ -2,8 +2,6 @@ import type * as hast from "hast";
 import { fromHtml } from "hast-util-from-html";
 import { toText } from "hast-util-to-text";
 
-export type IndexId = string;
-
 export type Key = [string, string];
 export type HasKey = { key: Key };
 
@@ -46,10 +44,7 @@ export type ParentOf<T> = { children: T[] };
 export type MainEntry = HasKey & EntryBase & ParentOf<Subentry>;
 export type Group = HasKey & ParentOf<MainEntry>;
 
-export type Index = { id: IndexId } & ParentOf<Group>;
-export function ensureIndex(indexes: Index[], id: IndexId): Index {
-  return indexes.find((idx) => idx.id === id) ?? indexes[indexes.push({ id, children: [] }) - 1]!;
-}
+export type Index = ParentOf<Group>;
 
 export function toHastChildren(value: string) {
   const root = fromHtml(value, { fragment: true });

@@ -1,6 +1,6 @@
 import { type Index, type Reference, getChild } from "./model.ts";
 
-function validateIndexReferences(index: Index) {
+export function validateReferences(index: Index) {
   const references: [string, ...Reference][] = [];
   for (const group of index.children) {
     for (const mainEntry of group.children) {
@@ -17,14 +17,14 @@ function validateIndexReferences(index: Index) {
     const group = getChild(index, groupKey);
     if (!group) {
       console.warn(
-        `index id=${index.id} does not contain group=[${groupKey[0]},${groupKey[1]}]. link will likely be invalid.`,
+        `index does not contain group=[${groupKey[0]},${groupKey[1]}]. link will likely be invalid.`,
       );
       continue;
     }
     const mainEntry = getChild(group, mainEntryKey);
     if (!mainEntry) {
       console.warn(
-        `index id=${index.id} does not contain group=[${groupKey[0]},${groupKey[1]}],mainEntry=[${mainEntryKey[0]},${mainEntryKey[1]}]. link will likely be invalid.`,
+        `index does not contain group=[${groupKey[0]},${groupKey[1]}],mainEntry=[${mainEntryKey[0]},${mainEntryKey[1]}]. link will likely be invalid.`,
       );
       continue;
     }
@@ -32,16 +32,10 @@ function validateIndexReferences(index: Index) {
       const subentry = getChild(mainEntry, subentryKey);
       if (!subentry) {
         console.warn(
-          `index id=${index.id} does not contain group=[${groupKey[0]},${groupKey[1]}],mainEntry=[${mainEntryKey[0]},${mainEntryKey[1]}],subEntry=[${subentryKey[0]},${subentryKey[1]}]. link will likely be invalid.`,
+          `index does not contain group=[${groupKey[0]},${groupKey[1]}],mainEntry=[${mainEntryKey[0]},${mainEntryKey[1]}],subEntry=[${subentryKey[0]},${subentryKey[1]}]. link will likely be invalid.`,
         );
         continue;
       }
     }
-  }
-}
-
-export function validateReferences(indexes: Index[]) {
-  for (const index of indexes) {
-    validateIndexReferences(index);
   }
 }

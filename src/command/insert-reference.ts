@@ -1,23 +1,21 @@
-import { type Base, type EntryKey, defineCommand, ensureEntry, toModelKey } from "../command.ts";
-import { ensureIndex, getChild, insertReference } from "../model.ts";
+import { type EntryKey, defineCommand, ensureEntry, toModelKey } from "../command.ts";
+import { getChild, insertReference } from "../model.ts";
 
-type InsertReferenceCommand = ["see" | "seeAlso", ...Base, EntryKey];
+type InsertReferenceCommand = ["see" | "seeAlso", EntryKey, EntryKey];
 export default defineCommand<InsertReferenceCommand>(
   {
     type: "array",
-    minItems: 4,
-    maxItems: 4,
+    minItems: 3,
+    maxItems: 3,
     prefixItems: [
       { oneOf: [{ const: "see" }, { const: "seeAlso" }] },
-      { $ref: "#/$defs/IndexId" },
       { $ref: "#/$defs/EntryKey" },
       { $ref: "#/$defs/EntryKey" },
     ],
   },
-  (cmd, indexes) => {
-    const [type, indexId, entryKey, [groupInputKey, mainEntryInputKey, subentryInputKey]] = cmd;
-    const index = ensureIndex(indexes, indexId);
-    const entry = ensureEntry(indexes, indexId, entryKey);
+  (cmd, index) => {
+    const [type, entryKey, [groupInputKey, mainEntryInputKey, subentryInputKey]] = cmd;
+    const entry = ensureEntry(index, entryKey);
     const groupKey = toModelKey(groupInputKey);
     const mainKey = toModelKey(mainEntryInputKey);
     const subentryKey =

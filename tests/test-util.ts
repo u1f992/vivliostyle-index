@@ -1,6 +1,6 @@
 import type { EntryBase, Index } from "../src/model.ts";
 
-export function dropSequentialId(indexes: Index[]): unknown {
+export function dropSequentialId(index: Index): unknown {
   function handleEntry(entry: EntryBase): unknown {
     return {
       ...entry,
@@ -9,8 +9,7 @@ export function dropSequentialId(indexes: Index[]): unknown {
       seeAlso: entry.seeAlso.map(([, ...rest]) => rest),
     };
   }
-  return indexes.map((index) => ({
-    id: index.id,
+  return {
     children: index.children.map((group) => ({
       key: group.key,
       children: group.children.map((main) => ({
@@ -24,5 +23,5 @@ export function dropSequentialId(indexes: Index[]): unknown {
         })),
       })),
     })),
-  }));
+  };
 }

@@ -1,18 +1,17 @@
-import { defineConfig, VFM } from "@vivliostyle/cli";
-import { index } from "@u1f992/vivliostyle-index";
+import { defineConfig, readMetadata, VFM } from "@vivliostyle/cli";
+import { createPlugin as createIndexPlugin } from "@u1f992/vivliostyle-index";
+
+const entry = ["001-050.md", "051-099.md", "index.md", "100-150.md"];
+const index = createIndexPlugin({ entries: entry, log: console.debug });
 
 export default defineConfig({
   title: "example",
   author: "u1f992",
   language: "ja",
   theme: "./css",
-  entry: ["001-050.md", "051-099.md", "100-150.md", "index.md"],
-  documentProcessor: (opt, meta) =>
-    VFM(opt, meta).use(index, {
-      entryProcessor: VFM(opt, meta),
-      indexEntryMap: {
-        "index.md": ["001-050.md", "051-099.md", "100-150.md"],
-      },
-      log: console.debug,
+  entry,
+  documentProcessor: (options, metadata) =>
+    VFM(options, metadata).use(index, {
+      createEntryProcessor: ({ contents }) => VFM(options, readMetadata(contents)),
     }),
 });

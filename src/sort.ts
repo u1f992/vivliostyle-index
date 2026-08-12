@@ -3,7 +3,6 @@ import {
   type Group,
   type HasKey,
   type Index,
-  type IndexId,
   type MainEntry,
   type Subentry,
 } from "./model.ts";
@@ -23,8 +22,6 @@ export type IndexComparator = {
   subentrySee: Comparator<Reference>;
   subentrySeeAlso: Comparator<Reference>;
 };
-export type Comparators = Partial<Record<IndexId, IndexComparator>>;
-
 export const byListedOrder: Comparator<Locator> & Comparator<Reference> = (a, b) =>
   a[0].localeCompare(b[0]);
 
@@ -62,28 +59,22 @@ export function byLocales(
   };
 }
 
-export function sort(indexes: Index[], comparators: Comparators) {
-  const newIndexes = structuredClone(indexes);
-  for (const index of newIndexes) {
-    const comparator = comparators[index.id];
-    if (!comparator) {
-      continue;
-    }
-    index.children.sort(comparator.group);
-    for (const group of index.children) {
-      group.children.sort(comparator.mainEntry);
-      for (const mainEntry of group.children) {
-        mainEntry.locators.sort(comparator.mainEntryLocator);
-        mainEntry.see.sort(comparator.mainEntrySee);
-        mainEntry.seeAlso.sort(comparator.mainEntrySeeAlso);
-        mainEntry.children.sort(comparator.subentry);
-        for (const subentry of mainEntry.children) {
-          subentry.locators.sort(comparator.subentryLocator);
-          subentry.see.sort(comparator.subentrySee);
-          subentry.seeAlso.sort(comparator.subentrySeeAlso);
-        }
+export function sort(index: Index, comparator: IndexComparator) {
+  const sorted = structuredClone(index);
+  sorted.children.sort(comparator.group);
+  for (const group of sorted.children) {
+    group.children.sort(comparator.mainEntry);
+    for (const mainEntry of group.children) {
+      mainEntry.locators.sort(comparator.mainEntryLocator);
+      mainEntry.see.sort(comparator.mainEntrySee);
+      mainEntry.seeAlso.sort(comparator.mainEntrySeeAlso);
+      mainEntry.children.sort(comparator.subentry);
+      for (const subentry of mainEntry.children) {
+        subentry.locators.sort(comparator.subentryLocator);
+        subentry.see.sort(comparator.subentrySee);
+        subentry.seeAlso.sort(comparator.subentrySeeAlso);
       }
     }
   }
-  return newIndexes;
+  return sorted;
 }

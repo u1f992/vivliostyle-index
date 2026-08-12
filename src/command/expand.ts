@@ -1,62 +1,43 @@
-import type { IndexId, EntryBase, Index, MainEntry, Subentry } from "../model.ts";
-import { defineCommand } from "../command.ts";
+import type { EntryBase, Index, MainEntry, Subentry } from "../model.ts";
 
 import type * as hast from "hast";
 
-export type ExpandCommand = ["expand", IndexId];
-export default defineCommand<ExpandCommand>(
-  {
-    type: "array",
-    minItems: 2,
-    maxItems: 2,
-    prefixItems: [{ const: "expand" }, { $ref: "#/$defs/IndexId" }],
-  },
-  (cmd, indexes: Index[], elem) => {
-    const indexId = cmd[1];
-    const target = indexes.find((idx) => idx.id === indexId);
-    if (!target) {
-      elem.children = [];
-      return;
-    }
+export default function expand(index: Index, elem: hast.Element, elementId: string) {
+  const indexGroups: hast.Element = {
+    type: "element",
+    tagName: "ol",
+    properties: { className: "index-groups" },
+    children: [],
+  };
 
-    // Create index groups container
-    const indexGroups: hast.Element = {
+  for (const group of index.children) {
+    const groupElement: hast.Element = {
       type: "element",
-      tagName: "ol",
-      properties: { className: "index-groups" },
-      children: [],
+      tagName: "li",
+      properties: { className: "index-group" },
+      children: [
+        ...JSON.parse(group.key[0]),
+        {
+          type: "element",
+          tagName: "ol",
+          properties: { className: "index-main-entries" },
+          children: generateMainEntries(
+            group.children,
+            elementId,
+            `${elementId}--${JSON.stringify(group.key)}`,
+          ),
+        },
+      ],
     };
+    indexGroups.children.push(groupElement);
+  }
 
-    // Generate groups
-    for (const group of target.children) {
-      const groupElement: hast.Element = {
-        type: "element",
-        tagName: "li",
-        properties: { className: "index-group" },
-        children: [
-          ...JSON.parse(group.key[0]),
-          {
-            type: "element",
-            tagName: "ol",
-            properties: { className: "index-main-entries" },
-            children: generateMainEntries(
-              group.children,
-              indexId,
-              `${indexId}--${JSON.stringify(group.key)}`,
-            ),
-          },
-        ],
-      };
-      indexGroups.children.push(groupElement);
-    }
-
-    elem.children = [indexGroups];
-  },
-);
+  elem.children = [indexGroups];
+}
 
 function generateMainEntries(
   mainEntries: MainEntry[],
-  indexId: IndexId,
+  elementId: string,
   slag: string,
 ): hast.ElementContent[] {
   return mainEntries.map((mainEntry) => {
@@ -74,13 +55,13 @@ function generateMainEntries(
           ? [generateLocators(mainEntry.locators, "index-main-entry-locators")]
           : []),
         ...(mainEntry.see.length !== 0
-          ? [generateReferences(mainEntry.see, "index-main-entry-see", indexId)]
+          ? [generateReferences(mainEntry.see, "index-main-entry-see", elementId)]
           : []),
         ...(mainEntry.seeAlso.length !== 0
-          ? [generateReferences(mainEntry.seeAlso, "index-main-entry-see-also", indexId)]
+          ? [generateReferences(mainEntry.seeAlso, "index-main-entry-see-also", elementId)]
           : []),
         ...(mainEntry.children.length !== 0
-          ? [generateSubentries(mainEntry.children, indexId, currentSlag)]
+          ? [generateSubentries(mainEntry.children, elementId, currentSlag)]
           : []),
       ],
     };
@@ -88,7 +69,7 @@ function generateMainEntries(
   });
 }
 
-function generateSubentries(subentries: Subentry[], indexId: IndexId, slag: string): hast.Element {
+function generateSubentries(subentries: Subentry[], elementId: string, slag: string): hast.Element {
   return {
     type: "element",
     tagName: "ol",
@@ -106,10 +87,10 @@ function generateSubentries(subentries: Subentry[], indexId: IndexId, slag: stri
           ? [generateLocators(subentry.locators, "index-subentry-locators")]
           : []),
         ...(subentry.see.length !== 0
-          ? [generateReferences(subentry.see, "index-subentry-see", indexId)]
+          ? [generateReferences(subentry.see, "index-subentry-see", elementId)]
           : []),
         ...(subentry.seeAlso.length !== 0
-          ? [generateReferences(subentry.seeAlso, "index-subentry-see-also", indexId)]
+          ? [generateReferences(subentry.seeAlso, "index-subentry-see-also", elementId)]
           : []),
       ],
     })),
@@ -161,7 +142,7 @@ function generateLocators(locators: EntryBase["locators"], className: string): h
 function generateReferences(
   references: EntryBase["see"],
   className: string,
-  indexId: IndexId,
+  elementId: string,
 ): hast.Element {
   return {
     type: "element",
@@ -177,7 +158,7 @@ function generateReferences(
                 type: "element",
                 tagName: "a",
                 properties: {
-                  href: `#${indexId}--${JSON.stringify(reference[0])}--${JSON.stringify(reference[1])}`,
+                  href: `#${elementId}--${JSON.stringify(reference[0])}--${JSON.stringify(reference[1])}`,
                 },
                 children: JSON.parse(reference[1][0]),
               },
@@ -187,7 +168,7 @@ function generateReferences(
                 type: "element",
                 tagName: "a",
                 properties: {
-                  href: `#${indexId}--${JSON.stringify(reference[0])}--${JSON.stringify(reference[1])}--${JSON.stringify(reference[2])}`,
+                  href: `#${elementId}--${JSON.stringify(reference[0])}--${JSON.stringify(reference[1])}--${JSON.stringify(reference[2])}`,
                 },
                 children: [
                   {
