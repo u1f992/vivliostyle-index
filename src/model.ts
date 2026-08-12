@@ -15,8 +15,7 @@ type Locator = PageLocator | RangeLocator;
 type MainEntryReference<TKey extends Key> = [TKey, TKey];
 type SubentryReference<TKey extends Key> = [TKey, TKey, TKey];
 export type Reference<TKey extends Key> =
-  | MainEntryReference<TKey>
-  | SubentryReference<TKey>;
+  MainEntryReference<TKey> | SubentryReference<TKey>;
 
 const sequentialIdBrand = Symbol();
 type SequentialId = string & { [sequentialIdBrand]: unknown };

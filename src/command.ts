@@ -75,9 +75,7 @@ const runSymbol = Symbol();
 
 export type Command<
   T extends (string | IndexId | PartialEntryKey)[] = (
-    | string
-    | IndexId
-    | PartialEntryKey
+    string | IndexId | PartialEntryKey
   )[],
 > = {
   [testSymbol]: (obj: unknown) => obj is T;
