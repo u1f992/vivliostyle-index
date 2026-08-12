@@ -20,7 +20,7 @@ void test("accepts main-entry and subentry references", () => {
     ),
   );
   assert.ok(
-    !testCommand(
+    testCommand(
       insertReference,
       "see,[ち,[著作権,ちょさくけん]],[[ち,ち],[知的財産権,ちてきざいさんけん]]",
     ),

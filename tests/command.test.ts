@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { run, test as testCommand } from "../src/command.ts";
 import insertPage from "../src/command/insert-page.ts";
-import type { Index } from "../src/model.ts";
+import { toHastChildren, type Index } from "../src/model.ts";
 
 void test("inserts the supplied locator URL", () => {
   const input = "[[R,R],[RPA,RPA]]";
@@ -13,4 +13,15 @@ void test("inserts the supplied locator URL", () => {
   run(insertPage, input, index, "chapter.html#RPA");
 
   assert.strictEqual(index.children[0]?.children[0]?.locators[0]?.[1], "chapter.html#RPA");
+});
+
+void test("uses a string key as both its heading and sort value", () => {
+  const input = "[R,RPA]";
+  const index: Index = { children: [] };
+
+  assert.ok(testCommand(insertPage, input));
+  run(insertPage, input, index, "chapter.html#RPA");
+
+  assert.deepStrictEqual(index.children[0]?.key, [toHastChildren("R"), "R"]);
+  assert.deepStrictEqual(index.children[0]?.children[0]?.key, [toHastChildren("RPA"), "RPA"]);
 });

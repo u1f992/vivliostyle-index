@@ -6,16 +6,21 @@ import YAML from "yaml";
 const ajv = new Ajv();
 const $schema = "https://json-schema.org/draft/2020-12/schema";
 
-type InputKey = [string, string];
+type InputKey = string | [string, string];
 type MainEntryKey = [InputKey, InputKey];
 type SubentryKey = [InputKey, InputKey, InputKey];
 export type EntryKey = MainEntryKey | SubentryKey;
 const $defs = {
   Key: {
-    type: "array",
-    minItems: 2,
-    maxItems: 2,
-    prefixItems: [{ type: "string" }, { type: "string" }],
+    oneOf: [
+      { type: "string" },
+      {
+        type: "array",
+        minItems: 2,
+        maxItems: 2,
+        prefixItems: [{ type: "string" }, { type: "string" }],
+      },
+    ],
   },
   MainEntryKey: {
     type: "array",
@@ -105,7 +110,8 @@ export function run<T extends (string | EntryKey)[]>(
   cmd[runSymbol](memo.get(input) as T, index, locatorHref, rangeEndHref);
 }
 
-export function toModelKey([word, reading]: InputKey): Key {
+export function toModelKey(inputKey: InputKey): Key {
+  const [word, reading] = typeof inputKey === "string" ? [inputKey, inputKey] : inputKey;
   return [toHastChildren(word), reading];
 }
 

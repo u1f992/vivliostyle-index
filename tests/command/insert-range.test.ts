@@ -11,7 +11,7 @@ void test("accepts range commands", () => {
   assert.ok(
     testCommand(insertRange, "range!,[[そ,そ],[相続,そうぞく],[相続人,そうぞくにん]],next.md#end"),
   );
-  assert.ok(!testCommand(insertRange, "range,[し,[自由利用,じゆうりよう]],'#end'"));
+  assert.ok(testCommand(insertRange, "range,[し,[自由利用,じゆうりよう]],'#end'"));
   assert.ok(!testCommand(insertRange, "/range,r0"));
 });
 
