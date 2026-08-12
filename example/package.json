@@ -1,4 +1,6 @@
 {
+  "name": "example",
+  "private": true,
   "type": "module",
   "dependencies": {
     "@vivliostyle/cli": "^9.6.0",

@@ -18,6 +18,7 @@
     "url": "https://github.com/u1f992/vivliostyle-index"
   },
   "type": "module",
+  "workspaces": ["example"],
   "devDependencies": {
     "@types/hast": "^2.3.10",
     "@types/node": "^24.3.0",
