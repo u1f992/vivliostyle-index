@@ -2,6 +2,11 @@
   "name": "example",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "vivliostyle build",
+    "preview": "vivliostyle preview",
+    "typecheck": "tsc --project ."
+  },
   "dependencies": {
     "@u1f992/vivliostyle-index": "file:..",
     "@vivliostyle/cli": "^11.1.0"

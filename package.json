@@ -4,11 +4,10 @@
   "description": "unified plugin that integrates automatic index generation into Vivliostyle CLI workflows.",
   "main": "dist/index.js",
   "scripts": {
-    "lint": "oxlint --fix src tests example/vivliostyle.config.ts",
-    "format": "oxfmt src tests example/vivliostyle.config.ts",
-    "build": "tsc && tsc --project tests && tsc --project example && tsc --noEmit --ignoreConfig oxfmt.config.ts oxlint.config.ts",
-    "test": "node --test \"tests/**/*.test.ts\"",
-    "example": "cd example && npx vivliostyle preview"
+    "lint": "tsc --noEmit --ignoreConfig oxlint.config.ts && oxlint --fix src tests example/vivliostyle.config.ts",
+    "format": "tsc --noEmit --ignoreConfig oxfmt.config.ts && oxfmt src tests example/vivliostyle.config.ts",
+    "build": "tsc",
+    "test": "tsc --project tests && node --test \"tests/**/*.test.ts\""
   },
   "keywords": [],
   "author": "Koutaro Mukai",
