@@ -41,7 +41,7 @@ export type TargetReference = string;
 export type Comparators = Readonly<Record<TargetReference, IndexComparator>>;
 
 export type CreatePluginOptions = {
-  entries: readonly string[];
+  entry: readonly string[];
   entryContext?: string;
   comparators?: Comparators;
   fileSystem?: Readonly<FileSystem>;
@@ -479,7 +479,8 @@ function emitDiagnostics(file: VFile, diagnostics: readonly Diagnostic[]): void 
 }
 
 export function createPlugin({
-  entries,
+  // Match the field name in Vivliostyle CLI's config.
+  entry: entries,
   entryContext,
   comparators = {},
   fileSystem = node,

@@ -49,7 +49,7 @@ function createProcessor({
 }) {
   const { fileSystem, reads } = createFileSystem(files, updates);
   const plugin = createPlugin({
-    entries,
+    entry: entries,
     entryContext: "/publication",
     ...(comparators === undefined ? {} : { comparators }),
     fileSystem,
@@ -175,7 +175,7 @@ void test("rejects comparator references that normalize to the same target", () 
   assert.throws(
     () =>
       createPlugin({
-        entries: ["index.md"],
+        entry: ["index.md"],
         entryContext: "/publication",
         comparators: {
           "index.md?view=a#index": defaultComparator("en"),
