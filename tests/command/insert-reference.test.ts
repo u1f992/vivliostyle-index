@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { run, test as testCommand } from "../../src/command.ts";
 import insertReference from "../../src/command/insert-reference.ts";
-import { toHastChildren, type Index } from "../../src/model.ts";
+import type { Index } from "../../src/model.ts";
 import { dropSequentialId } from "../test-util.ts";
 
 void test("accepts main-entry and subentry references", () => {
@@ -37,17 +37,17 @@ void test("inserts a reference", () => {
   assert.deepStrictEqual(dropSequentialId(index), {
     children: [
       {
-        key: [toHastChildren("ち"), "ち"],
+        key: ["ち", "ち"],
         children: [
           {
-            key: [toHastChildren("著作権"), "ちょさくけん"],
+            key: ["著作権", "ちょさくけん"],
             children: [],
             locators: [],
             see: [],
             seeAlso: [
               [
-                [toHastChildren("ち"), "ち"],
-                [toHastChildren("知的財産権"), "ちてきざいさんけん"],
+                ["ち", "ち"],
+                ["知的財産権", "ちてきざいさんけん"],
               ],
             ],
           },

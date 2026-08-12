@@ -1,11 +1,5 @@
-import {
-  hastChildrenToText,
-  type Group,
-  type HasKey,
-  type Index,
-  type MainEntry,
-  type Subentry,
-} from "./model.ts";
+import { fragmentToText } from "./html.ts";
+import type { Group, HasKey, Index, MainEntry, Subentry } from "./model.ts";
 
 type Locator = MainEntry["locators"][0];
 type Reference = MainEntry["see"][0];
@@ -53,7 +47,7 @@ export function byLocales(
       const key1Compare = collator.compare(a.key[1], b.key[1]);
       return key1Compare !== 0
         ? key1Compare
-        : collator.compare(hastChildrenToText(a.key[0]), hastChildrenToText(b.key[0]));
+        : collator.compare(fragmentToText(a.key[0]), fragmentToText(b.key[0]));
     }
     return 0;
   };

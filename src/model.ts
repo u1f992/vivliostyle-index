@@ -1,7 +1,3 @@
-import type * as hast from "hast";
-import { fromHtml } from "hast-util-from-html";
-import { toText } from "hast-util-to-text";
-
 export type Key = [string, string];
 export type HasKey = { key: Key };
 
@@ -45,28 +41,6 @@ export type MainEntry = HasKey & EntryBase & ParentOf<Subentry>;
 export type Group = HasKey & ParentOf<MainEntry>;
 
 export type Index = ParentOf<Group>;
-
-export function toHastChildren(value: string) {
-  const root = fromHtml(value, { fragment: true });
-  function stripPosition(node: hast.Root | hast.RootContent): void {
-    delete node.position;
-    if ("children" in node) {
-      for (const child of node.children) {
-        stripPosition(child);
-      }
-    }
-  }
-  stripPosition(root);
-  return JSON.stringify(root.children);
-}
-
-export function hastChildrenToText(hastJson: string) {
-  return toText({
-    type: "element",
-    tagName: "span",
-    children: JSON.parse(hastJson),
-  });
-}
 
 export function getChild<TChild extends HasKey>(parent: ParentOf<TChild>, key: Key) {
   return parent.children.find((child) => child.key[0] === key[0] && child.key[1] === key[1]);

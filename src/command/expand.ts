@@ -1,3 +1,4 @@
+import { parseFragment } from "../html.ts";
 import type { EntryBase, Index, MainEntry, Subentry } from "../model.ts";
 
 import type * as hast from "hast";
@@ -16,7 +17,7 @@ export default function expand(index: Index, elem: hast.Element, elementId: stri
       tagName: "li",
       properties: { className: "index-group" },
       children: [
-        ...JSON.parse(group.key[0]),
+        ...parseFragment(group.key[0]),
         {
           type: "element",
           tagName: "ol",
@@ -50,7 +51,7 @@ function generateMainEntries(
         id: currentSlag,
       },
       children: [
-        ...JSON.parse(mainEntry.key[0]),
+        ...parseFragment(mainEntry.key[0]),
         ...(mainEntry.locators.length !== 0
           ? [generateLocators(mainEntry.locators, "index-main-entry-locators")]
           : []),
@@ -82,7 +83,7 @@ function generateSubentries(subentries: Subentry[], elementId: string, slag: str
         id: `${slag}--${JSON.stringify(subentry.key)}`,
       },
       children: [
-        ...JSON.parse(subentry.key[0]),
+        ...parseFragment(subentry.key[0]),
         ...(subentry.locators.length !== 0
           ? [generateLocators(subentry.locators, "index-subentry-locators")]
           : []),
@@ -160,7 +161,7 @@ function generateReferences(
                 properties: {
                   href: `#${elementId}--${JSON.stringify(reference[0])}--${JSON.stringify(reference[1])}`,
                 },
-                children: JSON.parse(reference[1][0]),
+                children: parseFragment(reference[1][0]),
               },
             ]
           : [
@@ -174,7 +175,7 @@ function generateReferences(
                   {
                     type: "element",
                     tagName: "span",
-                    children: JSON.parse(reference[1][0]),
+                    children: parseFragment(reference[1][0]),
                   },
                   {
                     type: "element",
@@ -185,7 +186,7 @@ function generateReferences(
                   {
                     type: "element",
                     tagName: "span",
-                    children: JSON.parse(reference[2][0]),
+                    children: parseFragment(reference[2][0]),
                   },
                 ],
               },

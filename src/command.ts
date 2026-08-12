@@ -1,4 +1,4 @@
-import { ensureChild, toHastChildren, type EntryBase, type Index, type Key } from "./model.ts";
+import { ensureChild, type EntryBase, type Index, type Key } from "./model.ts";
 
 import { Ajv2020 as Ajv, type JSONSchemaType } from "ajv/dist/2020.js";
 import YAML from "yaml";
@@ -112,7 +112,7 @@ export function run<T extends (string | EntryKey)[]>(
 
 export function toModelKey(inputKey: InputKey): Key {
   const [word, reading] = typeof inputKey === "string" ? [inputKey, inputKey] : inputKey;
-  return [toHastChildren(word), reading];
+  return [word, reading];
 }
 
 export function ensureEntry(

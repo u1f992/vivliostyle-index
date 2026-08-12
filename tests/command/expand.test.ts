@@ -6,16 +6,16 @@ import { getAttribute } from "hast-util-get-attribute";
 import { select } from "hast-util-select";
 
 import expand from "../../src/command/expand.ts";
-import { toHastChildren, type Index } from "../../src/model.ts";
+import type { Index } from "../../src/model.ts";
 
 void test("renders an index into the target element", () => {
   const index: Index = {
     children: [
       {
-        key: [toHastChildren("ち"), "ち"],
+        key: ["ち", "ち"],
         children: [
           {
-            key: [toHastChildren("著作権"), "ちょさくけん"],
+            key: ["著作権", "ちょさくけん"],
             children: [],
             locators: [],
             see: [],

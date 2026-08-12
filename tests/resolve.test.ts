@@ -1,34 +1,28 @@
 import assert from "node:assert";
 import test from "node:test";
 
-import { toHastChildren, type Index } from "../src/model.ts";
+import type { Index } from "../src/model.ts";
 import { validateReferences } from "../src/resolve.ts";
 
 function createIndex(targetWord: string): Index {
   return {
     children: [
       {
-        key: [toHastChildren("ち"), "ち"],
+        key: ["ち", "ち"],
         children: [
           {
-            key: [toHastChildren("知的財産権"), "ちてきざいさんけん"],
+            key: ["知的財産権", "ちてきざいさんけん"],
             children: [],
             locators: [],
             see: [],
             seeAlso: [],
           },
           {
-            key: [toHastChildren("著作権"), "ちょさくけん"],
+            key: ["著作権", "ちょさくけん"],
             children: [],
             locators: [],
             see: [],
-            seeAlso: [
-              [
-                "",
-                [toHastChildren("ち"), "ち"],
-                [toHastChildren(targetWord), "ちてきざいさんけん"],
-              ] as never,
-            ],
+            seeAlso: [["", ["ち", "ち"], [targetWord, "ちてきざいさんけん"]] as never],
           },
         ],
       },

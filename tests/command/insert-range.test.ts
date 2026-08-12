@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { run, test as testCommand } from "../../src/command.ts";
 import { insertRange } from "../../src/command/insert-range.ts";
-import { toHastChildren, type Index } from "../../src/model.ts";
+import type { Index } from "../../src/model.ts";
 import { dropSequentialId } from "../test-util.ts";
 
 void test("accepts range commands", () => {
@@ -25,10 +25,10 @@ void test("inserts a range locator", () => {
   assert.deepStrictEqual(dropSequentialId(index), {
     children: [
       {
-        key: [toHastChildren("し"), "し"],
+        key: ["し", "し"],
         children: [
           {
-            key: [toHastChildren("自由利用"), "じゆうりよう"],
+            key: ["自由利用", "じゆうりよう"],
             children: [],
             locators: [[["chapter.html#start", "chapter.html#end"], false]],
             see: [],
