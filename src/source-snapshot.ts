@@ -1,5 +1,3 @@
-import { pathToFileURL } from "node:url";
-
 import type * as hast from "hast";
 import { getAttribute } from "hast-util-get-attribute";
 import { getXPath } from "hast-util-get-xpath";
@@ -8,6 +6,7 @@ import { selectAll } from "hast-util-select";
 import { parseInstruction, type ParsedInstruction } from "./instruction.ts";
 import { createLocationHref } from "./location.ts";
 import { messages, type MessageArguments } from "./messages.ts";
+import { documentUrl } from "./platform.ts";
 import {
   createTarget,
   createTargetKey,
@@ -52,7 +51,7 @@ function ensureId(tree: Readonly<hast.Root>, element: hast.Element): string {
 }
 
 export function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnapshot {
-  const baseUrl = pathToFileURL(sourcePath);
+  const baseUrl = documentUrl(sourcePath);
   const attachments: Attachment[] = [];
   const documentMessages: MessageArguments[] = [];
 

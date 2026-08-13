@@ -1,6 +1,6 @@
-import { fileURLToPath } from "node:url";
-
 import upath from "upath";
+
+import { documentPath } from "./platform.ts";
 
 export type Target = Readonly<{
   path: string;
@@ -10,11 +10,11 @@ export type Target = Readonly<{
 export type TargetKey = string;
 
 export function createTarget(url: URL): Target {
-  const documentUrl = new URL(url);
-  documentUrl.search = "";
-  documentUrl.hash = "";
+  const strippedUrl = new URL(url);
+  strippedUrl.search = "";
+  strippedUrl.hash = "";
   return {
-    path: upath.normalize(fileURLToPath(documentUrl)),
+    path: documentPath(strippedUrl),
     id: decodeURIComponent(url.hash.slice(1)),
   };
 }

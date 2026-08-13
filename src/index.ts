@@ -6,6 +6,7 @@ import { renderDocumentIndexes } from "./document-renderer.ts";
 import { nodeFileSystem, type FileSystem } from "./file-system.ts";
 import { IndexState, type CreateEntryProcessor } from "./index-state.ts";
 import { emitMessages, messages } from "./messages.ts";
+import { workingDirectory } from "./platform.ts";
 import type { Preambles } from "./render.ts";
 import type { Comparators } from "./sort.ts";
 import { mapByTarget } from "./target.ts";
@@ -59,7 +60,7 @@ export function createIndexPlugin({
 }: Readonly<CreatePluginOptions>): unified.Plugin<[Readonly<PluginOptions>]> {
   // Vivliostyle CLI also resolves an omitted entryContext against the working directory:
   // https://github.com/vivliostyle/vivliostyle-cli/blob/v11.1.0/src/config/resolve.ts#L627-L632
-  const context = upath.resolve(process.cwd(), entryContext ?? ".");
+  const context = upath.resolve(workingDirectory(), entryContext ?? ".");
   const entryPaths = entries.map((entry) => upath.resolve(context, entry));
   const state = new IndexState(entryPaths);
   const comparatorsByTarget = mapByTarget(comparators, context);
