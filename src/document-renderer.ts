@@ -7,7 +7,7 @@ import type { VFile } from "vfile";
 import type { BuiltIndex } from "./index-builder.ts";
 import { messages } from "./messages.ts";
 import { renderIndex } from "./render.ts";
-import { defaultComparator, sort, type IndexComparator } from "./sort.ts";
+import { defaultComparator, sort, type CreateIndexComparator } from "./sort.ts";
 import type { TargetKey } from "./target.ts";
 
 function findClosestLang(root: hast.Root, target: hast.Element): string | undefined {
@@ -37,7 +37,7 @@ export function renderDocumentIndexes(
   root: hast.Root,
   documentPath: string,
   indexes: ReadonlyMap<TargetKey, BuiltIndex>,
-  comparators: ReadonlyMap<TargetKey, IndexComparator>,
+  comparators: ReadonlyMap<TargetKey, CreateIndexComparator>,
   file: VFile,
 ): void {
   for (const [targetKey, { target, index }] of indexes) {
@@ -49,8 +49,8 @@ export function renderDocumentIndexes(
       file.message(...messages.missingIndexTarget(target));
       continue;
     }
-    const comparator =
-      comparators.get(targetKey) ?? defaultComparator(findClosestLang(root, element));
+    const createComparator = comparators.get(targetKey) ?? defaultComparator;
+    const comparator = createComparator(findClosestLang(root, element));
     renderIndex(sort(index, comparator), element, target.id);
   }
 }

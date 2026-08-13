@@ -9,7 +9,6 @@ import {
   parseInstruction,
 } from "../src/instruction.ts";
 import type { Index } from "../src/model.ts";
-import { dropSequences } from "./test-util.ts";
 
 const group = { html: "グループ", reading: "ぐるーぷ" };
 const mainEntry = { html: "主見出し", reading: "しゅみだし" };
@@ -318,7 +317,7 @@ void test("applies page instructions", () => {
 
   applyPageInstruction(index, instruction, "chapter.html#fair-use");
 
-  assert.deepStrictEqual(dropSequences(index), {
+  assert.deepStrictEqual(index, {
     children: [
       {
         key: { html: "し", reading: "し" },
@@ -343,7 +342,7 @@ void test("applies range instructions", () => {
 
   applyRangeInstruction(index, instruction, "chapter.html#start", "chapter.html#end");
 
-  assert.deepStrictEqual(dropSequences(index), {
+  assert.deepStrictEqual(index, {
     children: [
       {
         key: { html: "し", reading: "し" },
@@ -373,7 +372,7 @@ void test("applies reference instructions", () => {
 
   applyReferenceInstruction(index, instruction);
 
-  assert.deepStrictEqual(dropSequences(index), {
+  assert.deepStrictEqual(index, {
     children: [
       {
         key: { html: "ち", reading: "ち" },

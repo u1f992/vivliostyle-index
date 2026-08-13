@@ -90,7 +90,7 @@ void test("uses a comparator configured for the target", () => {
     root,
     documentPath,
     new Map([[targetKey, builtIndex]]),
-    new Map([[targetKey, reverseComparator]]),
+    new Map([[targetKey, () => reverseComparator]]),
     file,
   );
 
@@ -122,3 +122,8 @@ void test("reports a missing target", () => {
   assert.strictEqual(file.messages.length, 1);
   assert.strictEqual(file.messages[0]?.ruleId, "missing-index-target");
 });
+
+
+
+
+

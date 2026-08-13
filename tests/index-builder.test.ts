@@ -6,7 +6,6 @@ import { fromHtml } from "hast-util-from-html";
 import { buildIndexes } from "../src/index-builder.ts";
 import { collectSourceSnapshot } from "../src/source-snapshot.ts";
 import { createTargetKey } from "../src/target.ts";
-import { dropSequences } from "./test-util.ts";
 
 void test("builds range locators from ordered source snapshots", () => {
   const chapterPath = "/publication/chapter.md";
@@ -28,7 +27,7 @@ void test("builds range locators from ordered source snapshots", () => {
   const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
 
   assert.ok(builtIndex);
-  assert.deepStrictEqual(dropSequences(builtIndex.index), {
+  assert.deepStrictEqual(builtIndex.index, {
     children: [
       {
         key: { html: "a", reading: "a" },
@@ -131,5 +130,42 @@ void test("reports index-wide diagnostics to every document naming a target outs
   assert.deepStrictEqual(
     messages.get(brokenPath)?.map((message) => message[2]?.split(":")[1]),
     ["invalid-reference", "vacant-entry", "target-not-in-entries"],
+  );
+});
+
+void test("builds locators and references in the order the sources list them", () => {
+  const chapterPath = "/publication/chapter.md";
+  const indexPath = "/publication/index.md";
+  const sources = new Map([
+    [
+      chapterPath,
+      collectSourceSnapshot(
+        fromHtml(
+          [
+            '<span id="second" data-index="index.md?q=a!Apple#index"></span>',
+            '<span id="first" data-index="index.md?q=a!Apple#index"></span>',
+            '<span data-index="index.md?q=a!Apple|=>z!Zebra#index"></span>',
+            '<span data-index="index.md?q=a!Apple|=>b!Banana#index"></span>',
+            '<span data-index="index.md?q=z!Zebra#index"></span>',
+            '<span data-index="index.md?q=b!Banana#index"></span>',
+          ].join(""),
+        ),
+        chapterPath,
+      ),
+    ],
+    [indexPath, collectSourceSnapshot(fromHtml('<nav id="index"></nav>'), indexPath)],
+  ]);
+
+  const { indexes } = buildIndexes([indexPath, chapterPath], sources);
+  const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
+  const apple = builtIndex?.index.children[0]?.children[0];
+
+  assert.deepStrictEqual(
+    apple?.locators.map(({ locator }) => locator),
+    ["chapter.html#second", "chapter.html#first"],
+  );
+  assert.deepStrictEqual(
+    apple?.seeAlso.map(({ target }) => target.mainEntry.html),
+    ["Zebra", "Banana"],
   );
 });

@@ -2,7 +2,10 @@ import assert from "node:assert";
 import test from "node:test";
 
 import {
+  ensureEntry,
   findUnresolvedReference,
+  getChild,
+  insertLocator,
   revokeVacantEntries,
   type Index,
   type Subentry,
@@ -51,7 +54,6 @@ function createIndex(): Index {
             see: [],
             seeAlso: [
               {
-                sequence: "" as never,
                 target: { group, mainEntry: intellectualProperty },
               },
             ],
@@ -121,9 +123,7 @@ void test("revokes headings that hold no locator or reference", () => {
 });
 
 void test("keeps a heading that only carries subentries", () => {
-  const index = createIndexWithSubentry([
-    { sequence: "" as never, locator: "chapter.html#a", important: false },
-  ]);
+  const index = createIndexWithSubentry([{ locator: "chapter.html#a", important: false }]);
 
   const revoked = revokeVacantEntries(index);
 
@@ -141,4 +141,49 @@ void test("revokes a group left without headings", () => {
     { group, mainEntry: intellectualProperty, subentry: patent },
     { group, mainEntry: intellectualProperty },
   ]);
+});
+
+void test("revokes only the locator that was inserted", () => {
+  const index: Index = { children: [] };
+  const entry = ensureEntry(index, { group, mainEntry: intellectualProperty });
+  const locators = ["001.html#a", "002.html#b", "003.html#c"].map((locator) => ({
+    locator,
+    important: false,
+  }));
+  const revocations = locators.map((locator) => insertLocator(entry, locator));
+
+  revocations[0]?.();
+
+  assert.deepStrictEqual(
+    entry.locators.map(({ locator }) => locator),
+    ["002.html#b", "003.html#c"],
+  );
+});
+
+void test("distinguishes headings that share HTML but not their reading", () => {
+  const index: Index = { children: [] };
+  const first = { html: "One", reading: "ichi" };
+  const second = { html: "One", reading: "hitotsu" };
+
+  ensureEntry(index, { group, mainEntry: first });
+  ensureEntry(index, { group, mainEntry: second });
+
+  assert.deepStrictEqual(
+    index.children[0]?.children.map(({ key }) => key.reading),
+    ["ichi", "hitotsu"],
+  );
+  assert.strictEqual(getChild(index.children[0]!, { html: "One", reading: "san" }), undefined);
+});
+
+void test("revokes an inserted locator only once", () => {
+  const index: Index = { children: [] };
+  const entry = ensureEntry(index, { group, mainEntry: intellectualProperty });
+  const input = { locator: "001.html#a", important: false };
+  const revoke = insertLocator(entry, input);
+  insertLocator(entry, input);
+
+  revoke();
+  revoke();
+
+  assert.strictEqual(entry.locators.length, 1);
 });

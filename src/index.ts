@@ -13,8 +13,17 @@ export type { FileSystem } from "./file-system.ts";
 export { InstructionSyntaxError, parseInstruction } from "./instruction.ts";
 export type { ParsedEntry, ParsedInstruction } from "./instruction.ts";
 export type { EntryProcessorInput } from "./index-state.ts";
-export { byListedOrder, byLocales, defaultComparator } from "./sort.ts";
-export type { Comparators } from "./sort.ts";
+export type { Group, Index, Key, MainEntry, Subentry } from "./model.ts";
+export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";
+export type {
+  Comparators,
+  CreateIndexComparator,
+  CreateKeyComparator,
+  EntryComparator,
+  IndexComparator,
+  KeyComparator,
+  ListedKey,
+} from "./sort.ts";
 export type { Target } from "./target.ts";
 
 export type CreatePluginOptions = {

@@ -8,29 +8,46 @@ import { select } from "hast-util-select";
 import type { Index } from "../src/model.ts";
 import { renderIndex } from "../src/render.ts";
 
-void test("renders an index into the target element", () => {
-  const index: Index = {
-    children: [
-      {
-        key: { html: "ち", reading: "ち" },
-        children: [
-          {
-            key: { html: "著作権", reading: "ちょさくけん" },
-            children: [],
-            locators: [],
-            see: [],
-            seeAlso: [],
-          },
-        ],
-      },
-    ],
-  };
-  const target: hast.Element = {
+const index: Index = {
+  children: [
+    {
+      key: { html: "ち", reading: "ち" },
+      children: [
+        {
+          key: { html: "著作権", reading: "ちょさくけん" },
+          children: [],
+          locators: [{ locator: "003.html#a", important: false }],
+          see: [],
+          seeAlso: [],
+        },
+      ],
+    },
+    {
+      key: { html: "そ", reading: "そ" },
+      children: [
+        {
+          key: { html: "相続", reading: "そうぞく" },
+          children: [],
+          locators: [{ locator: "088.html#b", important: false }],
+          see: [],
+          seeAlso: [],
+        },
+      ],
+    },
+  ],
+};
+
+function createTarget(): hast.Element {
+  return {
     type: "element",
     tagName: "nav",
     properties: { id: "index" },
     children: [],
   };
+}
+
+void test("renders an index into the target element", () => {
+  const target = createTarget();
 
   renderIndex(index, target, "index");
 
@@ -38,3 +55,6 @@ void test("renders an index into the target element", () => {
   assert.ok(entry);
   assert.ok(getAttribute(entry, "id")?.startsWith("index--"));
 });
+
+
+

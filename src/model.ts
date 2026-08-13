@@ -24,14 +24,6 @@ export type UnresolvedReference = Readonly<{
 
 type ReferenceTarget = EntryAddress;
 
-const sequentialIdBrand = Symbol();
-type SequentialId = string & { [sequentialIdBrand]: unknown };
-let counter = 0n;
-function getId(): SequentialId {
-  counter++;
-  return counter.toString().padStart(16, "0") as SequentialId;
-}
-
 export type Revocation = () => void;
 
 function insert<T>(list: T[], item: T): Revocation {
@@ -45,18 +37,15 @@ function insert<T>(list: T[], item: T): Revocation {
 }
 
 type LocatorEntry = Readonly<{
-  sequence: SequentialId;
   locator: Locator;
   important: boolean;
 }>;
-type LocatorInput = Omit<LocatorEntry, "sequence">;
 type HasLocators = { locators: LocatorEntry[] };
-export function insertLocator(entry: HasLocators, input: LocatorInput): Revocation {
-  return insert(entry.locators, { sequence: getId(), ...input });
+export function insertLocator(entry: HasLocators, locatorEntry: LocatorEntry): Revocation {
+  return insert(entry.locators, { ...locatorEntry });
 }
 
 type ReferenceEntry = Readonly<{
-  sequence: SequentialId;
   target: ReferenceTarget;
 }>;
 type HasReferences = {
@@ -68,7 +57,7 @@ export function insertReference(
   type: "see" | "seeAlso",
   target: ReferenceTarget,
 ): Revocation {
-  return insert(entry[type], { sequence: getId(), target });
+  return insert(entry[type], { target });
 }
 
 export type EntryBase = HasLocators & HasReferences;

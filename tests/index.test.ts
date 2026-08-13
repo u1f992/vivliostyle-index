@@ -182,7 +182,7 @@ void test("uses a comparator selected by path and element ID", () => {
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    comparators: [[{ path: "index.md", id: "index" }, defaultComparator("en")]],
+    comparators: [[{ path: "index.md", id: "index" }, () => defaultComparator("en")]],
   });
   const root = fromHtml(files["/publication/index.md"]);
 
@@ -203,8 +203,8 @@ void test("uses the last comparator configured for an index target", () => {
     entries: ["index.md", "chapter.md"],
     files,
     comparators: [
-      [{ path: "index.md", id: "index" }, defaultComparator("en")],
-      [{ path: "index.md", id: "index" }, defaultComparator("sv")],
+      [{ path: "index.md", id: "index" }, () => defaultComparator("en")],
+      [{ path: "index.md", id: "index" }, () => defaultComparator("sv")],
     ],
   });
   const root = fromHtml(files["/publication/index.md"]);
@@ -1073,3 +1073,59 @@ void test("resolves entries and index targets above the entry context", () => {
 
   assert.deepStrictEqual(locatorLinks(root), ["../publication/chapter.html#%2Fhtml%2Fbody%2Fspan"]);
 });
+
+void test("keeps locators in entry and document order when a source is processed again", () => {
+  const files = {
+    "/publication/001.md": '<span id="a" data-index="index.md?q=a!Apple#index"></span>',
+    "/publication/index.md": '<nav id="index"></nav>',
+    "/publication/100.md": '<span id="c" data-index="index.md?q=a!Apple#index"></span>',
+  };
+  const { processor } = createProcessor({
+    entries: ["001.md", "index.md", "100.md"],
+    files,
+  });
+  const indexRoot = () => fromHtml(files["/publication/index.md"]);
+
+  const initial = indexRoot();
+  processor.runSync(initial, { path: "/publication/index.md" });
+  processor.runSync(
+    fromHtml(
+      [
+        '<span id="b" data-index="index.md?q=a!Apple#index"></span>',
+        '<span id="a" data-index="index.md?q=a!Apple#index"></span>',
+      ].join(""),
+    ),
+    { path: "/publication/001.md" },
+  );
+  const reloaded = indexRoot();
+  processor.runSync(reloaded, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(locatorLinks(initial), ["001.html#a", "100.html#c"]);
+  assert.deepStrictEqual(locatorLinks(reloaded), ["001.html#b", "001.html#a", "100.html#c"]);
+});
+
+void test("resolves a configured comparator with the closest language", () => {
+  const files = {
+    "/publication/chapter.md": '<span data-index="index.md?q=z!Z#index">Z</span>',
+    "/publication/index.md": '<section lang="sv"><nav id="index"></nav></section>',
+  };
+  const requestedLocales: Intl.LocalesArgument[] = [];
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+    comparators: [
+      [
+        { path: "index.md", id: "index" },
+        (locales) => {
+          requestedLocales.push(locales);
+          return defaultComparator(locales);
+        },
+      ],
+    ],
+  });
+
+  processor.runSync(fromHtml(files["/publication/index.md"]), { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(requestedLocales, ["sv"]);
+});
+
