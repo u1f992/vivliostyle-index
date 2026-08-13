@@ -1,4 +1,7 @@
 import assert from "node:assert";
+import fs from "node:fs";
+import os from "node:os";
+import process from "node:process";
 import test from "node:test";
 
 import type * as hast from "hast";
@@ -7,6 +10,7 @@ import { getAttribute } from "hast-util-get-attribute";
 import { select, selectAll } from "hast-util-select";
 import { toText } from "hast-util-to-text";
 import unified from "unified";
+import upath from "upath";
 import VFile from "vfile";
 
 import {
@@ -1268,4 +1272,34 @@ void test("warns through the pipeline when the document language cannot be colla
     ["unsupported-language"],
   );
   assert.strictEqual(groupHeadings(root).length, 2);
+});
+
+void test("resolves relative paths against the working directory at plugin creation", () => {
+  const original = process.cwd();
+  const directory = fs.realpathSync(os.tmpdir());
+  process.chdir(directory);
+  const base = upath.normalize(directory);
+  const chapterHtml = '<span id="a" data-index="index.md?q=a!Apple#index"></span>';
+  const files = {
+    [upath.join(base, "chapter.md")]: chapterHtml,
+    [upath.join(base, "index.md")]: '<nav id="index"></nav>',
+  };
+  try {
+    const { fileSystem } = createFileSystem(files);
+    const plugin = createIndexPlugin({ entry: ["chapter.md", "index.md"], fileSystem });
+    const processor = unified().use(plugin, {
+      createEntryProcessor: () => entryProcessor as never,
+    });
+    process.chdir(original);
+    const file = VFile({ path: "chapter.md" });
+
+    processor.runSync(fromHtml(chapterHtml), file);
+
+    assert.deepStrictEqual(
+      file.messages.map((message) => message.ruleId),
+      [],
+    );
+  } finally {
+    process.chdir(original);
+  }
 });

@@ -58,9 +58,10 @@ export function createIndexPlugin({
   preambles = [],
   fileSystem = nodeFileSystem,
 }: Readonly<CreatePluginOptions>): unified.Plugin<[Readonly<PluginOptions>]> {
+  const cwd = workingDirectory();
   // Vivliostyle CLI also resolves an omitted entryContext against the working directory:
   // https://github.com/vivliostyle/vivliostyle-cli/blob/v11.1.0/src/config/resolve.ts#L627-L632
-  const context = upath.resolve(workingDirectory(), entryContext ?? ".");
+  const context = upath.resolve(cwd, entryContext ?? ".");
   const entryPaths = entries.map((entry) => upath.resolve(context, entry));
   const state = new IndexState(entryPaths);
   const comparatorsByTarget = mapByTarget(comparators, context);
@@ -74,7 +75,7 @@ export function createIndexPlugin({
         return;
       }
 
-      const documentPath = upath.resolve(rawPath);
+      const documentPath = upath.resolve(cwd, rawPath);
       const root = tree as hast.Root;
       state.initialize(fileSystem, createEntryProcessor);
 
