@@ -61,12 +61,23 @@ function createProcessor({
   return { processor, reads };
 }
 
-function locatorLinks(root: hast.Root | hast.Element) {
-  return selectAll(".index-main-entry-locators a", root).map((link) => getAttribute(link, "href"));
+const mainEntryOf = (targetId: string) => `#${targetId} > ol > li > ol > li`;
+const locatorsOf = (targetId: string) => `${mainEntryOf(targetId)} > ol:nth-of-type(1)`;
+
+const GROUP = "#index > ol > li";
+const MAIN_ENTRY = mainEntryOf("index");
+const MAIN_ENTRY_KEY = `${MAIN_ENTRY} > span`;
+const LOCATORS = locatorsOf("index");
+const SEE = `${MAIN_ENTRY} > ol:nth-of-type(2)`;
+const SEE_ALSO = `${MAIN_ENTRY} > ol:nth-of-type(3)`;
+const SUBENTRY = `${MAIN_ENTRY} > ol:nth-of-type(4) > li`;
+
+function locatorLinks(root: hast.Root | hast.Element, targetId = "index") {
+  return selectAll(`${locatorsOf(targetId)} a`, root).map((link) => getAttribute(link, "href"));
 }
 
 function groupHeadings(root: hast.Root | hast.Element) {
-  return selectAll("li.index-group", root).map((group) => toText(group).slice(0, 1));
+  return selectAll(GROUP, root).map((group) => toText(group).slice(0, 1));
 }
 
 void test("logs VFile messages by severity", (context) => {
@@ -268,7 +279,7 @@ void test("parses a heading word as inner HTML", () => {
 
   processor.runSync(root, { path: "/publication/index.md" });
 
-  const heading = select(".index-main-entry-key > em", root);
+  const heading = select(`${MAIN_ENTRY_KEY} > em`, root);
   assert.ok(heading);
   assert.strictEqual(toText(heading), "京都大学");
 });
@@ -287,10 +298,10 @@ void test("decodes a URL-encoded DSL query value", () => {
 
   processor.runSync(root, { path: "/publication/index.md" });
 
-  const groupHeading = select("li.index-group", root);
+  const groupHeading = select(GROUP, root);
   assert.ok(groupHeading);
   assert.match(toText(groupHeading), /^a@b\+c/);
-  const heading = select(".index-main-entry-key > em", root);
+  const heading = select(`${MAIN_ENTRY_KEY} > em`, root);
   assert.ok(heading);
   assert.strictEqual(toText(heading), "C|D & E+F");
 });
@@ -313,15 +324,11 @@ void test("wraps page and range locators in the template of their instruction", 
   processor.runSync(root, { path: "/publication/index.md" });
 
   assert.deepStrictEqual(
-    selectAll(".index-main-entry-locators li > strong > a", root).map((link) =>
-      getAttribute(link, "href"),
-    ),
+    selectAll(`${LOCATORS} li > strong > a`, root).map((link) => getAttribute(link, "href")),
     ["chapter.html#page"],
   );
   assert.deepStrictEqual(
-    selectAll(".index-main-entry-locators li > em > a", root).map((link) =>
-      getAttribute(link, "href"),
-    ),
+    selectAll(`${LOCATORS} li > em > a`, root).map((link) => getAttribute(link, "href")),
     ["chapter.html#range-start", "chapter.html#range-end"],
   );
   assert.strictEqual(select("slot", root), null);
@@ -369,9 +376,7 @@ void test("links a reference to a later entry", () => {
   const reference = selectAll("a", root).find((link) =>
     getAttribute(link, "href")?.startsWith("#"),
   );
-  const target = selectAll("li", root).find(
-    (entry) => getAttribute(entry, "class") === "index-main-entry" && select("em", entry) !== null,
-  );
+  const target = selectAll(MAIN_ENTRY, root).find((entry) => select("em", entry) !== null);
   assert.ok(reference);
   assert.ok(target);
   assert.strictEqual(getAttribute(reference, "href"), `#${getAttribute(target, "id")}`);
@@ -393,8 +398,8 @@ void test("links a reference to a later subentry", () => {
 
   processor.runSync(root, { path: "/publication/index.md" });
 
-  const reference = select(".index-main-entry-see a", root);
-  const target = select("li.index-subentry", root);
+  const reference = select(`${SEE} a`, root);
+  const target = select(SUBENTRY, root);
   assert.ok(reference);
   assert.ok(target);
   assert.strictEqual(getAttribute(reference, "href"), `#${getAttribute(target, "id")}`);
@@ -478,7 +483,7 @@ void test("revokes a reference whose target was revoked for being vacant", () =>
 
   processor.runSync(root, file);
 
-  assert.deepStrictEqual(selectAll("li.index-main-entry", root), []);
+  assert.deepStrictEqual(selectAll(MAIN_ENTRY, root), []);
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
     ["invalid-reference", "vacant-entry", "invalid-reference", "vacant-entry"],
@@ -502,7 +507,7 @@ void test("keeps a heading whose locator outlives a revoked reference", () => {
   processor.runSync(root, { path: "/publication/index.md" });
 
   assert.deepStrictEqual(locatorLinks(root), ["chapter.html#apple"]);
-  assert.strictEqual(select(".index-main-entry-see", root), null);
+  assert.strictEqual(select(SEE, root)?.children.length, 0);
 });
 
 void test("revokes a heading left without content by an invalid range", () => {
@@ -574,7 +579,7 @@ void test("revokes an unresolved see also reference while keeping a resolved one
 
   assert.deepStrictEqual(groupHeadings(root), ["a", "b"]);
   assert.deepStrictEqual(
-    selectAll(".index-main-entry-see-also a", root).map((link) => toText(link)),
+    selectAll(`${SEE_ALSO} a`, root).map((link) => toText(link)),
     ["Banana"],
   );
 });
@@ -739,8 +744,8 @@ void test("moves an attachment from an old target document to a new one", () => 
   processor.runSync(newRoot, { path: "/publication/new.md" });
 
   assert.deepStrictEqual(updates, ["/publication/old.md", "/publication/new.md"]);
-  assert.deepStrictEqual(locatorLinks(oldRoot), []);
-  assert.deepStrictEqual(locatorLinks(newRoot), ["chapter.html#%2Fhtml%2Fbody%2Fspan"]);
+  assert.deepStrictEqual(locatorLinks(oldRoot, "old"), []);
+  assert.deepStrictEqual(locatorLinks(newRoot, "new"), ["chapter.html#%2Fhtml%2Fbody%2Fspan"]);
 });
 
 void test("moves an attachment between fragments in the same document", () => {
@@ -763,8 +768,8 @@ void test("moves an attachment between fragments in the same document", () => {
   const newTarget = select("#new", currentRoot);
   assert.ok(oldTarget);
   assert.ok(newTarget);
-  assert.deepStrictEqual(locatorLinks(oldTarget), []);
-  assert.deepStrictEqual(locatorLinks(newTarget), ["#%2Fhtml%2Fbody%2Fspan"]);
+  assert.deepStrictEqual(locatorLinks(currentRoot, "old"), []);
+  assert.deepStrictEqual(locatorLinks(currentRoot, "new"), ["#%2Fhtml%2Fbody%2Fspan"]);
 });
 
 void test("keeps range end references separate between index targets", () => {

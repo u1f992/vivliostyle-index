@@ -45,7 +45,7 @@ void test("renders indexes into targets in the current document", () => {
   renderDocumentIndexes(root, documentPath, new Map([[targetKey, builtIndex]]), new Map(), file);
 
   assert.deepStrictEqual(
-    selectAll("li.index-group", root).map((group) => toText(group).slice(0, 1)),
+    selectAll("#index > ol > li", root).map((group) => toText(group).slice(0, 1)),
     ["a", "z"],
   );
   assert.strictEqual(file.messages.length, 0);
@@ -65,7 +65,7 @@ void test("renders into a target whose ID requires CSS escaping", () => {
 
   renderDocumentIndexes(root, documentPath, new Map([[targetKey, builtIndex]]), new Map(), file);
 
-  assert.strictEqual(selectAll("li.index-group", root).length, 2);
+  assert.strictEqual(selectAll('[id="index/main"] > ol > li', root).length, 2);
   assert.strictEqual(file.messages.length, 0);
 });
 
@@ -96,7 +96,7 @@ void test("uses a comparator configured for the target", () => {
   );
 
   assert.deepStrictEqual(
-    selectAll("li.index-group", root).map((group) => toText(group).slice(0, 1)),
+    selectAll("#index > ol > li", root).map((group) => toText(group).slice(0, 1)),
     ["z", "a"],
   );
 });
@@ -187,7 +187,7 @@ void test("reports a language the runtime cannot sort by", () => {
     ["unsupported-language"],
   );
   assert.deepStrictEqual(
-    selectAll("li.index-group", root).map((group) => toText(group).slice(0, 1)),
+    selectAll("#index > ol > li", root).map((group) => toText(group).slice(0, 1)),
     ["a", "z"],
   );
 });

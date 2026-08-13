@@ -38,6 +38,12 @@ const index: Index = {
   ],
 };
 
+const GROUP = "#index > ol > li";
+const MAIN_ENTRY = `${GROUP} > ol > li`;
+const LOCATORS = `${MAIN_ENTRY} > ol:nth-of-type(1)`;
+const SUBENTRY = `${MAIN_ENTRY} > ol:nth-of-type(4) > li`;
+const SUBENTRY_LOCATORS = `${SUBENTRY} > ol:nth-of-type(1)`;
+
 function createTarget(): hast.Element {
   return {
     type: "element",
@@ -47,12 +53,16 @@ function createTarget(): hast.Element {
   };
 }
 
+function rootOf(target: hast.Element): hast.Root {
+  return { type: "root", children: [target] };
+}
+
 void test("renders an index into the target element", () => {
   const target = createTarget();
 
   renderIndex(index, target, "index");
 
-  const entry = select(".index-main-entry", target);
+  const entry = select(MAIN_ENTRY, rootOf(target));
   assert.ok(entry);
   assert.ok(getAttribute(entry, "id")?.startsWith("index--"));
 });
@@ -86,16 +96,96 @@ void test("wraps every key in an element of its own", () => {
   renderIndex(indexWithSubentry, target, "index");
 
   assert.deepStrictEqual(
-    selectAll("li.index-group > span.index-group-key", target).map((key) => toText(key)),
+    selectAll(`${GROUP} > span`, rootOf(target)).map((key) => toText(key)),
     ["そ"],
   );
   assert.deepStrictEqual(
-    selectAll("li.index-main-entry > span.index-main-entry-key", target).map((key) => toText(key)),
+    selectAll(`${MAIN_ENTRY} > span`, rootOf(target)).map((key) => toText(key)),
     ["相続"],
   );
   assert.deepStrictEqual(
-    selectAll("li.index-subentry > span.index-subentry-key", target).map((key) => toText(key)),
+    selectAll(`${SUBENTRY} > span`, rootOf(target)).map((key) => toText(key)),
     ["一身専属"],
+  );
+});
+
+function listChildren(element: hast.Element): number {
+  return element.children.filter((child) => child.type === "element" && child.tagName === "ol")
+    .length;
+}
+
+void test("gives every entry the same lists in the same order", () => {
+  const target = createTarget();
+  const indexWithEveryList: Index = {
+    children: [
+      {
+        key: { html: "あ", reading: "あ" },
+        children: [
+          {
+            key: { html: "A", reading: "あ" },
+            locators: [{ locator: "001.html#a" }],
+            see: [
+              {
+                target: {
+                  group: { html: "い", reading: "い" },
+                  mainEntry: { html: "B", reading: "び" },
+                },
+              },
+            ],
+            seeAlso: [
+              {
+                target: {
+                  group: { html: "う", reading: "う" },
+                  mainEntry: { html: "C", reading: "し" },
+                },
+              },
+            ],
+            children: [
+              {
+                key: { html: "D", reading: "でぃ" },
+                locators: [],
+                see: [],
+                seeAlso: [],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        key: { html: "え", reading: "え" },
+        children: [
+          {
+            key: { html: "E", reading: "い" },
+            locators: [{ locator: "002.html#b" }],
+            see: [],
+            seeAlso: [],
+            children: [],
+          },
+        ],
+      },
+    ],
+  };
+
+  renderIndex(indexWithEveryList, target, "index");
+  const root = rootOf(target);
+
+  assert.deepStrictEqual(selectAll(MAIN_ENTRY, root).map(listChildren), [4, 4]);
+  assert.deepStrictEqual(selectAll(SUBENTRY, root).map(listChildren), [3]);
+  assert.deepStrictEqual(
+    selectAll(`${LOCATORS} > li > a`, root).map((link) => getAttribute(link, "href")),
+    ["001.html#a", "002.html#b"],
+  );
+  assert.deepStrictEqual(
+    selectAll(`${MAIN_ENTRY} > ol:nth-of-type(2) > li > a`, root).map((link) => toText(link)),
+    ["B"],
+  );
+  assert.deepStrictEqual(
+    selectAll(`${MAIN_ENTRY} > ol:nth-of-type(3) > li > a`, root).map((link) => toText(link)),
+    ["C"],
+  );
+  assert.deepStrictEqual(
+    selectAll(`${SUBENTRY} > span`, root).map((key) => toText(key)),
+    ["D"],
   );
 });
 
@@ -131,19 +221,17 @@ void test("wraps a locator in the template of its instruction", () => {
   renderIndex(indexWithTemplate, target, "index");
 
   assert.deepStrictEqual(
-    selectAll(".index-main-entry-locators > li > strong > a", target).map((link) =>
+    selectAll(`${LOCATORS} > li > strong > a`, rootOf(target)).map((link) =>
       getAttribute(link, "href"),
     ),
     ["104.html#a"],
   );
   assert.deepStrictEqual(
-    selectAll(".index-main-entry-locators > li > a", target).map((link) =>
-      getAttribute(link, "href"),
-    ),
+    selectAll(`${LOCATORS} > li > a`, rootOf(target)).map((link) => getAttribute(link, "href")),
     ["112.html#b"],
   );
   assert.deepStrictEqual(
-    selectAll(".index-subentry-locators > li > em > a", target).map((link) =>
+    selectAll(`${SUBENTRY_LOCATORS} > li > em > a`, rootOf(target)).map((link) =>
       getAttribute(link, "href"),
     ),
     ["106.html#c"],
