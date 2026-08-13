@@ -28,7 +28,7 @@
     "oxlint-tsgolint": "^7.0.2001",
     "typescript": "^7.0.2",
     "unified": "^9.0.0",
-    "vfile": "^4.2.1"
+    "vfile": "^4.0.0"
   },
   "dependencies": {
     "hast-util-from-html": "^1.0.2",

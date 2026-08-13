@@ -17,6 +17,11 @@ export type EntryAddress = Readonly<{
   subentry?: Key;
 }>;
 
+export type UnresolvedReference = Readonly<{
+  target: EntryAddress;
+  missing: keyof EntryAddress;
+}>;
+
 type ReferenceTarget = EntryAddress;
 
 const sequentialIdBrand = Symbol();
@@ -99,4 +104,35 @@ export function ensureEntry(index: Index, address: EntryAddress): EntryBase {
         see: [],
         seeAlso: [],
       });
+}
+
+export function validateReferences(index: Index): UnresolvedReference[] {
+  const unresolvedReferences: UnresolvedReference[] = [];
+  const references: ReferenceEntry[] = [];
+  for (const group of index.children) {
+    for (const mainEntry of group.children) {
+      references.push(...mainEntry.see, ...mainEntry.seeAlso);
+      for (const subentry of mainEntry.children) {
+        references.push(...subentry.see, ...subentry.seeAlso);
+      }
+    }
+  }
+
+  for (const { target } of references) {
+    const group = getChild(index, target.group);
+    if (!group) {
+      unresolvedReferences.push({ target, missing: "group" });
+      continue;
+    }
+    const mainEntry = getChild(group, target.mainEntry);
+    if (!mainEntry) {
+      unresolvedReferences.push({ target, missing: "mainEntry" });
+      continue;
+    }
+    if (target.subentry !== undefined && !getChild(mainEntry, target.subentry)) {
+      unresolvedReferences.push({ target, missing: "subentry" });
+    }
+  }
+
+  return unresolvedReferences;
 }

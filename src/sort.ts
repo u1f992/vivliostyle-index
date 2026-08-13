@@ -1,5 +1,8 @@
+import upath from "upath";
+
 import { fragmentToText } from "./html.ts";
 import type { Group, HasKey, Index, MainEntry, Subentry } from "./model.ts";
+import { createTargetKey, type TargetKey } from "./target.ts";
 
 type Locator = MainEntry["locators"][0];
 type Reference = MainEntry["see"][0];
@@ -16,6 +19,14 @@ export type IndexComparator = {
   subentrySee: Comparator<Reference>;
   subentrySeeAlso: Comparator<Reference>;
 };
+
+export type IndexTarget = Readonly<{
+  path: string;
+  id: string;
+}>;
+
+export type Comparators = readonly (readonly [IndexTarget, IndexComparator])[];
+
 export const byListedOrder: Comparator<Locator> & Comparator<Reference> = (a, b) =>
   a.sequence.localeCompare(b.sequence);
 
@@ -76,4 +87,35 @@ export function sort(index: Index, comparator: IndexComparator) {
     }
   }
   return sorted;
+}
+
+export function defaultComparator(locales?: Intl.LocalesArgument): IndexComparator {
+  return {
+    group: byLocales(locales),
+    mainEntry: byLocales(locales),
+    mainEntryLocator: byListedOrder,
+    mainEntrySee: byLocales(locales),
+    mainEntrySeeAlso: byLocales(locales),
+    subentry: byLocales(locales),
+    subentryLocator: byListedOrder,
+    subentrySee: byLocales(locales),
+    subentrySeeAlso: byLocales(locales),
+  };
+}
+
+export function normalizeComparators(
+  comparators: Comparators,
+  entryContext: string,
+): ReadonlyMap<TargetKey, IndexComparator> {
+  const normalized = new Map<TargetKey, IndexComparator>();
+
+  for (const [{ path, id }, comparator] of comparators) {
+    const targetKey = createTargetKey({
+      documentPath: upath.resolve(entryContext, path),
+      elementId: id,
+    });
+    normalized.set(targetKey, comparator);
+  }
+
+  return normalized;
 }

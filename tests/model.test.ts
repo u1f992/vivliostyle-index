@@ -1,8 +1,7 @@
 import assert from "node:assert";
 import test from "node:test";
 
-import type { Index } from "../src/model.ts";
-import { validateReferences } from "../src/resolve.ts";
+import { validateReferences, type Index } from "../src/model.ts";
 
 function createIndex(targetWord: string): Index {
   return {
@@ -43,7 +42,15 @@ void test("accepts references to registered entries", () => {
 });
 
 void test("reports references to unregistered entries", () => {
-  assert.strictEqual(validateReferences(createIndex("工業所有権")).length, 1);
+  assert.deepStrictEqual(validateReferences(createIndex("工業所有権")), [
+    {
+      target: {
+        group: { html: "ち", reading: "ち" },
+        mainEntry: { html: "工業所有権", reading: "ちてきざいさんけん" },
+      },
+      missing: "mainEntry",
+    },
+  ]);
 });
 
 void test("reports a reference that uses different inner HTML", () => {

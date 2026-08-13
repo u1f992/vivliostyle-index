@@ -1,4 +1,11 @@
-import type { EntryAddress, Key } from "./model.ts";
+import {
+  ensureEntry,
+  insertLocator,
+  insertReference,
+  type EntryAddress,
+  type Index,
+  type Key,
+} from "./model.ts";
 
 export type ParsedEntry = EntryAddress;
 
@@ -47,8 +54,11 @@ type MutableParsedEntry = {
 };
 
 const graphemeSegmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
+// Unicode general categories Cc (control) and Cs (surrogate) are forbidden in readings.
 const forbiddenReadingCharacter = /[\p{Cc}\p{Cs}]/u;
+// Unicode general categories Cc (control) and Cs (surrogate) are forbidden in HTML except for permitted whitespace.
 const forbiddenHtmlCharacter = /[\p{Cc}\p{Cs}]/u;
+// Unicode general categories Cc (control) and Cs (surrogate) are forbidden in references.
 const forbiddenReferenceCharacter = /[\p{Cc}\p{Cs}]/u;
 const permittedHtmlControlCharacters = new Set(["\t", "\n", "\r", "\r\n"]);
 const escapableCharacters = new Set(["\\", "@", "!", "|"]);
@@ -238,4 +248,35 @@ export function parseInstruction(source: string): ParsedInstruction {
     return parseReference(input, entry, operatorOffset + 2, "seeAlso");
   }
   return syntaxError(input, operatorOffset, "unknown index instruction operator");
+}
+
+type PageInstruction = Extract<ParsedInstruction, { type: "page" }>;
+type RangeInstruction = Extract<ParsedInstruction, { type: "range" }>;
+type ReferenceInstruction = Extract<ParsedInstruction, { type: "see" | "seeAlso" }>;
+
+export function applyPageInstruction(
+  index: Index,
+  instruction: PageInstruction,
+  locatorHref: string,
+): void {
+  insertLocator(ensureEntry(index, instruction.entry), {
+    locator: locatorHref,
+    important: instruction.important,
+  });
+}
+
+export function applyRangeInstruction(
+  index: Index,
+  instruction: RangeInstruction,
+  startHref: string,
+  endHref: string,
+): void {
+  insertLocator(ensureEntry(index, instruction.entry), {
+    locator: { start: startHref, end: endHref },
+    important: instruction.important,
+  });
+}
+
+export function applyReferenceInstruction(index: Index, instruction: ReferenceInstruction): void {
+  insertReference(ensureEntry(index, instruction.entry), instruction.type, instruction.target);
 }
