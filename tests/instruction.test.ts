@@ -73,7 +73,7 @@ void test("parses see and see-also instructions", () => {
     parseInstruction(
       "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|=>べつぐるーぷ@別グループ!みだしご@見出し語",
     ),
-    { type: "seeAlso", address, target },
+    { type: "see-also", address, target },
   );
   assert.deepStrictEqual(
     parseInstruction("group!main|->target-group!target-main!target-subentry"),
@@ -299,7 +299,7 @@ void test("reads a reference target up to the template", () => {
     template: "<em><slot></slot></em>",
   });
   assert.deepStrictEqual(parseInstruction("group!main|=>tg!tm\\|x"), {
-    type: "seeAlso",
+    type: "see-also",
     address: {
       group: { html: "group", reading: "group" },
       entry: { html: "main", reading: "main" },
@@ -460,7 +460,7 @@ void test("applies the template of a range instruction", () => {
 void test("applies reference instructions", () => {
   const index: Index = { children: [] };
   const instruction = parseInstruction("ち!ちょさくけん@著作権|=>ち!ちてきざいさんけん@知的財産権");
-  assert.ok(instruction.type === "see" || instruction.type === "seeAlso");
+  assert.ok(instruction.type === "see" || instruction.type === "see-also");
 
   applyReferenceInstruction(index, instruction);
 
@@ -494,7 +494,7 @@ void test("applies the template of a reference instruction", () => {
   const instruction = parseInstruction(
     "ち!ちょさくけん@著作権|->ち!ちてきざいさんけん@知的財産権|<em><slot></slot></em>",
   );
-  assert.ok(instruction.type === "see" || instruction.type === "seeAlso");
+  assert.ok(instruction.type === "see" || instruction.type === "see-also");
 
   applyReferenceInstruction(index, instruction);
 

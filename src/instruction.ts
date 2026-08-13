@@ -5,6 +5,7 @@ import {
   type EntryAddress,
   type Index,
   type Key,
+  type ReferenceType,
   type Revocation,
 } from "./model.ts";
 
@@ -21,7 +22,7 @@ export type ParsedInstruction =
       template?: string;
     }>
   | Readonly<{
-      type: "see" | "seeAlso";
+      type: ReferenceType;
       address: EntryAddress;
       target: EntryAddress;
       template?: string;
@@ -255,7 +256,7 @@ function parseReference(
   input: ParserInput,
   address: EntryAddress,
   targetOffset: number,
-  type: "see" | "seeAlso",
+  type: ReferenceType,
 ): ParsedInstruction {
   const { address: target, offset } = parseHierarchy(input, targetOffset);
   return offset === input.graphemes.length
@@ -285,14 +286,14 @@ export function parseInstruction(source: string): ParsedInstruction {
     return parseReference(input, address, operatorOffset + 2, "see");
   }
   if (startsWith(input, operatorOffset, ["=", ">"])) {
-    return parseReference(input, address, operatorOffset + 2, "seeAlso");
+    return parseReference(input, address, operatorOffset + 2, "see-also");
   }
   return syntaxError(input, operatorOffset, "unknown index instruction operator");
 }
 
 type PageInstruction = Extract<ParsedInstruction, { type: "page" }>;
 type RangeInstruction = Extract<ParsedInstruction, { type: "range" }>;
-type ReferenceInstruction = Extract<ParsedInstruction, { type: "see" | "seeAlso" }>;
+type ReferenceInstruction = Extract<ParsedInstruction, { type: ReferenceType }>;
 
 export function applyPageInstruction(
   index: Index,

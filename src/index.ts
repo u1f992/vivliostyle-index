@@ -30,6 +30,7 @@ export type {
   Key,
   Locator,
   Reference,
+  ReferenceType,
   Subentry,
 } from "./model.ts";
 export type { CreatePreamble, Preambles } from "./render.ts";

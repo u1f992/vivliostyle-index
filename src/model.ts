@@ -46,17 +46,26 @@ export type Reference = Readonly<{
   target: EntryAddress;
   template?: string;
 }>;
+export type ReferenceType = "see" | "see-also";
 type HasReferences = {
   see: Reference[];
   seeAlso: Reference[];
 };
+const referenceListKey = {
+  see: "see",
+  "see-also": "seeAlso",
+} as const satisfies Record<ReferenceType, keyof HasReferences>;
+
 export function insertReference(
   entry: HasReferences,
-  type: "see" | "seeAlso",
+  type: ReferenceType,
   target: EntryAddress,
   template?: string,
 ): Revocation {
-  return insert(entry[type], { target, ...(template === undefined ? {} : { template }) });
+  return insert(entry[referenceListKey[type]], {
+    target,
+    ...(template === undefined ? {} : { template }),
+  });
 }
 
 export type EntryBase = HasLocators & HasReferences;
