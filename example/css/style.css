@@ -6,6 +6,10 @@
   }
 }
 
+.page {
+  break-after: page;
+}
+
 .index-group {
   list-style: none;
 }
