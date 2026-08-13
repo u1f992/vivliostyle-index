@@ -42,7 +42,14 @@ void test("renders indexes into targets in the current document", () => {
   const root = fromHtml('<nav id="index"></nav>');
   const file = VFile({ path: documentPath });
 
-  renderDocumentIndexes(root, documentPath, new Map([[targetKey, builtIndex]]), new Map(), file);
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map(),
+    new Map(),
+    file,
+  );
 
   assert.deepStrictEqual(
     selectAll("#index > ol > li", root).map((group) => toText(group).slice(0, 1)),
@@ -63,7 +70,14 @@ void test("renders into a target whose ID requires CSS escaping", () => {
   const root = fromHtml('<nav id="index/main"></nav>');
   const file = VFile({ path: documentPath });
 
-  renderDocumentIndexes(root, documentPath, new Map([[targetKey, builtIndex]]), new Map(), file);
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map(),
+    new Map(),
+    file,
+  );
 
   assert.strictEqual(selectAll('[id="index/main"] > ol > li', root).length, 2);
   assert.strictEqual(file.messages.length, 0);
@@ -92,6 +106,7 @@ void test("uses a comparator configured for the target", () => {
     documentPath,
     new Map([[targetKey, builtIndex]]),
     new Map([[targetKey, () => reverseComparator]]),
+    new Map(),
     file,
   );
 
@@ -117,6 +132,7 @@ void test("reports a missing target", () => {
     documentPath,
     new Map([[targetKey, builtIndex]]),
     new Map(),
+    new Map(),
     file,
   );
 
@@ -139,6 +155,7 @@ void test("exposes the sorted index on the target element", () => {
     root,
     documentPath,
     new Map([[targetKey, builtIndex]]),
+    new Map(),
     new Map(),
     VFile({ path: documentPath }),
   );
@@ -178,6 +195,7 @@ void test("reports a language the runtime cannot sort by", () => {
         },
       ],
     ]),
+    new Map(),
     file,
   );
 
@@ -218,6 +236,7 @@ void test("takes an empty language as no language at all", () => {
         },
       ],
     ]),
+    new Map(),
     file,
   );
 
@@ -251,6 +270,7 @@ void test("reports a language the runtime has no collation for", () => {
         },
       ],
     ]),
+    new Map(),
     file,
   );
 
@@ -287,6 +307,7 @@ void test("keeps a language the runtime can collate", () => {
         },
       ],
     ]),
+    new Map(),
     file,
   );
 

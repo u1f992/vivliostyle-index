@@ -1,8 +1,6 @@
-import upath from "upath";
-
 import { fragmentToText } from "./html.ts";
 import type { Entry, Group, HasKey, Index, Key, Reference, Subentry } from "./model.ts";
-import { createTargetKey, type Target, type TargetKey } from "./target.ts";
+import type { Target } from "./target.ts";
 
 type Comparator<T> = NonNullable<Parameters<Array<T>["sort"]>[0]>;
 export type IndexComparator = {
@@ -117,21 +115,4 @@ export function defaultComparator(locales: Intl.LocalesArgument): IndexComparato
     subentrySee: compare,
     subentrySeeAlso: compare,
   };
-}
-
-export function normalizeComparators(
-  comparators: Comparators,
-  entryContext: string,
-): ReadonlyMap<TargetKey, CreateIndexComparator> {
-  const normalized = new Map<TargetKey, CreateIndexComparator>();
-
-  for (const [{ path, id }, comparator] of comparators) {
-    const targetKey = createTargetKey({
-      path: upath.resolve(entryContext, path),
-      id,
-    });
-    normalized.set(targetKey, comparator);
-  }
-
-  return normalized;
 }

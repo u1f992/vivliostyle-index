@@ -29,10 +29,11 @@ An index exists once an instruction naming its target is accepted, and its targe
 
 ## Generated markup
 
-An index replaces the contents of its target element with a single list. The shape below is fixed, so a stylesheet addresses the index through it. The target also carries the whole index as JSON in a `data-index-result` attribute.
+An index replaces the contents of its target element with a list, preceded by a preamble when one is configured for that target. The shape below is fixed, so a stylesheet addresses the index through it. The target also carries the whole index as JSON in a `data-index-result` attribute.
 
 ```
 target
+├── preamble               the element its factory returns
 └── ol                     groups
     └── li                 group
         ├── span           group heading
@@ -50,4 +51,4 @@ target
                         └── ol     "see also" references
 ```
 
-The lists under a heading are always present and always in this order; an empty one holds no items. A locator item holds one link, or a start link, an empty `<span>`, and an end link for a range; a template wraps those nodes without reordering them. A reference item holds one link whose contents are the target heading, or the target main heading, an empty `<span>`, and the target subheading when the reference points at a subheading.
+A preamble is rendered whenever its target is replaced, including when the index holds no group; without one, the list is the target's only child. The lists under a heading are always present and always in this order; an empty one holds no items. A locator item holds one link, or a start link, an empty `<span>`, and an end link for a range; a template wraps those nodes without reordering them. A reference item holds one link whose contents are the target heading, or the target main heading, an empty `<span>`, and the target subheading when the reference points at a subheading.

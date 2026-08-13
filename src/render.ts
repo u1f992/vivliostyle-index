@@ -1,13 +1,25 @@
 import { parseFragment } from "./html.ts";
 import type { Entry, Group, Index, Locator, Reference, Subentry } from "./model.ts";
+import type { Target } from "./target.ts";
 import { fillSlot } from "./template.ts";
 
 import type * as hast from "hast";
 import { h } from "hastscript";
 
-export function renderIndex(index: Index, target: hast.Element, indexId: string): void {
+export type CreatePreamble = (createElement: typeof h) => () => hast.Element;
+export type Preambles = readonly (readonly [Target, CreatePreamble])[];
+
+export function renderIndex(
+  index: Index,
+  target: hast.Element,
+  indexId: string,
+  preamble?: hast.Element,
+): void {
   target.properties = { ...target.properties, dataIndexResult: JSON.stringify(index) };
-  target.children = index.children.length === 0 ? [] : [generateGroups(index.children, indexId)];
+  target.children = [
+    ...(preamble === undefined ? [] : [preamble]),
+    ...(index.children.length === 0 ? [] : [generateGroups(index.children, indexId)]),
+  ];
 }
 
 const generateGroups = (groups: Group[], indexId: string): hast.Element =>

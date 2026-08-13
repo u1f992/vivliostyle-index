@@ -15,6 +15,7 @@ import {
   logMessages,
   type Comparators,
   type FileSystem,
+  type Preambles,
 } from "../src/index.ts";
 
 const entryProcessor = {
@@ -41,11 +42,13 @@ function createProcessor({
   entries,
   files,
   comparators,
+  preambles,
   updates,
 }: {
   entries: readonly string[];
   files: Readonly<Record<string, string>>;
   comparators?: Comparators;
+  preambles?: Preambles;
   updates?: string[];
 }) {
   const { fileSystem, reads } = createFileSystem(files, updates);
@@ -53,6 +56,7 @@ function createProcessor({
     entry: entries,
     entryContext: "/publication",
     ...(comparators === undefined ? {} : { comparators }),
+    ...(preambles === undefined ? {} : { preambles }),
     fileSystem,
   });
   const processor = unified().use(plugin, {
@@ -154,6 +158,39 @@ void test("renders an index after source entries that follow it in the document"
   processor.runSync(root, { path });
 
   assert.deepStrictEqual(locatorLinks(root), ["#%2Fhtml%2Fbody%2Fspan"]);
+});
+
+void test("puts a configured preamble into the index it names", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span data-index="index.md?q=a!Apple#subject">Apple</span>',
+      '<span data-index="index.md?q=t!Ada#person">Ada</span>',
+    ].join(""),
+    "/publication/index.md":
+      '<nav id="subject"></nav><nav id="person"></nav><nav id="unnamed"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+    preambles: [
+      [{ path: "index.md", id: "subject" }, (h) => () => h("p", "事項")],
+      [{ path: "index.md", id: "person" }, (h) => () => h("p", "人名")],
+      [{ path: "index.md", id: "unnamed" }, (h) => () => h("p", "出ない")],
+    ],
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(
+    selectAll("#subject > p", root).map((preamble) => toText(preamble)),
+    ["事項"],
+  );
+  assert.deepStrictEqual(
+    selectAll("#person > p", root).map((preamble) => toText(preamble)),
+    ["人名"],
+  );
+  assert.deepStrictEqual(selectAll("#unnamed > p", root), []);
 });
 
 void test("keeps target fragments as distinct indexes", () => {

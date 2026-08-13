@@ -1,12 +1,13 @@
 import type * as hast from "hast";
 import { getAttribute } from "hast-util-get-attribute";
 import { selectAll } from "hast-util-select";
+import { h } from "hastscript";
 import { EXIT, visitParents } from "unist-util-visit-parents";
 import type { VFile } from "vfile";
 
 import type { BuiltIndex } from "./index-builder.ts";
 import { messages } from "./messages.ts";
-import { renderIndex } from "./render.ts";
+import { renderIndex, type CreatePreamble } from "./render.ts";
 import { defaultComparator, sort, type CreateIndexComparator } from "./sort.ts";
 import type { TargetKey } from "./target.ts";
 
@@ -58,6 +59,7 @@ export function renderDocumentIndexes(
   documentPath: string,
   indexes: ReadonlyMap<TargetKey, BuiltIndex>,
   comparators: ReadonlyMap<TargetKey, CreateIndexComparator>,
+  preambles: ReadonlyMap<TargetKey, CreatePreamble>,
   file: VFile,
 ): void {
   for (const [targetKey, { target, index }] of indexes) {
@@ -71,6 +73,6 @@ export function renderDocumentIndexes(
     }
     const createComparator = comparators.get(targetKey) ?? defaultComparator;
     const comparator = createComparator(resolveLocales(root, element, file));
-    renderIndex(sort(index, comparator), element, target.id);
+    renderIndex(sort(index, comparator), element, target.id, preambles.get(targetKey)?.(h)());
   }
 }

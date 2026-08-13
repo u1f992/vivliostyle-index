@@ -5,6 +5,7 @@ import type * as hast from "hast";
 import { getAttribute } from "hast-util-get-attribute";
 import { select, selectAll } from "hast-util-select";
 import { toText } from "hast-util-to-text";
+import { h } from "hastscript";
 
 import type { Index } from "../src/model.ts";
 import { renderIndex } from "../src/render.ts";
@@ -236,6 +237,28 @@ void test("wraps a locator in the template of its instruction", () => {
     ),
     ["106.html#c"],
   );
+});
+
+function childTagNames(element: hast.Element): string[] {
+  return element.children.flatMap((child) => (child.type === "element" ? [child.tagName] : []));
+}
+
+void test("puts a preamble before the list", () => {
+  const target = createTarget();
+
+  renderIndex(index, target, "index", h("p", "凡例"));
+
+  assert.deepStrictEqual(childTagNames(target), ["p", "ol"]);
+  assert.strictEqual(toText(target.children[0] as hast.Element), "凡例");
+});
+
+void test("keeps a preamble on an index without groups", () => {
+  const target = createTarget();
+
+  renderIndex({ children: [] }, target, "index", h("p", "凡例"));
+
+  assert.deepStrictEqual(childTagNames(target), ["p"]);
+  assert.strictEqual(getAttribute(target, "data-index-result"), '{"children":[]}');
 });
 
 void test("exposes the rendered index as JSON on the target element", () => {

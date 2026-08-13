@@ -26,3 +26,14 @@ export function resolveTarget(reference: string, baseUrl: URL): Target {
 export function createTargetKey(target: Target): TargetKey {
   return JSON.stringify([target.path, target.id]);
 }
+
+export function mapByTarget<T>(
+  configurations: readonly (readonly [Target, T])[],
+  context: string,
+): ReadonlyMap<TargetKey, T> {
+  const mapped = new Map<TargetKey, T>();
+  for (const [{ path, id }, configuration] of configurations) {
+    mapped.set(createTargetKey({ path: upath.resolve(context, path), id }), configuration);
+  }
+  return mapped;
+}

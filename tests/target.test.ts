@@ -2,7 +2,7 @@ import assert from "node:assert";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 
-import { createTarget, createTargetKey, resolveTarget } from "../src/target.ts";
+import { createTarget, createTargetKey, mapByTarget, resolveTarget } from "../src/target.ts";
 
 void test("separates a document target from its query and fragment", () => {
   const url = new URL(
@@ -24,4 +24,22 @@ void test("resolves targets relative to the source document", () => {
     id: "main",
   });
   assert.strictEqual(createTargetKey(target), '["/publication/index.md","main"]');
+});
+
+void test("resolves configured targets and keeps the last configuration", () => {
+  const first = () => () => ({ type: "element", tagName: "p", children: [] });
+  const second = () => () => ({ type: "element", tagName: "div", children: [] });
+  const configurations = mapByTarget(
+    [
+      [{ path: "indexes/index.md", id: "main" }, first],
+      [{ path: "indexes/index.md", id: "main" }, second],
+    ],
+    "/publication",
+  );
+
+  assert.strictEqual(configurations.size, 1);
+  assert.strictEqual(
+    configurations.get(createTargetKey({ path: "/publication/indexes/index.md", id: "main" })),
+    second,
+  );
 });

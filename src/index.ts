@@ -6,7 +6,9 @@ import { renderDocumentIndexes } from "./document-renderer.ts";
 import { nodeFileSystem, type FileSystem } from "./file-system.ts";
 import { IndexState, type CreateEntryProcessor } from "./index-state.ts";
 import { emitMessages, messages } from "./messages.ts";
-import { normalizeComparators, type Comparators } from "./sort.ts";
+import type { Preambles } from "./render.ts";
+import type { Comparators } from "./sort.ts";
+import { mapByTarget } from "./target.ts";
 
 export { nodeFileSystem } from "./file-system.ts";
 export type { FileSystem } from "./file-system.ts";
@@ -23,6 +25,7 @@ export type {
   Reference,
   Subentry,
 } from "./model.ts";
+export type { CreatePreamble, Preambles } from "./render.ts";
 export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";
 export type {
   Comparators,
@@ -39,6 +42,7 @@ export type CreatePluginOptions = {
   entry: readonly string[];
   entryContext?: string;
   comparators?: Comparators;
+  preambles?: Preambles;
   fileSystem?: Readonly<FileSystem>;
 };
 
@@ -50,12 +54,14 @@ export function createIndexPlugin({
   entry: entries,
   entryContext,
   comparators = [],
+  preambles = [],
   fileSystem = nodeFileSystem,
 }: Readonly<CreatePluginOptions>): unified.Plugin<[Readonly<PluginOptions>]> {
   const context = upath.resolve(process.cwd(), entryContext ?? ".");
   const entryPaths = entries.map((entry) => upath.resolve(context, entry));
   const state = new IndexState(entryPaths);
-  const normalizedComparators = normalizeComparators(comparators, context);
+  const comparatorsByTarget = mapByTarget(comparators, context);
+  const preamblesByTarget = mapByTarget(preambles, context);
 
   return ({ createEntryProcessor }) =>
     (tree, file) => {
@@ -76,7 +82,14 @@ export function createIndexPlugin({
       }
 
       emitMessages(file, state.messagesFor(documentPath));
-      renderDocumentIndexes(root, documentPath, state.indexes, normalizedComparators, file);
+      renderDocumentIndexes(
+        root,
+        documentPath,
+        state.indexes,
+        comparatorsByTarget,
+        preamblesByTarget,
+        file,
+      );
     };
 }
 

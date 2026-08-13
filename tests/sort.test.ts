@@ -7,11 +7,9 @@ import {
   byListedOrder,
   byLocales,
   defaultComparator,
-  normalizeComparators,
   sort,
   type CreateKeyComparator,
 } from "../src/sort.ts";
-import { createTargetKey } from "../src/target.ts";
 
 const symbols = { html: "記号", reading: "記号" };
 const aRow = { html: "あ行", reading: "あ" };
@@ -381,23 +379,4 @@ void test("compares keys by reading before falling back to the rendered text", (
     ["a", "same"],
     ["<b>z</b>", "same"],
   ]);
-});
-
-void test("normalizes comparator targets and keeps the last configuration", () => {
-  const first = () => defaultComparator("en");
-  const second = () => defaultComparator("ja");
-  const comparators = normalizeComparators(
-    [
-      [{ path: "indexes/index.md", id: "main" }, first],
-      [{ path: "indexes/index.md", id: "main" }, second],
-    ],
-    "/publication",
-  );
-  const key = createTargetKey({
-    path: "/publication/indexes/index.md",
-    id: "main",
-  });
-
-  assert.strictEqual(comparators.size, 1);
-  assert.strictEqual(comparators.get(key), second);
 });
