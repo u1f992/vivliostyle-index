@@ -22,9 +22,11 @@ export function renderIndex(
   ];
 }
 
+const idSegmentEncoder = new TextEncoder();
+
 const encodeIdSegment = (value: string): string => {
   let binary = "";
-  for (const byte of new TextEncoder().encode(value)) {
+  for (const byte of idSegmentEncoder.encode(value)) {
     binary += String.fromCharCode(byte);
   }
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
