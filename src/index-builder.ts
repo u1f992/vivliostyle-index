@@ -34,13 +34,13 @@ function findRangeEndViolation(
   attachment: Attachment,
   rangeEnd: Target,
 ): MessageArguments | undefined {
-  const rangeEndSource = sources.get(rangeEnd.path);
-  if (!rangeEndSource?.ids.includes(rangeEnd.id)) {
-    return messages.missingRangeEnd(rangeEnd);
-  }
   const endEntryIndex = entryPaths.indexOf(rangeEnd.path);
   if (endEntryIndex === -1) {
     return messages.rangeEndNotInEntries(rangeEnd);
+  }
+  const rangeEndSource = sources.get(rangeEnd.path);
+  if (!rangeEndSource?.ids.includes(rangeEnd.id)) {
+    return messages.missingRangeEnd(rangeEnd);
   }
   const sourceEntryIndex = entryPaths.indexOf(attachment.sourcePath);
   const endPrecedesSource = endEntryIndex < sourceEntryIndex;
