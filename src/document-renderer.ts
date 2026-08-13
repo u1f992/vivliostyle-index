@@ -1,6 +1,7 @@
 import type * as hast from "hast";
 import { getAttribute } from "hast-util-get-attribute";
 import { selectAll } from "hast-util-select";
+import { EXIT, visitParents } from "unist-util-visit-parents";
 import type { VFile } from "vfile";
 
 import type { BuiltIndex } from "./index-builder.ts";
@@ -9,26 +10,22 @@ import { renderIndex } from "./render.ts";
 import { defaultComparator, sort, type IndexComparator } from "./sort.ts";
 import type { TargetKey } from "./target.ts";
 
-function findClosestLang(
-  root: hast.Root | hast.Element,
-  target: hast.Element,
-  inheritedLang?: string,
-): string | undefined {
-  const lang =
-    root.type === "element" ? (getAttribute(root, "lang") ?? inheritedLang) : inheritedLang;
-  if (root === target) {
-    return lang;
-  }
-  for (const child of root.children) {
-    if (child.type !== "element") {
-      continue;
+function findClosestLang(root: hast.Root, target: hast.Element): string | undefined {
+  let closestLang: string | undefined;
+  visitParents(root, "element", (element, ancestors) => {
+    if (element !== target) {
+      return;
     }
-    const found = findClosestLang(child, target, lang);
-    if (found !== undefined) {
-      return found;
-    }
-  }
-  return undefined;
+    closestLang = [...ancestors, element]
+      .reverse()
+      .flatMap((ancestor) => {
+        const lang = ancestor.type === "element" ? getAttribute(ancestor, "lang") : null;
+        return lang === null ? [] : [lang];
+      })
+      .at(0);
+    return EXIT;
+  });
+  return closestLang;
 }
 
 function findTargetElement(root: hast.Root, elementId: string): hast.Element | undefined {

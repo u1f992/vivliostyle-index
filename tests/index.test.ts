@@ -234,6 +234,26 @@ void test("uses the closest language when no comparator is configured", () => {
   assert.deepStrictEqual(groupHeadings(root), ["z", "ä"]);
 });
 
+void test("prefers the target language to ancestor languages", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span data-index="index.md?q=z!Z#index">Z</span>',
+      '<span data-index="index.md?q=ä!Ä#index">Ä</span>',
+    ].join(""),
+    "/publication/index.md":
+      '<html lang="en"><section lang="sv"><nav id="index" lang="en"></nav></section></html>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(groupHeadings(root), ["ä", "z"]);
+});
+
 void test("parses a heading word as inner HTML", () => {
   const files = {
     "/publication/chapter.md":
