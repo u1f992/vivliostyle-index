@@ -98,6 +98,30 @@ void test("flags only the first update whose snapshot disagrees with the entry p
   assert.strictEqual(edited.entryProcessorMismatch, false);
 });
 
+void test("marks documents whose diagnostics change after another source updates", () => {
+  const applePath = "/publication/apple.md";
+  const bananaPath = "/publication/banana.md";
+  const files = {
+    [applePath]: '<span data-index="outside.md?q=a!Apple#index"></span>',
+    [bananaPath]: '<span data-index="outside.md?q=b!Banana|->a!Apple#index"></span>',
+  };
+  const fileSystem: FileSystem = {
+    readFileSync: (path) => files[path as keyof typeof files],
+    touchSync: () => {},
+  };
+  const state = new IndexState([applePath, bananaPath]);
+  state.initialize(fileSystem, () => entryProcessor as never);
+  state.update(applePath, fromHtml(files[applePath]));
+
+  const affected = state.update(applePath, fromHtml(""));
+
+  assert.ok(affected.affectedPaths.has(bananaPath));
+  assert.deepStrictEqual(
+    state.messagesFor(bananaPath).map((message) => message[2]?.split(":")[1]),
+    ["invalid-reference", "vacant-entry", "target-not-in-entries"],
+  );
+});
+
 void test("applies an entry listed twice once", () => {
   const chapterPath = "/publication/chapter.md";
   const indexPath = "/publication/index.md";

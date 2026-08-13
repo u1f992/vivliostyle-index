@@ -62,6 +62,23 @@ function affectedDocumentPaths(
   return targetPaths;
 }
 
+function documentsWithChangedMessages(
+  previous: ReadonlyMap<string, readonly MessageArguments[]>,
+  current: ReadonlyMap<string, readonly MessageArguments[]>,
+): Set<string> {
+  const changed = new Set<string>();
+  for (const documentPath of new Set([...previous.keys(), ...current.keys()])) {
+    if (
+      !deepEqual(previous.get(documentPath) ?? [], current.get(documentPath) ?? [], {
+        strict: true,
+      })
+    ) {
+      changed.add(documentPath);
+    }
+  }
+  return changed;
+}
+
 export class IndexState {
   readonly entryPaths: readonly string[];
   readonly entryPathSet: ReadonlySet<string>;
@@ -122,8 +139,12 @@ export class IndexState {
     }
 
     this.#sources.set(documentPath, current);
-    const affectedPaths = affectedDocumentPaths(this.#sources, documentPath, previous, current);
+    const previousMessages = this.#messages;
     this.#rebuild();
+    const affectedPaths = new Set([
+      ...affectedDocumentPaths(this.#sources, documentPath, previous, current),
+      ...documentsWithChangedMessages(previousMessages, this.#messages),
+    ]);
     return { affectedPaths, entryProcessorMismatch: firstUpdate && previous !== undefined };
   }
 
