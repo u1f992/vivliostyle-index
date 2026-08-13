@@ -1,5 +1,3 @@
-import { Buffer } from "node:buffer";
-
 import { parseFragment } from "./html.ts";
 import type { Entry, Group, Index, Key, Locator, Reference, Subentry } from "./model.ts";
 import type { Target } from "./target.ts";
@@ -24,8 +22,13 @@ export function renderIndex(
   ];
 }
 
-const encodeIdSegment = (value: string): string =>
-  Buffer.from(value, "utf-8").toString("base64url");
+const encodeIdSegment = (value: string): string => {
+  let binary = "";
+  for (const byte of new TextEncoder().encode(value)) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+};
 
 const headingId = (indexId: string, keys: readonly Key[]): string =>
   [indexId, ...keys.flatMap(({ reading, html }) => [reading, html])].map(encodeIdSegment).join(".");

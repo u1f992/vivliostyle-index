@@ -1,5 +1,4 @@
 import assert from "node:assert";
-import { Buffer } from "node:buffer";
 import test from "node:test";
 
 import type * as hast from "hast";
@@ -68,9 +67,7 @@ void test("renders an index into the target element", () => {
   assert.ok(entry);
   assert.strictEqual(
     getAttribute(entry, "id"),
-    ["index", "ち", "ち", "ちょさくけん", "著作権"]
-      .map((segment) => Buffer.from(segment, "utf-8").toString("base64url"))
-      .join("."),
+    "aW5kZXg.44Gh.44Gh.44Gh44KH44GV44GP44GR44KT.6JGX5L2c5qip",
   );
 });
 
