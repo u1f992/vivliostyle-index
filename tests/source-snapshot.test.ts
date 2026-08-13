@@ -38,6 +38,19 @@ void test("extracts instructions, targets, locations, and element IDs", () => {
   assert.strictEqual(getAttribute(source, "id"), "/html/body/span");
 });
 
+void test("warns once for each id a document repeats", () => {
+  const root = fromHtml('<i id="twice"></i><i id="twice"></i><i id="twice"></i><i id="once"></i>');
+
+  const snapshot = collectSourceSnapshot(root, "/publication/chapter.md");
+
+  assert.deepStrictEqual(
+    snapshot.messages.map((message) => message[2]?.split(":")[1]),
+    ["duplicate-id"],
+  );
+  assert.match(String(snapshot.messages[0]?.[0]), /"twice"/);
+  assert.deepStrictEqual(snapshot.ids, ["twice", "twice", "twice", "once"]);
+});
+
 void test("reports invalid references and instructions", () => {
   const root = fromHtml(
     [

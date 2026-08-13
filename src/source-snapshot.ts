@@ -118,5 +118,21 @@ export function collectSourceSnapshot(root: hast.Root, sourcePath: string): Sour
     const id = getAttribute(element, "id");
     return id === null ? [] : [id];
   });
+  for (const id of findDuplicateIds(ids)) {
+    documentMessages.push(messages.duplicateId(id));
+  }
   return { attachments, messages: documentMessages, ids };
+}
+
+function findDuplicateIds(ids: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const id of ids) {
+    if (seen.has(id)) {
+      duplicates.add(id);
+    } else {
+      seen.add(id);
+    }
+  }
+  return [...duplicates];
 }

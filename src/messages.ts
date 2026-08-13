@@ -54,6 +54,11 @@ export const messages = {
     undefined,
     rule("instruction-parse-error"),
   ],
+  duplicateId: (id: string): MessageArguments => [
+    `id ${JSON.stringify(id)} appears more than once. locators, ranges, and indexes addressing it may resolve to the wrong element.`,
+    undefined,
+    rule("duplicate-id"),
+  ],
   invalidRangeEndReference: (reference: string): MessageArguments => [
     `invalid range end reference: ${reference}`,
     undefined,
