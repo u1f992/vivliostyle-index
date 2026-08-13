@@ -5,25 +5,36 @@ export type FileSystem = {
   touchSync: (path: string) => void;
 };
 
-function updateTimestamp(fileName: string) {
+type BaseFileSystem = Pick<
+  typeof fs,
+  | "readFileSync"
+  | "utimesSync"
+  | "statSync"
+  | "openSync"
+  | "writeSync"
+  | "ftruncateSync"
+  | "closeSync"
+>;
+
+function updateTimestamp(base: BaseFileSystem, fileName: string) {
   const time = new Date();
-  fs.utimesSync(fileName, time, time);
+  base.utimesSync(fileName, time, time);
 }
 
-function appendAndRestoreSize(fileName: string) {
-  const originalSize = fs.statSync(fileName).size;
-  const fd = fs.openSync(fileName, "a");
-  fs.writeSync(fd, " ");
-  fs.ftruncateSync(fd, originalSize);
-  fs.closeSync(fd);
+function appendAndRestoreSize(base: BaseFileSystem, fileName: string) {
+  const originalSize = base.statSync(fileName).size;
+  const fd = base.openSync(fileName, "a");
+  base.writeSync(fd, " ");
+  base.ftruncateSync(fd, originalSize);
+  base.closeSync(fd);
 }
 
 /**
  * https://qiita.com/Anders/items/b1a9f3dca3f9c3c17241
  */
-function touchSync(fileName: string) {
+function touchSync(base: BaseFileSystem, fileName: string) {
   try {
-    updateTimestamp(fileName);
+    updateTimestamp(base, fileName);
   } catch (error) {
     // `utimesSync` requires the caller to be the file owner when setting
     // explicit timestamps (EPERM on Linux). When the process has write
@@ -34,11 +45,15 @@ function touchSync(fileName: string) {
     if ((error as NodeJS.ErrnoException).code !== "EPERM") {
       throw error;
     }
-    appendAndRestoreSize(fileName);
+    appendAndRestoreSize(base, fileName);
   }
 }
 
-export const nodeFileSystem: FileSystem = {
-  readFileSync: (path) => fs.readFileSync(path, { encoding: "utf-8" }),
-  touchSync,
-};
+export function createFileSystem(base: BaseFileSystem): FileSystem {
+  return {
+    readFileSync: (path) => base.readFileSync(path, { encoding: "utf-8" }),
+    touchSync: (path) => touchSync(base, path),
+  };
+}
+
+export const nodeFileSystem: FileSystem = createFileSystem(fs);

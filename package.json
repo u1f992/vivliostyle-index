@@ -23,6 +23,7 @@
   "devDependencies": {
     "@types/hast": "^2.0.0",
     "@types/node": "^24.13.3",
+    "memfs": "^4.68.1",
     "oxfmt": "^0.63.0",
     "oxlint": "^1.78.0",
     "oxlint-tsgolint": "^7.0.2001",
