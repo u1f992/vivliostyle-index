@@ -1,3 +1,3 @@
-# 索引 {style="break-before: verso; margin-top: 0"}
+# 索引
 
 <nav id="index"></nav>
