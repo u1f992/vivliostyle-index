@@ -19,8 +19,8 @@ const cherry = { html: "Cherry", reading: "Cherry" };
 const reportingPath = "/publication/index.md";
 
 function createReferenceRevocable(index: Index, from: Key, to: Key): Revocable {
-  const target = { group, mainEntry: to };
-  const revoke = insertReference(ensureEntry(index, { group, mainEntry: from }), "see", target);
+  const target = { group, entry: to };
+  const revoke = insertReference(ensureEntry(index, { group, entry: from }), "see", target);
   return {
     reportingPath,
     revoke,
@@ -65,8 +65,8 @@ void test("revokes an unresolved reference and the heading it empties", () => {
 void test("keeps a heading while one of its references resolves", () => {
   const messagesByDocument = new Map<string, MessageArguments[]>();
   const index: Index = { children: [] };
-  insertLocator(ensureEntry(index, { group, mainEntry: banana }), {
-    locator: "chapter.html#banana",
+  insertLocator(ensureEntry(index, { group, entry: banana }), {
+    location: "chapter.html#banana",
   });
 
   revokeViolations(

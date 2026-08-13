@@ -1,17 +1,15 @@
 import upath from "upath";
 
 import { fragmentToText } from "./html.ts";
-import type { Group, HasKey, Index, Key, MainEntry, Subentry } from "./model.ts";
+import type { Entry, Group, HasKey, Index, Key, Reference, Subentry } from "./model.ts";
 import { createTargetKey, type Target, type TargetKey } from "./target.ts";
-
-type Reference = MainEntry["see"][0];
 
 type Comparator<T> = NonNullable<Parameters<Array<T>["sort"]>[0]>;
 export type IndexComparator = {
   group: Comparator<Group>;
-  mainEntry: Comparator<MainEntry>;
-  mainEntrySee: Comparator<Reference>;
-  mainEntrySeeAlso: Comparator<Reference>;
+  entry: Comparator<Entry>;
+  entrySee: Comparator<Reference>;
+  entrySeeAlso: Comparator<Reference>;
   subentry: Comparator<Subentry>;
   subentrySee: Comparator<Reference>;
   subentrySeeAlso: Comparator<Reference>;
@@ -28,8 +26,8 @@ function keysOf(value: HasKey | Reference): readonly Key[] {
   if (!("target" in value)) {
     return [value.key];
   }
-  const { group, mainEntry, subentry } = value.target;
-  return subentry === undefined ? [group, mainEntry] : [group, mainEntry, subentry];
+  const { group, entry, subentry } = value.target;
+  return subentry === undefined ? [group, entry] : [group, entry, subentry];
 }
 
 export function byKeys(compareKeys: KeyComparator): EntryComparator {
@@ -94,12 +92,12 @@ export function sort(index: Index, comparator: IndexComparator) {
   const sorted = structuredClone(index);
   sorted.children.sort(comparator.group);
   for (const group of sorted.children) {
-    group.children.sort(comparator.mainEntry);
-    for (const mainEntry of group.children) {
-      mainEntry.see.sort(comparator.mainEntrySee);
-      mainEntry.seeAlso.sort(comparator.mainEntrySeeAlso);
-      mainEntry.children.sort(comparator.subentry);
-      for (const subentry of mainEntry.children) {
+    group.children.sort(comparator.entry);
+    for (const entry of group.children) {
+      entry.see.sort(comparator.entrySee);
+      entry.seeAlso.sort(comparator.entrySeeAlso);
+      entry.children.sort(comparator.subentry);
+      for (const subentry of entry.children) {
         subentry.see.sort(comparator.subentrySee);
         subentry.seeAlso.sort(comparator.subentrySeeAlso);
       }
@@ -112,9 +110,9 @@ export function defaultComparator(locales: Intl.LocalesArgument): IndexComparato
   const compare = byKeys(byLocales(locales));
   return {
     group: compare,
-    mainEntry: compare,
-    mainEntrySee: compare,
-    mainEntrySeeAlso: compare,
+    entry: compare,
+    entrySee: compare,
+    entrySeeAlso: compare,
     subentry: compare,
     subentrySee: compare,
     subentrySeeAlso: compare,

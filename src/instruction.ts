@@ -9,24 +9,22 @@ import {
 } from "./model.ts";
 import { countSlots } from "./template.ts";
 
-export type ParsedEntry = EntryAddress;
-
 export type ParsedInstruction =
   | Readonly<{
       type: "page";
-      entry: ParsedEntry;
+      address: EntryAddress;
       template?: string;
     }>
   | Readonly<{
       type: "range";
-      entry: ParsedEntry;
+      address: EntryAddress;
       endReference: string;
       template?: string;
     }>
   | Readonly<{
       type: "see" | "seeAlso";
-      entry: ParsedEntry;
-      target: ParsedEntry;
+      address: EntryAddress;
+      target: EntryAddress;
     }>;
 
 export class InstructionSyntaxError extends SyntaxError {
@@ -45,13 +43,13 @@ type ParserInput = Readonly<{
 }>;
 
 type HierarchyResult = Readonly<{
-  entry: ParsedEntry;
+  address: EntryAddress;
   offset: number;
 }>;
 
-type MutableParsedEntry = {
+type MutableEntryAddress = {
   group?: Key;
-  mainEntry?: Key;
+  entry?: Key;
   subentry?: Key;
 };
 
@@ -93,13 +91,17 @@ function unescapeAt(input: ParserInput, offset: number): string {
   return escapedCharacter;
 }
 
-function completeEntry(input: ParserInput, entry: MutableParsedEntry, offset: number): ParsedEntry {
-  if (entry.group === undefined || entry.mainEntry === undefined) {
+function completeAddress(
+  input: ParserInput,
+  address: MutableEntryAddress,
+  offset: number,
+): EntryAddress {
+  if (address.group === undefined || address.entry === undefined) {
     return syntaxError(input, offset, "an entry must contain a group and one or two headings");
   }
-  return entry.subentry === undefined
-    ? { group: entry.group, mainEntry: entry.mainEntry }
-    : { group: entry.group, mainEntry: entry.mainEntry, subentry: entry.subentry };
+  return address.subentry === undefined
+    ? { group: address.group, entry: address.entry }
+    : { group: address.group, entry: address.entry, subentry: address.subentry };
 }
 
 function parseHierarchy(
@@ -107,7 +109,7 @@ function parseHierarchy(
   start: number,
   stopAtOperator: boolean,
 ): HierarchyResult {
-  const entry: MutableParsedEntry = {};
+  const address: MutableEntryAddress = {};
   let reading = "";
   let html = "";
   let hasHtml = false;
@@ -135,12 +137,12 @@ function parseHierarchy(
       syntaxError(input, offset, "a display value must contain a non-whitespace character");
     }
     const key = { html: hasHtml ? html : reading, reading };
-    if (entry.group === undefined) {
-      entry.group = key;
-    } else if (entry.mainEntry === undefined) {
-      entry.mainEntry = key;
-    } else if (entry.subentry === undefined) {
-      entry.subentry = key;
+    if (address.group === undefined) {
+      address.group = key;
+    } else if (address.entry === undefined) {
+      address.entry = key;
+    } else if (address.subentry === undefined) {
+      address.subentry = key;
     } else {
       syntaxError(input, offset, "an entry must not contain more than two headings");
     }
@@ -178,7 +180,7 @@ function parseHierarchy(
         syntaxError(input, offset, "an unescaped | is not allowed in a reference target");
       }
       finishKey();
-      return { entry: completeEntry(input, entry, offset), offset };
+      return { address: completeAddress(input, address, offset), offset };
     }
 
     append(character);
@@ -186,7 +188,7 @@ function parseHierarchy(
   }
 
   finishKey();
-  return { entry: completeEntry(input, entry, offset), offset };
+  return { address: completeAddress(input, address, offset), offset };
 }
 
 function parseTemplate(input: ParserInput, start: number): string {
@@ -256,24 +258,24 @@ function parseEndReference(input: ParserInput, start: number): EndReferenceResul
   return { endReference, offset };
 }
 
-function parseRange(input: ParserInput, entry: ParsedEntry, start: number): ParsedInstruction {
+function parseRange(input: ParserInput, address: EntryAddress, start: number): ParsedInstruction {
   const { endReference, offset } = parseEndReference(input, start);
   return offset === input.graphemes.length
-    ? { type: "range", entry, endReference }
-    : { type: "range", entry, endReference, template: parseTemplate(input, offset + 1) };
+    ? { type: "range", address, endReference }
+    : { type: "range", address, endReference, template: parseTemplate(input, offset + 1) };
 }
 
 function parseReference(
   input: ParserInput,
-  entry: ParsedEntry,
+  address: EntryAddress,
   targetOffset: number,
   type: "see" | "seeAlso",
 ): ParsedInstruction {
-  const { entry: target, offset } = parseHierarchy(input, targetOffset, false);
+  const { address: target, offset } = parseHierarchy(input, targetOffset, false);
   if (offset !== input.graphemes.length) {
     syntaxError(input, offset, "unexpected content after a reference target");
   }
-  return { type, entry, target };
+  return { type, address, target };
 }
 
 function startsWith(input: ParserInput, offset: number, expected: readonly string[]): boolean {
@@ -282,23 +284,23 @@ function startsWith(input: ParserInput, offset: number, expected: readonly strin
 
 export function parseInstruction(source: string): ParsedInstruction {
   const input = createParserInput(source);
-  const { entry, offset } = parseHierarchy(input, 0, true);
+  const { address, offset } = parseHierarchy(input, 0, true);
   if (offset === input.graphemes.length) {
-    return { type: "page", entry };
+    return { type: "page", address };
   }
 
   const operatorOffset = offset + 1;
   if (startsWith(input, operatorOffset, ["|"])) {
-    return { type: "page", entry, template: parseTemplate(input, operatorOffset + 1) };
+    return { type: "page", address, template: parseTemplate(input, operatorOffset + 1) };
   }
   if (startsWith(input, operatorOffset, ["("])) {
-    return parseRange(input, entry, operatorOffset + 1);
+    return parseRange(input, address, operatorOffset + 1);
   }
   if (startsWith(input, operatorOffset, ["-", ">"])) {
-    return parseReference(input, entry, operatorOffset + 2, "see");
+    return parseReference(input, address, operatorOffset + 2, "see");
   }
   if (startsWith(input, operatorOffset, ["=", ">"])) {
-    return parseReference(input, entry, operatorOffset + 2, "seeAlso");
+    return parseReference(input, address, operatorOffset + 2, "seeAlso");
   }
   return syntaxError(input, operatorOffset, "unknown index instruction operator");
 }
@@ -310,10 +312,10 @@ type ReferenceInstruction = Extract<ParsedInstruction, { type: "see" | "seeAlso"
 export function applyPageInstruction(
   index: Index,
   instruction: PageInstruction,
-  locatorHref: string,
+  locationHref: string,
 ): Revocation {
-  return insertLocator(ensureEntry(index, instruction.entry), {
-    locator: locatorHref,
+  return insertLocator(ensureEntry(index, instruction.address), {
+    location: locationHref,
     ...(instruction.template === undefined ? {} : { template: instruction.template }),
   });
 }
@@ -324,8 +326,8 @@ export function applyRangeInstruction(
   startHref: string,
   endHref: string,
 ): Revocation {
-  return insertLocator(ensureEntry(index, instruction.entry), {
-    locator: { start: startHref, end: endHref },
+  return insertLocator(ensureEntry(index, instruction.address), {
+    location: { start: startHref, end: endHref },
     ...(instruction.template === undefined ? {} : { template: instruction.template }),
   });
 }
@@ -335,7 +337,7 @@ export function applyReferenceInstruction(
   instruction: ReferenceInstruction,
 ): Revocation {
   return insertReference(
-    ensureEntry(index, instruction.entry),
+    ensureEntry(index, instruction.address),
     instruction.type,
     instruction.target,
   );

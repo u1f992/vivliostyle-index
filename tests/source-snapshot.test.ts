@@ -7,7 +7,7 @@ import { select } from "hast-util-select";
 
 import { collectSourceSnapshot } from "../src/source-snapshot.ts";
 
-void test("extracts instructions, targets, locators, and element IDs", () => {
+void test("extracts instructions, targets, locations, and element IDs", () => {
   const root = fromHtml(
     '<span data-index="index.md?q=a%5C%40b!Apple|(end.md%3Fx%3D1%23end#index"></span><i id="end"></i>',
   );
@@ -23,13 +23,13 @@ void test("extracts instructions, targets, locators, and element IDs", () => {
     targetKey: '["/publication/index.md","index"]',
     instruction: {
       type: "range",
-      entry: {
+      address: {
         group: { html: "a@b", reading: "a@b" },
-        mainEntry: { html: "Apple", reading: "Apple" },
+        entry: { html: "Apple", reading: "Apple" },
       },
       endReference: "end.md?x=1#end",
     },
-    locatorHref: "chapter.html#%2Fhtml%2Fbody%2Fspan",
+    locationHref: "chapter.html#%2Fhtml%2Fbody%2Fspan",
     rangeEnd: { path: "/publication/end.md", id: "end" },
   });
   assert.deepStrictEqual(snapshot.ids, ["/html/body/span", "end"]);

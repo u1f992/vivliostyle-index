@@ -17,7 +17,7 @@ const index: Index = {
         {
           key: { html: "著作権", reading: "ちょさくけん" },
           children: [],
-          locators: [{ locator: "003.html#a" }],
+          locators: [{ location: "003.html#a" }],
           see: [],
           seeAlso: [],
         },
@@ -29,7 +29,7 @@ const index: Index = {
         {
           key: { html: "相続", reading: "そうぞく" },
           children: [],
-          locators: [{ locator: "088.html#b" }],
+          locators: [{ location: "088.html#b" }],
           see: [],
           seeAlso: [],
         },
@@ -39,9 +39,9 @@ const index: Index = {
 };
 
 const GROUP = "#index > ol > li";
-const MAIN_ENTRY = `${GROUP} > ol > li`;
-const LOCATORS = `${MAIN_ENTRY} > ol:nth-of-type(1)`;
-const SUBENTRY = `${MAIN_ENTRY} > ol:nth-of-type(4) > li`;
+const ENTRY = `${GROUP} > ol > li`;
+const LOCATORS = `${ENTRY} > ol:nth-of-type(1)`;
+const SUBENTRY = `${ENTRY} > ol:nth-of-type(4) > li`;
 const SUBENTRY_LOCATORS = `${SUBENTRY} > ol:nth-of-type(1)`;
 
 function createTarget(): hast.Element {
@@ -62,7 +62,7 @@ void test("renders an index into the target element", () => {
 
   renderIndex(index, target, "index");
 
-  const entry = select(MAIN_ENTRY, rootOf(target));
+  const entry = select(ENTRY, rootOf(target));
   assert.ok(entry);
   assert.ok(getAttribute(entry, "id")?.startsWith("index--"));
 });
@@ -79,12 +79,12 @@ void test("wraps every key in an element of its own", () => {
             children: [
               {
                 key: { html: "一身専属", reading: "いっしんせんぞく" },
-                locators: [{ locator: "076.html#c" }],
+                locators: [{ location: "076.html#c" }],
                 see: [],
                 seeAlso: [],
               },
             ],
-            locators: [{ locator: "088.html#b" }],
+            locators: [{ location: "088.html#b" }],
             see: [],
             seeAlso: [],
           },
@@ -100,7 +100,7 @@ void test("wraps every key in an element of its own", () => {
     ["そ"],
   );
   assert.deepStrictEqual(
-    selectAll(`${MAIN_ENTRY} > span`, rootOf(target)).map((key) => toText(key)),
+    selectAll(`${ENTRY} > span`, rootOf(target)).map((key) => toText(key)),
     ["相続"],
   );
   assert.deepStrictEqual(
@@ -123,12 +123,12 @@ void test("gives every entry the same lists in the same order", () => {
         children: [
           {
             key: { html: "A", reading: "あ" },
-            locators: [{ locator: "001.html#a" }],
+            locators: [{ location: "001.html#a" }],
             see: [
               {
                 target: {
                   group: { html: "い", reading: "い" },
-                  mainEntry: { html: "B", reading: "び" },
+                  entry: { html: "B", reading: "び" },
                 },
               },
             ],
@@ -136,7 +136,7 @@ void test("gives every entry the same lists in the same order", () => {
               {
                 target: {
                   group: { html: "う", reading: "う" },
-                  mainEntry: { html: "C", reading: "し" },
+                  entry: { html: "C", reading: "し" },
                 },
               },
             ],
@@ -156,7 +156,7 @@ void test("gives every entry the same lists in the same order", () => {
         children: [
           {
             key: { html: "E", reading: "い" },
-            locators: [{ locator: "002.html#b" }],
+            locators: [{ location: "002.html#b" }],
             see: [],
             seeAlso: [],
             children: [],
@@ -169,18 +169,18 @@ void test("gives every entry the same lists in the same order", () => {
   renderIndex(indexWithEveryList, target, "index");
   const root = rootOf(target);
 
-  assert.deepStrictEqual(selectAll(MAIN_ENTRY, root).map(listChildren), [4, 4]);
+  assert.deepStrictEqual(selectAll(ENTRY, root).map(listChildren), [4, 4]);
   assert.deepStrictEqual(selectAll(SUBENTRY, root).map(listChildren), [3]);
   assert.deepStrictEqual(
     selectAll(`${LOCATORS} > li > a`, root).map((link) => getAttribute(link, "href")),
     ["001.html#a", "002.html#b"],
   );
   assert.deepStrictEqual(
-    selectAll(`${MAIN_ENTRY} > ol:nth-of-type(2) > li > a`, root).map((link) => toText(link)),
+    selectAll(`${ENTRY} > ol:nth-of-type(2) > li > a`, root).map((link) => toText(link)),
     ["B"],
   );
   assert.deepStrictEqual(
-    selectAll(`${MAIN_ENTRY} > ol:nth-of-type(3) > li > a`, root).map((link) => toText(link)),
+    selectAll(`${ENTRY} > ol:nth-of-type(3) > li > a`, root).map((link) => toText(link)),
     ["C"],
   );
   assert.deepStrictEqual(
@@ -199,15 +199,15 @@ void test("wraps a locator in the template of its instruction", () => {
           {
             key: { html: "自由利用", reading: "じゆうりよう" },
             locators: [
-              { locator: "104.html#a", template: "<strong><slot></slot></strong>" },
-              { locator: "112.html#b" },
+              { location: "104.html#a", template: "<strong><slot></slot></strong>" },
+              { location: "112.html#b" },
             ],
             see: [],
             seeAlso: [],
             children: [
               {
                 key: { html: "私的複製", reading: "してきふくせい" },
-                locators: [{ locator: "106.html#c", template: "<em><slot></slot></em>" }],
+                locators: [{ location: "106.html#c", template: "<em><slot></slot></em>" }],
                 see: [],
                 seeAlso: [],
               },
@@ -246,6 +246,42 @@ void test("exposes the rendered index as JSON on the target element", () => {
 
   assert.deepStrictEqual(selectAll("[data-index-result]", root), [target]);
   assert.strictEqual(getAttribute(target, "data-index-result"), JSON.stringify(index));
+});
+
+void test("names the keys of the exposed index", () => {
+  const target = createTarget();
+  const indexWithEveryKey: Index = {
+    children: [
+      {
+        key: { html: "あ", reading: "あ" },
+        children: [
+          {
+            key: { html: "A", reading: "あ" },
+            locators: [{ location: "001.html#a", template: "<em><slot></slot></em>" }],
+            see: [
+              {
+                target: {
+                  group: { html: "い", reading: "い" },
+                  entry: { html: "B", reading: "び" },
+                  subentry: { html: "C", reading: "し" },
+                },
+              },
+            ],
+            seeAlso: [],
+            children: [],
+          },
+        ],
+      },
+    ],
+  };
+
+  renderIndex(indexWithEveryKey, target, "index");
+  const exposed = JSON.parse(getAttribute(target, "data-index-result") ?? "null");
+  const entry = exposed.children[0].children[0];
+
+  assert.deepStrictEqual(Object.keys(entry), ["key", "locators", "see", "seeAlso", "children"]);
+  assert.deepStrictEqual(Object.keys(entry.locators[0]), ["location", "template"]);
+  assert.deepStrictEqual(Object.keys(entry.see[0].target), ["group", "entry", "subentry"]);
 });
 
 void test("keeps an index instruction carried by the target element itself", () => {

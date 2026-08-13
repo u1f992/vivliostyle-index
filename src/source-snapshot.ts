@@ -6,7 +6,7 @@ import { getXPath } from "hast-util-get-xpath";
 import { selectAll } from "hast-util-select";
 
 import { parseInstruction, type ParsedInstruction } from "./instruction.ts";
-import { createLocatorHref } from "./locator.ts";
+import { createLocationHref } from "./location.ts";
 import { messages, type MessageArguments } from "./messages.ts";
 import {
   createTarget,
@@ -22,7 +22,7 @@ export type Attachment = Readonly<{
   target: Target;
   targetKey: TargetKey;
   instruction: ParsedInstruction;
-  locatorHref: string;
+  locationHref: string;
   rangeEnd?: Target;
 }>;
 
@@ -103,7 +103,7 @@ export function collectSourceSnapshot(root: hast.Root, sourcePath: string): Sour
       target,
       targetKey: createTargetKey(target),
       instruction,
-      locatorHref: createLocatorHref(sourcePath, target.path, sourceId),
+      locationHref: createLocationHref(sourcePath, target.path, sourceId),
       ...(rangeEnd === undefined ? {} : { rangeEnd }),
     });
   }

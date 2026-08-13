@@ -3,7 +3,7 @@ import {
   applyRangeInstruction,
   applyReferenceInstruction,
 } from "./instruction.ts";
-import { createLocatorHref } from "./locator.ts";
+import { createLocationHref } from "./location.ts";
 import { addMessage, messages, type MessageArguments } from "./messages.ts";
 import { findUnresolvedReference, type Index } from "./model.ts";
 import { revokeViolations, type Revocable } from "./revocation.ts";
@@ -89,7 +89,7 @@ function applyAttachment(
   const { instruction } = attachment;
 
   if (instruction.type === "page") {
-    applyPageInstruction(index, instruction, attachment.locatorHref);
+    applyPageInstruction(index, instruction, attachment.locationHref);
     return undefined;
   }
 
@@ -101,8 +101,8 @@ function applyAttachment(
     const revoke = applyRangeInstruction(
       index,
       instruction,
-      attachment.locatorHref,
-      createLocatorHref(rangeEnd.path, attachment.target.path, rangeEnd.id),
+      attachment.locationHref,
+      createLocationHref(rangeEnd.path, attachment.target.path, rangeEnd.id),
     );
     return {
       reportingPath: attachment.sourcePath,

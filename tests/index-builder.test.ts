@@ -37,7 +37,7 @@ void test("builds range locators from ordered source snapshots", () => {
             children: [],
             locators: [
               {
-                locator: {
+                location: {
                   start: "chapter.html#start",
                   end: "end.html#end",
                 },
@@ -160,11 +160,11 @@ void test("builds locators and references in the order the sources list them", (
   const apple = builtIndex?.index.children[0]?.children[0];
 
   assert.deepStrictEqual(
-    apple?.locators.map(({ locator }) => locator),
+    apple?.locators.map(({ location }) => location),
     ["chapter.html#second", "chapter.html#first"],
   );
   assert.deepStrictEqual(
-    apple?.seeAlso.map(({ target }) => target.mainEntry.html),
+    apple?.seeAlso.map(({ target }) => target.entry.html),
     ["Zebra", "Banana"],
   );
 });

@@ -1,5 +1,5 @@
 import { parseFragment } from "./html.ts";
-import type { EntryBase, Group, Index, LocatorEntry, MainEntry, Subentry } from "./model.ts";
+import type { Entry, Group, Index, Locator, Reference, Subentry } from "./model.ts";
 import { fillSlot } from "./template.ts";
 
 import type * as hast from "hast";
@@ -18,25 +18,21 @@ const generateGroups = (groups: Group[], indexId: string): hast.Element =>
         h("span", parseFragment(group.key.html)),
         h(
           "ol",
-          generateMainEntries(group.children, indexId, `${indexId}--${JSON.stringify(group.key)}`),
+          generateEntries(group.children, indexId, `${indexId}--${JSON.stringify(group.key)}`),
         ),
       ]),
     ),
   );
 
-const generateMainEntries = (
-  mainEntries: MainEntry[],
-  indexId: string,
-  parentId: string,
-): hast.Element[] =>
-  mainEntries.map((mainEntry) => {
-    const entryId = `${parentId}--${JSON.stringify(mainEntry.key)}`;
+const generateEntries = (entries: Entry[], indexId: string, parentId: string): hast.Element[] =>
+  entries.map((entry) => {
+    const entryId = `${parentId}--${JSON.stringify(entry.key)}`;
     return h("li", { id: entryId }, [
-      h("span", parseFragment(mainEntry.key.html)),
-      generateLocators(mainEntry.locators),
-      generateReferences(mainEntry.see, indexId),
-      generateReferences(mainEntry.seeAlso, indexId),
-      generateSubentries(mainEntry.children, indexId, entryId),
+      h("span", parseFragment(entry.key.html)),
+      generateLocators(entry.locators),
+      generateReferences(entry.see, indexId),
+      generateReferences(entry.seeAlso, indexId),
+      generateSubentries(entry.children, indexId, entryId),
     ]);
   });
 
@@ -57,32 +53,32 @@ const generateSubentries = (
     ),
   );
 
-const generateLocators = (locators: EntryBase["locators"]): hast.Element =>
+const generateLocators = (locators: readonly Locator[]): hast.Element =>
   h(
     "ol",
-    locators.map((locatorEntry) => h("li", generateLocator(locatorEntry))),
+    locators.map((locator) => h("li", generateLocator(locator))),
   );
 
-const generateLocator = ({ locator, template }: LocatorEntry): hast.ElementContent[] => {
+const generateLocator = ({ location, template }: Locator): hast.ElementContent[] => {
   const anchors =
-    typeof locator === "string"
-      ? [h("a", { href: locator })]
-      : [h("a", { href: locator.start }), h("span"), h("a", { href: locator.end })];
+    typeof location === "string"
+      ? [h("a", { href: location })]
+      : [h("a", { href: location.start }), h("span"), h("a", { href: location.end })];
   return template === undefined ? anchors : fillSlot(template, anchors);
 };
 
-const generateReferences = (references: EntryBase["see"], indexId: string): hast.Element =>
+const generateReferences = (references: readonly Reference[], indexId: string): hast.Element =>
   h(
     "ol",
     references.map(({ target }) => {
-      const mainEntryHref = `#${indexId}--${JSON.stringify(target.group)}--${JSON.stringify(target.mainEntry)}`;
+      const entryHref = `#${indexId}--${JSON.stringify(target.group)}--${JSON.stringify(target.entry)}`;
       const [href, children] =
         target.subentry === undefined
-          ? [mainEntryHref, parseFragment(target.mainEntry.html)]
+          ? [entryHref, parseFragment(target.entry.html)]
           : [
-              `${mainEntryHref}--${JSON.stringify(target.subentry)}`,
+              `${entryHref}--${JSON.stringify(target.subentry)}`,
               [
-                h("span", parseFragment(target.mainEntry.html)),
+                h("span", parseFragment(target.entry.html)),
                 h("span"),
                 h("span", parseFragment(target.subentry.html)),
               ],

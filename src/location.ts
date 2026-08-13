@@ -4,7 +4,7 @@ function encodeRelativePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
 }
 
-export function createLocatorHref(sourcePath: string, targetPath: string, id: string): string {
+export function createLocationHref(sourcePath: string, targetPath: string, id: string): string {
   const relativePath =
     sourcePath === targetPath
       ? ""

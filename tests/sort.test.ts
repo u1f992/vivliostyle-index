@@ -1,7 +1,7 @@
 import assert from "node:assert";
 import test from "node:test";
 
-import type { Group, Index, Key, MainEntry, Subentry } from "../src/model.ts";
+import type { Entry, Group, Index, Key, Subentry } from "../src/model.ts";
 import {
   byKeys,
   byListedOrder,
@@ -33,7 +33,7 @@ function createSubentry(key: Key): Subentry {
   return { key, locators: [], see: [], seeAlso: [] };
 }
 
-function createMainEntry(key: Key): MainEntry {
+function createEntry(key: Key): Entry {
   return { key, children: [], locators: [], see: [], seeAlso: [] };
 }
 
@@ -42,9 +42,9 @@ void test("creates comparators for every index collection", () => {
 
   assert.deepStrictEqual(Object.keys(comparator), [
     "group",
-    "mainEntry",
-    "mainEntrySee",
-    "mainEntrySeeAlso",
+    "entry",
+    "entrySee",
+    "entrySeeAlso",
     "subentry",
     "subentrySee",
     "subentrySeeAlso",
@@ -172,52 +172,52 @@ void test("distinguishes listed keys that share the concatenation of their field
 });
 
 void test("hands the locale to every collection of the default comparator", () => {
-  const reference = (key: Key) => ({ target: { group: plainKey("a"), mainEntry: key } });
+  const reference = (key: Key) => ({ target: { group: plainKey("a"), entry: key } });
   const subentry = (key: Key): Subentry => {
     const created = createSubentry(key);
     created.see.push(reference(umlaut), reference(z));
     created.seeAlso.push(reference(umlaut), reference(z));
     return created;
   };
-  const mainEntry = createMainEntry(umlaut);
-  mainEntry.children.push(subentry(umlaut), subentry(z));
-  mainEntry.see.push(reference(umlaut), reference(z));
-  mainEntry.seeAlso.push(reference(umlaut), reference(z));
+  const entry = createEntry(umlaut);
+  entry.children.push(subentry(umlaut), subentry(z));
+  entry.see.push(reference(umlaut), reference(z));
+  entry.seeAlso.push(reference(umlaut), reference(z));
   const index: Index = {
-    children: [{ key: plainKey("a"), children: [mainEntry, createMainEntry(z)] }],
+    children: [{ key: plainKey("a"), children: [entry, createEntry(z)] }],
   };
 
   const sorted = sort(index, defaultComparator("sv"));
-  const sortedMainEntry = sorted.children[0]?.children[1];
-  const sortedSubentry = sortedMainEntry?.children[0];
-  const targetsOf = (references: readonly { target: { mainEntry: Key } }[]) =>
-    references.map(({ target }) => target.mainEntry.html);
+  const sortedEntry = sorted.children[0]?.children[1];
+  const sortedSubentry = sortedEntry?.children[0];
+  const targetsOf = (references: readonly { target: { entry: Key } }[]) =>
+    references.map(({ target }) => target.entry.html);
 
   assert.deepStrictEqual(
     sorted.children[0]?.children.map(({ key }) => key.html),
     ["z", "ä"],
   );
   assert.deepStrictEqual(
-    sortedMainEntry?.children.map(({ key }) => key.html),
+    sortedEntry?.children.map(({ key }) => key.html),
     ["z", "ä"],
   );
-  assert.deepStrictEqual(targetsOf(sortedMainEntry?.see ?? []), ["z", "ä"]);
-  assert.deepStrictEqual(targetsOf(sortedMainEntry?.seeAlso ?? []), ["z", "ä"]);
+  assert.deepStrictEqual(targetsOf(sortedEntry?.see ?? []), ["z", "ä"]);
+  assert.deepStrictEqual(targetsOf(sortedEntry?.seeAlso ?? []), ["z", "ä"]);
   assert.deepStrictEqual(targetsOf(sortedSubentry?.see ?? []), ["z", "ä"]);
   assert.deepStrictEqual(targetsOf(sortedSubentry?.seeAlso ?? []), ["z", "ä"]);
 });
 
 void test("orders references by the listed order of their targets", () => {
-  const mainEntry = createMainEntry({ html: "著作権", reading: "ちょさくけん" });
-  mainEntry.seeAlso.push(
-    { target: { group: aRow, mainEntry: { html: "著作", reading: "ちょさく" } } },
-    { target: { group: kaRow, mainEntry: { html: "権利", reading: "けんり" } } },
+  const entry = createEntry({ html: "著作権", reading: "ちょさくけん" });
+  entry.seeAlso.push(
+    { target: { group: aRow, entry: { html: "著作", reading: "ちょさく" } } },
+    { target: { group: kaRow, entry: { html: "権利", reading: "けんり" } } },
   );
-  const index: Index = { children: [{ key: aRow, children: [mainEntry] }] };
+  const index: Index = { children: [{ key: aRow, children: [entry] }] };
 
   const sorted = sort(index, {
     ...defaultComparator("ja"),
-    mainEntrySeeAlso: byKeys(byListedOrder([kaRow, aRow])("ja")),
+    entrySeeAlso: byKeys(byListedOrder([kaRow, aRow])("ja")),
   });
 
   assert.deepStrictEqual(
@@ -226,13 +226,13 @@ void test("orders references by the listed order of their targets", () => {
   );
 });
 
-void test("orders references by their group before their main entry", () => {
-  const mainEntry = createMainEntry(plainKey("copyright"));
-  mainEntry.see.push(
-    { target: { group: plainKey("z-group"), mainEntry: plainKey("a-entry") } },
-    { target: { group: plainKey("a-group"), mainEntry: plainKey("z-entry") } },
+void test("orders references by their group before their entry", () => {
+  const entry = createEntry(plainKey("copyright"));
+  entry.see.push(
+    { target: { group: plainKey("z-group"), entry: plainKey("a-entry") } },
+    { target: { group: plainKey("a-group"), entry: plainKey("z-entry") } },
   );
-  const index: Index = { children: [{ key: plainKey("a"), children: [mainEntry] }] };
+  const index: Index = { children: [{ key: plainKey("a"), children: [entry] }] };
 
   const sorted = sort(index, defaultComparator("en"));
 
@@ -243,19 +243,19 @@ void test("orders references by their group before their main entry", () => {
 });
 
 void test("orders references by their subentry when the listed headings agree", () => {
-  const mainEntry = createMainEntry({ html: "著作権", reading: "ちょさくけん" });
-  const target = { group: aRow, mainEntry: { html: "相続", reading: "そうぞく" } };
+  const entry = createEntry({ html: "著作権", reading: "ちょさくけん" });
+  const target = { group: aRow, entry: { html: "相続", reading: "そうぞく" } };
   const inheritor = { html: "相続人", reading: "そうぞくにん" };
   const exclusive = { html: "一身専属", reading: "いっしんせんぞく" };
-  mainEntry.seeAlso.push(
+  entry.seeAlso.push(
     { target: { ...target, subentry: exclusive } },
     { target: { ...target, subentry: inheritor } },
   );
-  const index: Index = { children: [{ key: aRow, children: [mainEntry] }] };
+  const index: Index = { children: [{ key: aRow, children: [entry] }] };
 
   const sorted = sort(index, {
     ...defaultComparator("ja"),
-    mainEntrySeeAlso: byKeys(byListedOrder([aRow, inheritor, exclusive])("ja")),
+    entrySeeAlso: byKeys(byListedOrder([aRow, inheritor, exclusive])("ja")),
   });
 
   assert.deepStrictEqual(
@@ -264,15 +264,15 @@ void test("orders references by their subentry when the listed headings agree", 
   );
 });
 
-void test("orders a reference to a main entry before one to its subentry", () => {
-  const mainEntry = createMainEntry(plainKey("copyright"));
-  const target = { group: plainKey("a"), mainEntry: plainKey("inheritance") };
-  mainEntry.see.push(
+void test("orders a reference to an entry before one to its subentry", () => {
+  const entry = createEntry(plainKey("copyright"));
+  const target = { group: plainKey("a"), entry: plainKey("inheritance") };
+  entry.see.push(
     { target: { ...target, subentry: plainKey("exclusive") } },
     { target },
     { target: { ...target, subentry: plainKey("heir") } },
   );
-  const index: Index = { children: [{ key: plainKey("a"), children: [mainEntry] }] };
+  const index: Index = { children: [{ key: plainKey("a"), children: [entry] }] };
 
   const sorted = sort(index, defaultComparator("en"));
 
@@ -286,36 +286,36 @@ void test("sorts every collection of the index with its own comparator", () => {
   const subentry = (name: string): Subentry => {
     const created = createSubentry(plainKey(name));
     created.see.push(
-      { target: { group: plainKey("a"), mainEntry: plainKey("z-sub-see") } },
-      { target: { group: plainKey("a"), mainEntry: plainKey("a-sub-see") } },
+      { target: { group: plainKey("a"), entry: plainKey("z-sub-see") } },
+      { target: { group: plainKey("a"), entry: plainKey("a-sub-see") } },
     );
     created.seeAlso.push(
-      { target: { group: plainKey("a"), mainEntry: plainKey("z-sub-also") } },
-      { target: { group: plainKey("a"), mainEntry: plainKey("a-sub-also") } },
+      { target: { group: plainKey("a"), entry: plainKey("z-sub-also") } },
+      { target: { group: plainKey("a"), entry: plainKey("a-sub-also") } },
     );
     return created;
   };
-  const mainEntry = createMainEntry(plainKey("a-main"));
-  mainEntry.children.push(subentry("z-sub"), subentry("a-sub"));
-  mainEntry.see.push(
-    { target: { group: plainKey("a"), mainEntry: plainKey("z-see") } },
-    { target: { group: plainKey("a"), mainEntry: plainKey("a-see") } },
+  const entry = createEntry(plainKey("a-entry"));
+  entry.children.push(subentry("z-sub"), subentry("a-sub"));
+  entry.see.push(
+    { target: { group: plainKey("a"), entry: plainKey("z-see") } },
+    { target: { group: plainKey("a"), entry: plainKey("a-see") } },
   );
-  mainEntry.seeAlso.push(
-    { target: { group: plainKey("a"), mainEntry: plainKey("z-also") } },
-    { target: { group: plainKey("a"), mainEntry: plainKey("a-also") } },
+  entry.seeAlso.push(
+    { target: { group: plainKey("a"), entry: plainKey("z-also") } },
+    { target: { group: plainKey("a"), entry: plainKey("a-also") } },
   );
   const index: Index = {
     children: [
       { key: plainKey("z-group"), children: [] },
-      { key: plainKey("a-group"), children: [createMainEntry(plainKey("z-main")), mainEntry] },
+      { key: plainKey("a-group"), children: [createEntry(plainKey("z-entry")), entry] },
     ],
   };
 
   const sorted = sort(index, defaultComparator("en"));
   const group = sorted.children[0];
-  const sortedMainEntry = group?.children[0];
-  const sortedSubentry = sortedMainEntry?.children[0];
+  const sortedEntry = group?.children[0];
+  const sortedSubentry = sortedEntry?.children[0];
 
   assert.deepStrictEqual(
     sorted.children.map(({ key }) => key.html),
@@ -323,40 +323,40 @@ void test("sorts every collection of the index with its own comparator", () => {
   );
   assert.deepStrictEqual(
     sorted.children[0]?.children.map(({ key }) => key.html),
-    ["a-main", "z-main"],
+    ["a-entry", "z-entry"],
   );
   assert.deepStrictEqual(
-    sortedMainEntry?.see.map(({ target }) => target.mainEntry.html),
+    sortedEntry?.see.map(({ target }) => target.entry.html),
     ["a-see", "z-see"],
   );
   assert.deepStrictEqual(
-    sortedMainEntry?.seeAlso.map(({ target }) => target.mainEntry.html),
+    sortedEntry?.seeAlso.map(({ target }) => target.entry.html),
     ["a-also", "z-also"],
   );
   assert.deepStrictEqual(
-    sortedMainEntry?.children.map(({ key }) => key.html),
+    sortedEntry?.children.map(({ key }) => key.html),
     ["a-sub", "z-sub"],
   );
   assert.deepStrictEqual(
-    sortedSubentry?.see.map(({ target }) => target.mainEntry.html),
+    sortedSubentry?.see.map(({ target }) => target.entry.html),
     ["a-sub-see", "z-sub-see"],
   );
   assert.deepStrictEqual(
-    sortedSubentry?.seeAlso.map(({ target }) => target.mainEntry.html),
+    sortedSubentry?.seeAlso.map(({ target }) => target.entry.html),
     ["a-sub-also", "z-sub-also"],
   );
 });
 
 void test("leaves the given index untouched", () => {
-  const mainEntry = createMainEntry(plainKey("z-main"));
-  mainEntry.children.push(createSubentry(plainKey("z-sub")), createSubentry(plainKey("a-sub")));
-  mainEntry.see.push(
-    { target: { group: plainKey("a"), mainEntry: plainKey("z-see") } },
-    { target: { group: plainKey("a"), mainEntry: plainKey("a-see") } },
+  const entry = createEntry(plainKey("z-entry"));
+  entry.children.push(createSubentry(plainKey("z-sub")), createSubentry(plainKey("a-sub")));
+  entry.see.push(
+    { target: { group: plainKey("a"), entry: plainKey("z-see") } },
+    { target: { group: plainKey("a"), entry: plainKey("a-see") } },
   );
   const index: Index = {
     children: [
-      { key: plainKey("z-group"), children: [mainEntry] },
+      { key: plainKey("z-group"), children: [entry] },
       { key: plainKey("a-group"), children: [] },
     ],
   };

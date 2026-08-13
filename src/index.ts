@@ -11,9 +11,18 @@ import { normalizeComparators, type Comparators } from "./sort.ts";
 export { nodeFileSystem } from "./file-system.ts";
 export type { FileSystem } from "./file-system.ts";
 export { InstructionSyntaxError, parseInstruction } from "./instruction.ts";
-export type { ParsedEntry, ParsedInstruction } from "./instruction.ts";
+export type { ParsedInstruction } from "./instruction.ts";
 export type { EntryProcessorInput } from "./index-state.ts";
-export type { Group, Index, Key, LocatorEntry, MainEntry, Subentry } from "./model.ts";
+export type {
+  Entry,
+  EntryAddress,
+  Group,
+  Index,
+  Key,
+  Locator,
+  Reference,
+  Subentry,
+} from "./model.ts";
 export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";
 export type {
   Comparators,

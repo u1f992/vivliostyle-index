@@ -61,16 +61,16 @@ function createProcessor({
   return { processor, reads };
 }
 
-const mainEntryOf = (targetId: string) => `#${targetId} > ol > li > ol > li`;
-const locatorsOf = (targetId: string) => `${mainEntryOf(targetId)} > ol:nth-of-type(1)`;
+const entryOf = (targetId: string) => `#${targetId} > ol > li > ol > li`;
+const locatorsOf = (targetId: string) => `${entryOf(targetId)} > ol:nth-of-type(1)`;
 
 const GROUP = "#index > ol > li";
-const MAIN_ENTRY = mainEntryOf("index");
-const MAIN_ENTRY_KEY = `${MAIN_ENTRY} > span`;
+const ENTRY = entryOf("index");
+const ENTRY_KEY = `${ENTRY} > span`;
 const LOCATORS = locatorsOf("index");
-const SEE = `${MAIN_ENTRY} > ol:nth-of-type(2)`;
-const SEE_ALSO = `${MAIN_ENTRY} > ol:nth-of-type(3)`;
-const SUBENTRY = `${MAIN_ENTRY} > ol:nth-of-type(4) > li`;
+const SEE = `${ENTRY} > ol:nth-of-type(2)`;
+const SEE_ALSO = `${ENTRY} > ol:nth-of-type(3)`;
+const SUBENTRY = `${ENTRY} > ol:nth-of-type(4) > li`;
 
 function locatorLinks(root: hast.Root | hast.Element, targetId = "index") {
   return selectAll(`${locatorsOf(targetId)} a`, root).map((link) => getAttribute(link, "href"));
@@ -279,7 +279,7 @@ void test("parses a heading word as inner HTML", () => {
 
   processor.runSync(root, { path: "/publication/index.md" });
 
-  const heading = select(`${MAIN_ENTRY_KEY} > em`, root);
+  const heading = select(`${ENTRY_KEY} > em`, root);
   assert.ok(heading);
   assert.strictEqual(toText(heading), "京都大学");
 });
@@ -301,7 +301,7 @@ void test("decodes a URL-encoded DSL query value", () => {
   const groupHeading = select(GROUP, root);
   assert.ok(groupHeading);
   assert.match(toText(groupHeading), /^a@b\+c/);
-  const heading = select(`${MAIN_ENTRY_KEY} > em`, root);
+  const heading = select(`${ENTRY_KEY} > em`, root);
   assert.ok(heading);
   assert.strictEqual(toText(heading), "C|D & E+F");
 });
@@ -376,7 +376,7 @@ void test("links a reference to a later entry", () => {
   const reference = selectAll("a", root).find((link) =>
     getAttribute(link, "href")?.startsWith("#"),
   );
-  const target = selectAll(MAIN_ENTRY, root).find((entry) => select("em", entry) !== null);
+  const target = selectAll(ENTRY, root).find((entry) => select("em", entry) !== null);
   assert.ok(reference);
   assert.ok(target);
   assert.strictEqual(getAttribute(reference, "href"), `#${getAttribute(target, "id")}`);
@@ -483,7 +483,7 @@ void test("revokes a reference whose target was revoked for being vacant", () =>
 
   processor.runSync(root, file);
 
-  assert.deepStrictEqual(selectAll(MAIN_ENTRY, root), []);
+  assert.deepStrictEqual(selectAll(ENTRY, root), []);
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
     ["invalid-reference", "vacant-entry", "invalid-reference", "vacant-entry"],

@@ -26,9 +26,9 @@ void test("groups message arguments by document and emits VFile messages", () =>
     messages.invalidReference({
       target: {
         group: { html: "ち", reading: "ち" },
-        mainEntry: { html: "工業所有権", reading: "こうぎょうしょゆうけん" },
+        entry: { html: "工業所有権", reading: "こうぎょうしょゆうけん" },
       },
-      missing: "mainEntry",
+      missing: "entry",
     }),
   );
   addMessage(
@@ -37,7 +37,7 @@ void test("groups message arguments by document and emits VFile messages", () =>
     messages.invalidReference({
       target: {
         group: { html: "ち", reading: "ち" },
-        mainEntry: { html: "著作権", reading: "ちょさくけん" },
+        entry: { html: "著作権", reading: "ちょさくけん" },
         subentry: { html: "――の相続", reading: "ちょさくけんのそうぞく" },
       },
       missing: "subentry",
@@ -50,7 +50,7 @@ void test("groups message arguments by document and emits VFile messages", () =>
       { path: "/publication/index.md", id: "index" },
       {
         group: { html: "ち", reading: "ち" },
-        mainEntry: { html: "著作権", reading: "ちょさくけん" },
+        entry: { html: "著作権", reading: "ちょさくけん" },
         subentry: { html: "――の相続", reading: "ちょさくけんのそうぞく" },
       },
     ),
@@ -76,19 +76,19 @@ void test("groups message arguments by document and emits VFile messages", () =>
         source: "vivliostyle-index",
         ruleId: "invalid-reference",
         reason:
-          'index does not contain group={"html":"ち","reading":"ち"},mainEntry={"html":"工業所有権","reading":"こうぎょうしょゆうけん"}. the reference is revoked.',
+          'index does not contain group={"html":"ち","reading":"ち"},entry={"html":"工業所有権","reading":"こうぎょうしょゆうけん"}. the reference is revoked.',
       },
       {
         source: "vivliostyle-index",
         ruleId: "invalid-reference",
         reason:
-          'index does not contain group={"html":"ち","reading":"ち"},mainEntry={"html":"著作権","reading":"ちょさくけん"},subentry={"html":"――の相続","reading":"ちょさくけんのそうぞく"}. the reference is revoked.',
+          'index does not contain group={"html":"ち","reading":"ち"},entry={"html":"著作権","reading":"ちょさくけん"},subentry={"html":"――の相続","reading":"ちょさくけんのそうぞく"}. the reference is revoked.',
       },
       {
         source: "vivliostyle-index",
         ruleId: "vacant-entry",
         reason:
-          'entry group={"html":"ち","reading":"ち"},mainEntry={"html":"著作権","reading":"ちょさくけん"},subentry={"html":"――の相続","reading":"ちょさくけんのそうぞく"} of index target /publication/index.md#index holds no locator, reference, or subentry. the entry is revoked.',
+          'entry group={"html":"ち","reading":"ち"},entry={"html":"著作権","reading":"ちょさくけん"},subentry={"html":"――の相続","reading":"ちょさくけんのそうぞく"} of index target /publication/index.md#index holds no locator, reference, or subentry. the entry is revoked.',
       },
     ],
   );

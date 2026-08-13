@@ -8,8 +8,8 @@ export type MessageArguments = Parameters<VFile["message"]>;
 
 const rule = (ruleId: string): string => `vivliostyle-index:${ruleId}`;
 const formatTarget = (target: Target): string => `${target.path}#${target.id}`;
-const formatEntryAddress = ({ group, mainEntry, subentry }: EntryAddress): string => {
-  const parts = [`group=${JSON.stringify(group)}`, `mainEntry=${JSON.stringify(mainEntry)}`];
+const formatEntryAddress = ({ group, entry, subentry }: EntryAddress): string => {
+  const parts = [`group=${JSON.stringify(group)}`, `entry=${JSON.stringify(entry)}`];
   if (subentry !== undefined) {
     parts.push(`subentry=${JSON.stringify(subentry)}`);
   }
@@ -18,7 +18,7 @@ const formatEntryAddress = ({ group, mainEntry, subentry }: EntryAddress): strin
 const formatUnresolvedReference = ({ target, missing }: UnresolvedReference): string => {
   const parts = [`group=${JSON.stringify(target.group)}`];
   if (missing !== "group") {
-    parts.push(`mainEntry=${JSON.stringify(target.mainEntry)}`);
+    parts.push(`entry=${JSON.stringify(target.entry)}`);
   }
   if (missing === "subentry") {
     parts.push(`subentry=${JSON.stringify(target.subentry)}`);

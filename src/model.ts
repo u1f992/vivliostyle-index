@@ -4,16 +4,15 @@ export type Key = Readonly<{
 }>;
 export type HasKey = { key: Key };
 
-type PageLocator = string;
-type RangeLocator = Readonly<{
-  start: PageLocator;
-  end: PageLocator;
+type PageLocation = string;
+type RangeLocation = Readonly<{
+  start: PageLocation;
+  end: PageLocation;
 }>;
-type Locator = PageLocator | RangeLocator;
 
 export type EntryAddress = Readonly<{
   group: Key;
-  mainEntry: Key;
+  entry: Key;
   subentry?: Key;
 }>;
 
@@ -21,8 +20,6 @@ export type UnresolvedReference = Readonly<{
   target: EntryAddress;
   missing: keyof EntryAddress;
 }>;
-
-type ReferenceTarget = EntryAddress;
 
 export type Revocation = () => void;
 
@@ -36,26 +33,27 @@ function insert<T>(list: T[], item: T): Revocation {
   };
 }
 
-export type LocatorEntry = Readonly<{
-  locator: Locator;
+// probe
+export type Locator = Readonly<{
+  location: PageLocation | RangeLocation;
   template?: string;
 }>;
-type HasLocators = { locators: LocatorEntry[] };
-export function insertLocator(entry: HasLocators, locatorEntry: LocatorEntry): Revocation {
-  return insert(entry.locators, { ...locatorEntry });
+type HasLocators = { locators: Locator[] };
+export function insertLocator(entry: HasLocators, locator: Locator): Revocation {
+  return insert(entry.locators, { ...locator });
 }
 
-type ReferenceEntry = Readonly<{
-  target: ReferenceTarget;
+export type Reference = Readonly<{
+  target: EntryAddress;
 }>;
 type HasReferences = {
-  see: ReferenceEntry[];
-  seeAlso: ReferenceEntry[];
+  see: Reference[];
+  seeAlso: Reference[];
 };
 export function insertReference(
   entry: HasReferences,
   type: "see" | "seeAlso",
-  target: ReferenceTarget,
+  target: EntryAddress,
 ): Revocation {
   return insert(entry[type], { target });
 }
@@ -63,8 +61,8 @@ export function insertReference(
 export type EntryBase = HasLocators & HasReferences;
 export type Subentry = HasKey & EntryBase;
 export type ParentOf<T> = { children: T[] };
-export type MainEntry = HasKey & EntryBase & ParentOf<Subentry>;
-export type Group = HasKey & ParentOf<MainEntry>;
+export type Entry = HasKey & EntryBase & ParentOf<Subentry>;
+export type Group = HasKey & ParentOf<Entry>;
 
 export type Index = ParentOf<Group>;
 
@@ -92,15 +90,15 @@ export function ensureChild<TChild extends HasKey>(
 
 export function ensureEntry(index: Index, address: EntryAddress): EntryBase {
   const group = ensureChild(index, address.group, { children: [] });
-  const mainEntry = ensureChild(group, address.mainEntry, {
+  const entry = ensureChild(group, address.entry, {
     children: [],
     locators: [],
     see: [],
     seeAlso: [],
   });
   return address.subentry === undefined
-    ? mainEntry
-    : ensureChild(mainEntry, address.subentry, {
+    ? entry
+    : ensureChild(entry, address.subentry, {
         locators: [],
         see: [],
         seeAlso: [],
@@ -109,17 +107,17 @@ export function ensureEntry(index: Index, address: EntryAddress): EntryBase {
 
 export function findUnresolvedReference(
   index: Index,
-  target: ReferenceTarget,
+  target: EntryAddress,
 ): UnresolvedReference | undefined {
   const group = getChild(index, target.group);
   if (!group) {
     return { target, missing: "group" };
   }
-  const mainEntry = getChild(group, target.mainEntry);
-  if (!mainEntry) {
-    return { target, missing: "mainEntry" };
+  const entry = getChild(group, target.entry);
+  if (!entry) {
+    return { target, missing: "entry" };
   }
-  if (target.subentry !== undefined && !getChild(mainEntry, target.subentry)) {
+  if (target.subentry !== undefined && !getChild(entry, target.subentry)) {
     return { target, missing: "subentry" };
   }
   return undefined;
@@ -132,20 +130,20 @@ function isVacant(entry: EntryBase): boolean {
 export function revokeVacantEntries(index: Index): EntryAddress[] {
   const revoked: EntryAddress[] = [];
   for (const group of index.children) {
-    for (const mainEntry of group.children) {
-      mainEntry.children = mainEntry.children.filter((subentry) => {
+    for (const entry of group.children) {
+      entry.children = entry.children.filter((subentry) => {
         if (!isVacant(subentry)) {
           return true;
         }
-        revoked.push({ group: group.key, mainEntry: mainEntry.key, subentry: subentry.key });
+        revoked.push({ group: group.key, entry: entry.key, subentry: subentry.key });
         return false;
       });
     }
-    group.children = group.children.filter((mainEntry) => {
-      if (!isVacant(mainEntry) || mainEntry.children.length !== 0) {
+    group.children = group.children.filter((entry) => {
+      if (!isVacant(entry) || entry.children.length !== 0) {
         return true;
       }
-      revoked.push({ group: group.key, mainEntry: mainEntry.key });
+      revoked.push({ group: group.key, entry: entry.key });
       return false;
     });
   }
