@@ -24,13 +24,16 @@ function appendAndRestoreSize(fileName: string) {
 function touchSync(fileName: string) {
   try {
     updateTimestamp(fileName);
-  } catch {
+  } catch (error) {
     // `utimesSync` requires the caller to be the file owner when setting
     // explicit timestamps (EPERM on Linux). When the process has write
     // permission but does not own the file (e.g. a bind-mounted workspace
     // in a container with a different UID), we fall back to appending a
     // byte and immediately truncating back to the original size. This
     // changes mtime via actual I/O without altering the file contents.
+    if ((error as NodeJS.ErrnoException).code !== "EPERM") {
+      throw error;
+    }
     appendAndRestoreSize(fileName);
   }
 }
