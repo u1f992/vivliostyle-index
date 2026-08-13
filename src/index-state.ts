@@ -1,3 +1,4 @@
+import deepEqual from "deep-equal";
 import type * as hast from "hast";
 import { fromHtml } from "hast-util-from-html";
 import type * as unified from "unified";
@@ -36,7 +37,7 @@ function sourceSnapshotsEqual(
   previous: SourceSnapshot | undefined,
   current: SourceSnapshot,
 ): boolean {
-  return previous !== undefined && JSON.stringify(previous) === JSON.stringify(current);
+  return previous !== undefined && deepEqual(previous, current, { strict: true });
 }
 
 function affectedDocumentPaths(

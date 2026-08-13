@@ -21,6 +21,7 @@
     "example"
   ],
   "devDependencies": {
+    "@types/deep-equal": "^1.0.4",
     "@types/hast": "^2.0.0",
     "@types/node": "^24.13.3",
     "memfs": "^4.68.1",
@@ -32,6 +33,7 @@
     "vfile": "^4.0.0"
   },
   "dependencies": {
+    "deep-equal": "^2.2.3",
     "hast-util-from-html": "^1.0.2",
     "hast-util-get-attribute": "^1.0.0",
     "hast-util-get-xpath": "^1.0.0",
