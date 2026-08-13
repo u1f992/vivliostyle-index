@@ -54,18 +54,14 @@ type MutableEntryAddress = {
 };
 
 const graphemeSegmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
-// Unicode general categories Cc (control) and Cs (surrogate) are forbidden in readings.
-const forbiddenReadingCharacter = /[\p{Cc}\p{Cs}]/u;
-// Unicode general categories Cc (control) and Cs (surrogate) are forbidden in HTML except for permitted whitespace.
-const forbiddenHtmlCharacter = /[\p{Cc}\p{Cs}]/u;
-// Unicode general categories Cc (control) and Cs (surrogate) are forbidden in references.
-const forbiddenReferenceCharacter = /[\p{Cc}\p{Cs}]/u;
+// Unicode general categories Cc (control) and Cs (surrogate)
+const forbiddenCharacter = /[\p{Cc}\p{Cs}]/u;
 const permittedHtmlControlCharacters = new Set(["\t", "\n", "\r", "\r\n"]);
 const escapableCharacters = new Set(["\\", "@", "!", "|"]);
 
 function containsForbiddenHtmlCharacter(value: string): boolean {
   for (const { segment } of graphemeSegmenter.segment(value)) {
-    if (forbiddenHtmlCharacter.test(segment) && !permittedHtmlControlCharacters.has(segment)) {
+    if (forbiddenCharacter.test(segment) && !permittedHtmlControlCharacters.has(segment)) {
       return true;
     }
   }
@@ -122,7 +118,7 @@ function parseHierarchy(
       }
       html += value;
     } else {
-      if (forbiddenReadingCharacter.test(value)) {
+      if (forbiddenCharacter.test(value)) {
         syntaxError(input, offset, "a reading contains a forbidden control character");
       }
       reading += value;
@@ -244,7 +240,7 @@ function parseEndReference(input: ParserInput, start: number): EndReferenceResul
       break;
     }
 
-    if (forbiddenReferenceCharacter.test(character)) {
+    if (forbiddenCharacter.test(character)) {
       syntaxError(input, offset, "a range end reference contains a control character");
     }
 
