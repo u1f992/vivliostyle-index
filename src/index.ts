@@ -75,12 +75,16 @@ export function createIndexPlugin({
       const root = tree as hast.Root;
       state.initialize(fileSystem, createEntryProcessor);
 
-      for (const targetPath of state.update(documentPath, root)) {
+      const { affectedPaths, entryProcessorMismatch } = state.update(documentPath, root);
+      for (const targetPath of affectedPaths) {
         if (targetPath !== documentPath && state.entryPathSet.has(targetPath)) {
           fileSystem.touchSync(targetPath);
         }
       }
 
+      if (entryProcessorMismatch) {
+        file.message(...messages.entryProcessorMismatch(documentPath));
+      }
       emitMessages(file, state.messagesFor(documentPath));
       renderDocumentIndexes(
         root,

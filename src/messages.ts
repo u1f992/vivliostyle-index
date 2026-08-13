@@ -89,6 +89,11 @@ export const messages = {
     undefined,
     rule("target-not-in-entries"),
   ],
+  entryProcessorMismatch: (documentPath: string): MessageArguments => [
+    `the entry processor and the build produced different index data for ${documentPath}. locators into it may not resolve.`,
+    undefined,
+    rule("entry-processor-mismatch"),
+  ],
   documentNotInEntries: (documentPath: string): MessageArguments => [
     `document ${documentPath} is not included in entries. its index instructions are ignored.`,
     undefined,

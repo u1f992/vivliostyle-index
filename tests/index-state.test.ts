@@ -37,8 +37,10 @@ void test("initializes once and rebuilds indexes after a source update", () => {
   );
 
   assert.deepStrictEqual(reads, [chapterPath, indexPath]);
-  assert.deepStrictEqual([...unchanged], []);
-  assert.deepStrictEqual([...affected], [indexPath]);
+  assert.deepStrictEqual([...unchanged.affectedPaths], []);
+  assert.strictEqual(unchanged.entryProcessorMismatch, false);
+  assert.deepStrictEqual([...affected.affectedPaths], [indexPath]);
+  assert.strictEqual(affected.entryProcessorMismatch, false);
   assert.strictEqual(state.indexes.size, 1);
   assert.deepStrictEqual(state.messagesFor(chapterPath), []);
 });
@@ -61,11 +63,38 @@ void test("marks range sources and index targets after an end document changes",
   state.initialize(fileSystem, () => entryProcessor as never);
   const affected = state.update(endPath, fromHtml(""));
 
-  assert.deepStrictEqual([...affected], [chapterPath, indexPath]);
+  assert.deepStrictEqual([...affected.affectedPaths], [chapterPath, indexPath]);
   assert.deepStrictEqual(
     state.messagesFor(chapterPath).map((message) => message[2]?.split(":")[1]),
     ["missing-range-end"],
   );
+});
+
+void test("flags only the first update whose snapshot disagrees with the entry processor", () => {
+  const chapterPath = "/publication/chapter.md";
+  const indexPath = "/publication/index.md";
+  const files = {
+    [chapterPath]: '<span data-index="index.md?q=a!Apple#index"></span>',
+    [indexPath]: '<nav id="index"></nav>',
+  };
+  const fileSystem: FileSystem = {
+    readFileSync: (path) => files[path as keyof typeof files],
+    touchSync: () => {},
+  };
+  const state = new IndexState([chapterPath, indexPath]);
+  state.initialize(fileSystem, () => entryProcessor as never);
+
+  const mismatch = state.update(
+    chapterPath,
+    fromHtml('<span data-index="index.md?q=b!Banana#index"></span>'),
+  );
+  const edited = state.update(
+    chapterPath,
+    fromHtml('<span data-index="index.md?q=c!Cherry#index"></span>'),
+  );
+
+  assert.strictEqual(mismatch.entryProcessorMismatch, true);
+  assert.strictEqual(edited.entryProcessorMismatch, false);
 });
 
 void test("names the entry and entryContext when an entry cannot be read", () => {

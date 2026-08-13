@@ -16,6 +16,11 @@ export type EntryProcessorInput = {
 
 export type CreateEntryProcessor = (input: Readonly<EntryProcessorInput>) => unified.Processor;
 
+export type UpdateResult = Readonly<{
+  affectedPaths: ReadonlySet<string>;
+  entryProcessorMismatch: boolean;
+}>;
+
 function readEntry(fileSystem: Readonly<FileSystem>, entryPath: string): string {
   try {
     return fileSystem.readFileSync(entryPath);
@@ -59,6 +64,7 @@ export class IndexState {
   readonly entryPaths: readonly string[];
   readonly entryPathSet: ReadonlySet<string>;
   #initialized = false;
+  #updatedPaths = new Set<string>();
   #sources = new Map<string, SourceSnapshot>();
   #indexes = new Map<TargetKey, BuiltIndex>();
   #messages = new Map<string, readonly MessageArguments[]>();
@@ -93,17 +99,19 @@ export class IndexState {
     this.#initialized = true;
   }
 
-  update(documentPath: string, root: hast.Root): ReadonlySet<string> {
+  update(documentPath: string, root: hast.Root): UpdateResult {
     const previous = this.#sources.get(documentPath);
     const current = collectSourceSnapshot(root, documentPath);
+    const firstUpdate = !this.#updatedPaths.has(documentPath);
+    this.#updatedPaths.add(documentPath);
     if (sourceSnapshotsEqual(previous, current)) {
-      return new Set();
+      return { affectedPaths: new Set(), entryProcessorMismatch: false };
     }
 
     this.#sources.set(documentPath, current);
     const affectedPaths = affectedDocumentPaths(this.#sources, documentPath, previous, current);
     this.#rebuild();
-    return affectedPaths;
+    return { affectedPaths, entryProcessorMismatch: firstUpdate && previous !== undefined };
   }
 
   #rebuild(): void {
