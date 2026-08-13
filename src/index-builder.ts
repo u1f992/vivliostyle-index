@@ -38,8 +38,11 @@ function findRangeEndViolation(
   if (!rangeEndSource?.ids.includes(rangeEnd.id)) {
     return messages.missingRangeEnd(rangeEnd);
   }
-  const sourceEntryIndex = entryPaths.indexOf(attachment.sourcePath);
   const endEntryIndex = entryPaths.indexOf(rangeEnd.path);
+  if (endEntryIndex === -1) {
+    return messages.rangeEndNotInEntries(rangeEnd);
+  }
+  const sourceEntryIndex = entryPaths.indexOf(attachment.sourcePath);
   const endPrecedesSource = endEntryIndex < sourceEntryIndex;
   const endDoesNotFollowSourceElement =
     endEntryIndex === sourceEntryIndex &&

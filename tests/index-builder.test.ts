@@ -100,6 +100,37 @@ void test("reports unresolved references and targets outside the entry list", ()
   );
 });
 
+void test("revokes a range whose end lies outside the entry list", () => {
+  const chapterPath = "/publication/chapter.md";
+  const endPath = "/publication/end.md";
+  const indexPath = "/publication/index.md";
+  const sources = new Map([
+    [
+      chapterPath,
+      collectSourceSnapshot(
+        fromHtml('<span id="start" data-index="index.md?q=a!Apple|(end.md%23end#index"></span>'),
+        chapterPath,
+      ),
+    ],
+    [endPath, collectSourceSnapshot(fromHtml('<span id="end"></span>'), endPath)],
+    [indexPath, collectSourceSnapshot(fromHtml('<nav id="index"></nav>'), indexPath)],
+  ]);
+
+  const { indexes, messages } = buildIndexes([chapterPath, indexPath], sources);
+  const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
+
+  assert.ok(builtIndex);
+  assert.deepStrictEqual(builtIndex.index.children, []);
+  assert.deepStrictEqual(
+    messages.get(chapterPath)?.map((message) => message[2]?.split(":")[1]),
+    ["range-end-not-in-entries"],
+  );
+  assert.deepStrictEqual(
+    messages.get(indexPath)?.map((message) => message[2]?.split(":")[1]),
+    ["vacant-entry"],
+  );
+});
+
 void test("reports instructions carried by a document outside the entry list", () => {
   const chapterPath = "/publication/chapter.md";
   const indexPath = "/publication/index.md";

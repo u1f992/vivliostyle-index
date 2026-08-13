@@ -64,6 +64,11 @@ export const messages = {
     undefined,
     rule("missing-range-end"),
   ],
+  rangeEndNotInEntries: (target: Target): MessageArguments => [
+    `range end target ${formatTarget(target)} is in a document not included in entries. the range is revoked.`,
+    undefined,
+    rule("range-end-not-in-entries"),
+  ],
   rangeEndOrder: (target: Target): MessageArguments => [
     `range end target ${formatTarget(target)} does not follow its start. the range is revoked.`,
     undefined,
