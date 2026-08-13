@@ -7,7 +7,6 @@ import {
   type Key,
   type Revocation,
 } from "./model.ts";
-import { countSlots } from "./template.ts";
 
 export type ParsedInstruction =
   | Readonly<{
@@ -206,13 +205,6 @@ function parseTemplate(input: ParserInput, start: number): string {
     offset++;
   }
 
-  if (countSlots(template) !== 1) {
-    syntaxError(
-      input,
-      start,
-      "an unescaped | starts a template, which must contain exactly one slot element",
-    );
-  }
   return template;
 }
 

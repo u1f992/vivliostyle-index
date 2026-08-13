@@ -7,22 +7,32 @@ import { select, selectAll } from "hast-util-select";
 import { toText } from "hast-util-to-text";
 import { h } from "hastscript";
 
-import { countSlots, fillSlot } from "../src/template.ts";
+import { fillSlot } from "../src/template.ts";
 
 function asRoot(children: hast.ElementContent[]): hast.Root {
   return { type: "root", children };
 }
 
-void test("counts slot elements at any depth", () => {
-  assert.strictEqual(countSlots("<em><slot></slot></em>"), 1);
-  assert.strictEqual(countSlots("<b>[<i><slot></slot></i>]</b>"), 1);
-  assert.strictEqual(countSlots("<em></em>"), 0);
-  assert.strictEqual(countSlots("<slot></slot><slot></slot>"), 2);
-  assert.strictEqual(countSlots('<a title="<slot></slot>">x</a>'), 0);
-  assert.strictEqual(countSlots("<template><slot></slot></template>"), 0);
+void test("keeps a template without slots as it is", () => {
+  const root = asRoot(fillSlot("<em>x</em>", [h("a", { href: "#a" })]));
+
+  assert.strictEqual(select("a", root), null);
+  assert.strictEqual(toText(root), "x");
 });
 
-void test("leaves a template element unfilled, as its count reports", () => {
+void test("fills every slot with its own copy of the nodes", () => {
+  const filled = fillSlot("<b><slot></slot></b><i><slot></slot></i>", [h("a", { href: "#a" })]);
+  const root = asRoot(filled);
+  const links = selectAll("a", root);
+
+  assert.deepStrictEqual(
+    links.map((link) => getAttribute(link, "href")),
+    ["#a", "#a"],
+  );
+  assert.notStrictEqual(links[0], links[1]);
+});
+
+void test("leaves a slot inside a template element unfilled", () => {
   const root = asRoot(fillSlot("<template><slot></slot></template>", [h("a", { href: "#a" })]));
 
   assert.strictEqual(select("a", root), null);

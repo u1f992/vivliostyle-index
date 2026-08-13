@@ -1,11 +1,6 @@
 import type * as hast from "hast";
-import { selectAll } from "hast-util-select";
 
 import { parseFragment } from "./html.ts";
-
-export function countSlots(template: string): number {
-  return selectAll("slot", { type: "root", children: parseFragment(template) }).length;
-}
 
 export function fillSlot(
   template: string,
@@ -23,6 +18,6 @@ const replaceSlots = (
       return [node];
     }
     return node.tagName === "slot"
-      ? [...content]
+      ? structuredClone(content)
       : [{ ...node, children: replaceSlots(node.children, content) }];
   });

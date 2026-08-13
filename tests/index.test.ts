@@ -375,27 +375,27 @@ void test("wraps page and range locators in the template of their instruction", 
   assert.strictEqual(select("slot", root), null);
 });
 
-void test("rejects a template without exactly one slot and keeps the target untouched", () => {
+void test("renders a slotless template without a locator link", () => {
   const files = {
     "/publication/chapter.md":
-      '<span data-index="index.md?q=\u3057!\u3058\u3086\u3046\u308a\u3088\u3046@\u81ea\u7531\u5229\u7528||<em></em>#index">\u81ea\u7531\u5229\u7528</span>',
-    "/publication/index.md": '<nav id="index">untouched</nav>',
+      '<span data-index="index.md?q=\u3057!\u3058\u3086\u3046\u308a\u3088\u3046@\u81ea\u7531\u5229\u7528||<em>\u63b2\u8f09\u7565</em>#index">\u81ea\u7531\u5229\u7528</span>',
+    "/publication/index.md": '<nav id="index"></nav>',
   };
   const { processor } = createProcessor({
     entries: ["chapter.md", "index.md"],
     files,
   });
   const root = fromHtml(files["/publication/index.md"]);
-  processor.runSync(root, { path: "/publication/index.md" });
-  const file = VFile({ path: "/publication/chapter.md" });
+  const file = VFile({ path: "/publication/index.md" });
 
-  processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
+  processor.runSync(root, file);
 
+  assert.deepStrictEqual(file.messages, []);
+  assert.deepStrictEqual(locatorLinks(root), []);
   assert.deepStrictEqual(
-    file.messages.map((message) => message.ruleId),
-    ["instruction-parse-error"],
+    selectAll(`${LOCATORS} > li > em`, root).map((wrapped) => toText(wrapped)),
+    ["\u63b2\u8f09\u7565"],
   );
-  assert.strictEqual(toText(select("#index", root)!), "untouched");
 });
 
 void test("links a reference to a later entry", () => {

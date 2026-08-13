@@ -220,6 +220,29 @@ void test("distinguishes escaped metacharacters at syntax boundaries", () => {
   });
 });
 
+void test("accepts a template with any number of slots", () => {
+  const address = {
+    group: { html: "group", reading: "group" },
+    entry: { html: "main", reading: "main" },
+  };
+
+  assert.deepStrictEqual(parseInstruction("group!main||"), {
+    type: "page",
+    address,
+    template: "",
+  });
+  assert.deepStrictEqual(parseInstruction("group!main||<em>掲載略</em>"), {
+    type: "page",
+    address,
+    template: "<em>掲載略</em>",
+  });
+  assert.deepStrictEqual(parseInstruction("group!main||<slot></slot><slot></slot>"), {
+    type: "page",
+    address,
+    template: "<slot></slot><slot></slot>",
+  });
+});
+
 void test("keeps a template running to the end of the instruction", () => {
   assert.deepStrictEqual(parseInstruction("group!main||<em>\\@\\!\\|\\\\<slot></slot></em>|x"), {
     type: "page",
@@ -328,17 +351,8 @@ void test("rejects incomplete and structurally invalid instructions", () => {
     "group!main|!(",
     "group\\",
     "group\\x!main",
-    "group!main||",
-    "group!main||<em></em>",
-    "group!main||<slot></slot><slot></slot>",
-    'group!main||<a href="<slot></slot>">x</a>',
-    "group!main|(#end|",
-    "group!main|(#end|<em></em>",
     "group!main||<em><slot></slot></em>\\",
     "group!main|(#end\\",
-    "group!main|->tg!tm|",
-    "group!main|=>tg!tm|<em></em>",
-    "group!main|->tg!tm|<slot></slot><slot></slot>",
   ];
 
   for (const instruction of invalidInstructions) {
