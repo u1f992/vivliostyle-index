@@ -4,6 +4,7 @@ import test from "node:test";
 import type * as hast from "hast";
 import { getAttribute } from "hast-util-get-attribute";
 import { select, selectAll } from "hast-util-select";
+import { toText } from "hast-util-to-text";
 
 import type { Index } from "../src/model.ts";
 import { renderIndex } from "../src/render.ts";
@@ -54,6 +55,48 @@ void test("renders an index into the target element", () => {
   const entry = select(".index-main-entry", target);
   assert.ok(entry);
   assert.ok(getAttribute(entry, "id")?.startsWith("index--"));
+});
+
+void test("wraps every key in an element of its own", () => {
+  const target = createTarget();
+  const indexWithSubentry: Index = {
+    children: [
+      {
+        key: { html: "そ", reading: "そ" },
+        children: [
+          {
+            key: { html: "相続", reading: "そうぞく" },
+            children: [
+              {
+                key: { html: "一身専属", reading: "いっしんせんぞく" },
+                locators: [{ locator: "076.html#c", important: false }],
+                see: [],
+                seeAlso: [],
+              },
+            ],
+            locators: [{ locator: "088.html#b", important: false }],
+            see: [],
+            seeAlso: [],
+          },
+        ],
+      },
+    ],
+  };
+
+  renderIndex(indexWithSubentry, target, "index");
+
+  assert.deepStrictEqual(
+    selectAll("li.index-group > span.index-group-key", target).map((key) => toText(key)),
+    ["そ"],
+  );
+  assert.deepStrictEqual(
+    selectAll("li.index-main-entry > span.index-main-entry-key", target).map((key) => toText(key)),
+    ["相続"],
+  );
+  assert.deepStrictEqual(
+    selectAll("li.index-subentry > span.index-subentry-key", target).map((key) => toText(key)),
+    ["一身専属"],
+  );
 });
 
 void test("exposes the rendered index as JSON on the target element", () => {

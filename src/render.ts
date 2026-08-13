@@ -14,7 +14,7 @@ const generateGroups = (groups: Group[], indexId: string): hast.Element =>
     "ol.index-groups",
     groups.map((group) =>
       h("li.index-group", [
-        ...parseFragment(group.key.html),
+        h("span.index-group-key", parseFragment(group.key.html)),
         h(
           "ol.index-main-entries",
           generateMainEntries(group.children, indexId, `${indexId}--${JSON.stringify(group.key)}`),
@@ -31,7 +31,7 @@ const generateMainEntries = (
   mainEntries.map((mainEntry) => {
     const entryId = `${parentId}--${JSON.stringify(mainEntry.key)}`;
     return h("li.index-main-entry", { id: entryId }, [
-      ...parseFragment(mainEntry.key.html),
+      h("span.index-main-entry-key", parseFragment(mainEntry.key.html)),
       ...(mainEntry.locators.length !== 0
         ? [generateLocators(mainEntry.locators, "index-main-entry-locators")]
         : []),
@@ -56,7 +56,7 @@ const generateSubentries = (
     "ol.index-subentries",
     subentries.map((subentry) =>
       h("li.index-subentry", { id: `${parentId}--${JSON.stringify(subentry.key)}` }, [
-        ...parseFragment(subentry.key.html),
+        h("span.index-subentry-key", parseFragment(subentry.key.html)),
         ...(subentry.locators.length !== 0
           ? [generateLocators(subentry.locators, "index-subentry-locators")]
           : []),

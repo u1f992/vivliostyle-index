@@ -268,7 +268,7 @@ void test("parses a heading word as inner HTML", () => {
 
   processor.runSync(root, { path: "/publication/index.md" });
 
-  const heading = select(".index-main-entry > em", root);
+  const heading = select(".index-main-entry-key > em", root);
   assert.ok(heading);
   assert.strictEqual(toText(heading), "京都大学");
 });
@@ -290,7 +290,7 @@ void test("decodes a URL-encoded DSL query value", () => {
   const groupHeading = select("li.index-group", root);
   assert.ok(groupHeading);
   assert.match(toText(groupHeading), /^a@b\+c/);
-  const heading = select(".index-main-entry > em", root);
+  const heading = select(".index-main-entry-key > em", root);
   assert.ok(heading);
   assert.strictEqual(toText(heading), "C|D & E+F");
 });
