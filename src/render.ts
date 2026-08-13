@@ -5,6 +5,7 @@ import type * as hast from "hast";
 import { h } from "hastscript";
 
 export function renderIndex(index: Index, target: hast.Element, indexId: string): void {
+  target.properties = { ...target.properties, dataIndexResult: JSON.stringify(index) };
   target.children = index.children.length === 0 ? [] : [generateGroups(index.children, indexId)];
 }
 

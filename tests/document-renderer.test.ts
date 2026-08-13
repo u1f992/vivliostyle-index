@@ -2,7 +2,8 @@ import assert from "node:assert";
 import test from "node:test";
 
 import { fromHtml } from "hast-util-from-html";
-import { selectAll } from "hast-util-select";
+import { getAttribute } from "hast-util-get-attribute";
+import { select, selectAll } from "hast-util-select";
 import { toText } from "hast-util-to-text";
 import VFile from "vfile";
 
@@ -123,7 +124,30 @@ void test("reports a missing target", () => {
   assert.strictEqual(file.messages[0]?.ruleId, "missing-index-target");
 });
 
+void test("exposes the sorted index on the target element", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, id: "index" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePaths: ["/publication/chapter.md"],
+  };
+  const root = fromHtml('<nav id="index"></nav>');
 
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map(),
+    VFile({ path: documentPath }),
+  );
 
-
-
+  const element = select("#index", root);
+  assert.ok(element);
+  const payload: Index = JSON.parse(getAttribute(element, "data-index-result") ?? "null");
+  assert.deepStrictEqual(
+    payload.children.map(({ key }) => key.reading),
+    ["a", "z"],
+  );
+});

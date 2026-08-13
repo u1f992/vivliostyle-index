@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type * as hast from "hast";
 import { getAttribute } from "hast-util-get-attribute";
-import { select } from "hast-util-select";
+import { select, selectAll } from "hast-util-select";
 
 import type { Index } from "../src/model.ts";
 import { renderIndex } from "../src/render.ts";
@@ -56,5 +56,31 @@ void test("renders an index into the target element", () => {
   assert.ok(getAttribute(entry, "id")?.startsWith("index--"));
 });
 
+void test("exposes the rendered index as JSON on the target element", () => {
+  const target = createTarget();
+  const root: hast.Root = { type: "root", children: [target] };
 
+  renderIndex(index, target, "index");
 
+  assert.deepStrictEqual(selectAll("[data-index-result]", root), [target]);
+  assert.strictEqual(getAttribute(target, "data-index-result"), JSON.stringify(index));
+});
+
+void test("keeps an index instruction carried by the target element itself", () => {
+  const instruction = "index.md?q=さ!索引#index";
+  const target = createTarget();
+  target.properties = { ...target.properties, dataIndex: instruction };
+
+  renderIndex(index, target, "index");
+
+  assert.strictEqual(getAttribute(target, "data-index"), instruction);
+});
+
+void test("exposes an emptied index on the target element", () => {
+  const target = createTarget();
+
+  renderIndex({ children: [] }, target, "index");
+
+  assert.deepStrictEqual(target.children, []);
+  assert.strictEqual(getAttribute(target, "data-index-result"), '{"children":[]}');
+});
