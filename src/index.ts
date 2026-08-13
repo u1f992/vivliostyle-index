@@ -40,7 +40,7 @@ export type { Target } from "./target.ts";
 
 export type CreatePluginOptions = {
   entry: readonly string[];
-  entryContext?: string;
+  entryContext: string;
   comparators?: Comparators;
   preambles?: Preambles;
   fileSystem?: Readonly<FileSystem>;
@@ -57,7 +57,7 @@ export function createIndexPlugin({
   preambles = [],
   fileSystem = nodeFileSystem,
 }: Readonly<CreatePluginOptions>): unified.Plugin<[Readonly<PluginOptions>]> {
-  const context = upath.resolve(process.cwd(), entryContext ?? ".");
+  const context = upath.resolve(entryContext);
   const entryPaths = entries.map((entry) => upath.resolve(context, entry));
   const state = new IndexState(entryPaths);
   const comparatorsByTarget = mapByTarget(comparators, context);
