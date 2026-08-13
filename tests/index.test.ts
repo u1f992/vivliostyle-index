@@ -620,7 +620,7 @@ void test("reports malformed index instructions", () => {
 
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
-    ["command-parse-error", "command-parse-error"],
+    ["instruction-parse-error", "instruction-parse-error"],
   );
 });
 

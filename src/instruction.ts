@@ -2,7 +2,7 @@ import type { EntryAddress, Key } from "./model.ts";
 
 export type ParsedEntry = EntryAddress;
 
-export type ParsedCommand =
+export type ParsedInstruction =
   | Readonly<{
       type: "page";
       entry: ParsedEntry;
@@ -20,12 +20,12 @@ export type ParsedCommand =
       target: ParsedEntry;
     }>;
 
-export class CommandSyntaxError extends SyntaxError {
+export class InstructionSyntaxError extends SyntaxError {
   readonly offset: number;
 
   constructor(input: string, offset: number, reason: string) {
     super(`${reason} at grapheme offset ${offset}: ${JSON.stringify(input)}`);
-    this.name = "CommandSyntaxError";
+    this.name = "InstructionSyntaxError";
     this.offset = offset;
   }
 }
@@ -70,7 +70,7 @@ function createParserInput(source: string): ParserInput {
 }
 
 function syntaxError(input: ParserInput, offset: number, reason: string): never {
-  throw new CommandSyntaxError(input.source, offset, reason);
+  throw new InstructionSyntaxError(input.source, offset, reason);
 }
 
 function completeEntry(input: ParserInput, entry: MutableParsedEntry, offset: number): ParsedEntry {
@@ -178,7 +178,7 @@ function parseRange(
   entry: ParsedEntry,
   referenceOffset: number,
   important: boolean,
-): ParsedCommand {
+): ParsedInstruction {
   const referenceGraphemes = input.graphemes.slice(referenceOffset);
   const endReference = referenceGraphemes.join("");
   if (endReference.trim() === "") {
@@ -202,7 +202,7 @@ function parseReference(
   entry: ParsedEntry,
   targetOffset: number,
   type: "see" | "seeAlso",
-): ParsedCommand {
+): ParsedInstruction {
   const { entry: target, offset } = parseHierarchy(input, targetOffset, false);
   if (offset !== input.graphemes.length) {
     syntaxError(input, offset, "unexpected content after a reference target");
@@ -214,7 +214,7 @@ function startsWith(input: ParserInput, offset: number, expected: readonly strin
   return expected.every((character, index) => input.graphemes[offset + index] === character);
 }
 
-export function parseCommand(source: string): ParsedCommand {
+export function parseInstruction(source: string): ParsedInstruction {
   const input = createParserInput(source);
   const { entry, offset } = parseHierarchy(input, 0, true);
   if (offset === input.graphemes.length) {
@@ -237,5 +237,5 @@ export function parseCommand(source: string): ParsedCommand {
   if (startsWith(input, operatorOffset, ["=", ">"])) {
     return parseReference(input, entry, operatorOffset + 2, "seeAlso");
   }
-  return syntaxError(input, operatorOffset, "unknown index command operator");
+  return syntaxError(input, operatorOffset, "unknown index instruction operator");
 }

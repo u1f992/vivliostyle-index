@@ -9,18 +9,22 @@ import type * as unified from "unified";
 import upath from "upath";
 import type { VFile, VFileCompatible } from "vfile";
 
-import { applyPageCommand, applyRangeCommand, applyReferenceCommand } from "./apply-command.ts";
-import { CommandSyntaxError, parseCommand, type ParsedCommand } from "./command-parser.ts";
-import expand from "./command/expand.ts";
+import {
+  applyPageInstruction,
+  applyRangeInstruction,
+  applyReferenceInstruction,
+} from "./apply-instruction.ts";
 import type { FileSystem } from "./file-system.ts";
+import { InstructionSyntaxError, parseInstruction, type ParsedInstruction } from "./instruction.ts";
 import type { Index } from "./model.ts";
 import { nodeFileSystem } from "./node-file-system.ts";
+import { renderIndex } from "./render.ts";
 import { validateReferences } from "./resolve.ts";
 import { sort, byLocales, byListedOrder, type IndexComparator } from "./sort.ts";
 
 export { byLocales, byListedOrder };
-export { CommandSyntaxError, parseCommand } from "./command-parser.ts";
-export type { ParsedCommand, ParsedEntry } from "./command-parser.ts";
+export { InstructionSyntaxError, parseInstruction } from "./instruction.ts";
+export type { ParsedInstruction, ParsedEntry } from "./instruction.ts";
 export type { FileSystem } from "./file-system.ts";
 export { nodeFileSystem } from "./node-file-system.ts";
 export { logMessages } from "./log-messages.ts";
@@ -78,7 +82,7 @@ type Attachment = {
   sourceElementId: string;
   target: Target;
   targetKey: TargetKey;
-  command: ParsedCommand;
+  instruction: ParsedInstruction;
   locatorHref: string;
   rangeEndTarget?: Target;
 };
@@ -218,20 +222,20 @@ function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnaps
       continue;
     }
 
-    const commandSource = url.searchParams.get("q");
-    if (commandSource === null) {
+    const instructionSource = url.searchParams.get("q");
+    if (instructionSource === null) {
       continue;
     }
-    let command: ParsedCommand;
+    let instruction: ParsedInstruction;
     try {
-      command = parseCommand(commandSource);
+      instruction = parseInstruction(instructionSource);
     } catch (error) {
       diagnostics.push({
         reason:
-          error instanceof CommandSyntaxError
+          error instanceof InstructionSyntaxError
             ? error.message
-            : `cannot parse index command: ${commandSource}`,
-        ruleId: "command-parse-error",
+            : `cannot parse index instruction: ${instructionSource}`,
+        ruleId: "instruction-parse-error",
       });
       continue;
     }
@@ -239,15 +243,15 @@ function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnaps
     const targetKey = createTargetKey(target);
     const sourceElementId = ensureId(root, elem);
     let rangeEndTarget: Target | undefined;
-    if (command.type === "range") {
+    if (instruction.type === "range") {
       try {
-        rangeEndTarget = resolveTarget(command.endReference, baseUrl);
+        rangeEndTarget = resolveTarget(instruction.endReference, baseUrl);
         if (rangeEndTarget.elementId === "") {
           throw new TypeError();
         }
       } catch {
         diagnostics.push({
-          reason: `invalid range end reference: ${command.endReference}`,
+          reason: `invalid range end reference: ${instruction.endReference}`,
           ruleId: "invalid-range-end-reference",
         });
         continue;
@@ -258,7 +262,7 @@ function collectSourceSnapshot(root: hast.Root, sourcePath: string): SourceSnaps
       sourceElementId,
       target,
       targetKey,
-      command,
+      instruction,
       locatorHref: createLocatorHref(sourcePath, target.documentPath, sourceElementId),
       ...(rangeEndTarget === undefined ? {} : { rangeEndTarget }),
     });
@@ -337,10 +341,10 @@ function rebuildIndexes(state: State): void {
     }
     for (const attachment of snapshot.attachments) {
       const rangeEndHref =
-        attachment.command.type === "range"
+        attachment.instruction.type === "range"
           ? resolveRangeEndHref(state, attachment, diagnostics)
           : undefined;
-      if (attachment.command.type === "range" && rangeEndHref === undefined) {
+      if (attachment.instruction.type === "range" && rangeEndHref === undefined) {
         continue;
       }
       let builtIndex = indexes.get(attachment.targetKey);
@@ -352,15 +356,15 @@ function rebuildIndexes(state: State): void {
         };
         indexes.set(attachment.targetKey, builtIndex);
       }
-      switch (attachment.command.type) {
+      switch (attachment.instruction.type) {
         case "page":
-          applyPageCommand(builtIndex.index, attachment.command, attachment.locatorHref);
+          applyPageInstruction(builtIndex.index, attachment.instruction, attachment.locatorHref);
           break;
         case "range":
           if (rangeEndHref !== undefined) {
-            applyRangeCommand(
+            applyRangeInstruction(
               builtIndex.index,
-              attachment.command,
+              attachment.instruction,
               attachment.locatorHref,
               rangeEndHref,
             );
@@ -368,7 +372,7 @@ function rebuildIndexes(state: State): void {
           break;
         case "see":
         case "seeAlso":
-          applyReferenceCommand(builtIndex.index, attachment.command);
+          applyReferenceInstruction(builtIndex.index, attachment.instruction);
           break;
       }
     }
@@ -475,7 +479,7 @@ function renderIndexes(
     }
     const comparator =
       comparators.get(targetKey) ?? defaultComparator(findClosestLang(root, element));
-    expand(sort(index, comparator), element, target.elementId);
+    renderIndex(sort(index, comparator), element, target.elementId);
   }
 }
 

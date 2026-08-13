@@ -1,9 +1,9 @@
-import { parseFragment } from "../html.ts";
-import type { EntryBase, Index, MainEntry, Subentry } from "../model.ts";
+import { parseFragment } from "./html.ts";
+import type { EntryBase, Index, MainEntry, Subentry } from "./model.ts";
 
 import type * as hast from "hast";
 
-export default function expand(index: Index, elem: hast.Element, elementId: string) {
+export function renderIndex(index: Index, target: hast.Element, elementId: string): void {
   const indexGroups: hast.Element = {
     type: "element",
     tagName: "ol",
@@ -33,22 +33,22 @@ export default function expand(index: Index, elem: hast.Element, elementId: stri
     indexGroups.children.push(groupElement);
   }
 
-  elem.children = [indexGroups];
+  target.children = [indexGroups];
 }
 
 function generateMainEntries(
   mainEntries: MainEntry[],
   elementId: string,
-  slag: string,
+  parentId: string,
 ): hast.ElementContent[] {
   return mainEntries.map((mainEntry) => {
-    const currentSlag = `${slag}--${JSON.stringify(mainEntry.key)}`;
+    const entryId = `${parentId}--${JSON.stringify(mainEntry.key)}`;
     const mainElement: hast.Element = {
       type: "element",
       tagName: "li",
       properties: {
         className: "index-main-entry",
-        id: currentSlag,
+        id: entryId,
       },
       children: [
         ...parseFragment(mainEntry.key.html),
@@ -62,7 +62,7 @@ function generateMainEntries(
           ? [generateReferences(mainEntry.seeAlso, "index-main-entry-see-also", elementId)]
           : []),
         ...(mainEntry.children.length !== 0
-          ? [generateSubentries(mainEntry.children, elementId, currentSlag)]
+          ? [generateSubentries(mainEntry.children, elementId, entryId)]
           : []),
       ],
     };
@@ -70,7 +70,11 @@ function generateMainEntries(
   });
 }
 
-function generateSubentries(subentries: Subentry[], elementId: string, slag: string): hast.Element {
+function generateSubentries(
+  subentries: Subentry[],
+  elementId: string,
+  parentId: string,
+): hast.Element {
   return {
     type: "element",
     tagName: "ol",
@@ -80,7 +84,7 @@ function generateSubentries(subentries: Subentry[], elementId: string, slag: str
       tagName: "li",
       properties: {
         className: "index-subentry",
-        id: `${slag}--${JSON.stringify(subentry.key)}`,
+        id: `${parentId}--${JSON.stringify(subentry.key)}`,
       },
       children: [
         ...parseFragment(subentry.key.html),

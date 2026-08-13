@@ -2,20 +2,20 @@ import assert from "node:assert";
 import test from "node:test";
 
 import {
-  applyPageCommand,
-  applyRangeCommand,
-  applyReferenceCommand,
-} from "../src/apply-command.ts";
-import { parseCommand } from "../src/command-parser.ts";
+  applyPageInstruction,
+  applyRangeInstruction,
+  applyReferenceInstruction,
+} from "../src/apply-instruction.ts";
+import { parseInstruction } from "../src/instruction.ts";
 import type { Index } from "../src/model.ts";
 import { dropSequences } from "./test-util.ts";
 
-void test("applies page commands", () => {
+void test("applies page instructions", () => {
   const index: Index = { children: [] };
-  const command = parseCommand("し!じゆうりよう@自由利用|!");
-  assert.strictEqual(command.type, "page");
+  const instruction = parseInstruction("し!じゆうりよう@自由利用|!");
+  assert.strictEqual(instruction.type, "page");
 
-  applyPageCommand(index, command, "chapter.html#fair-use");
+  applyPageInstruction(index, instruction, "chapter.html#fair-use");
 
   assert.deepStrictEqual(dropSequences(index), {
     children: [
@@ -35,12 +35,12 @@ void test("applies page commands", () => {
   });
 });
 
-void test("applies range commands", () => {
+void test("applies range instructions", () => {
   const index: Index = { children: [] };
-  const command = parseCommand("し!じゆうりよう@自由利用|(#end");
-  assert.strictEqual(command.type, "range");
+  const instruction = parseInstruction("し!じゆうりよう@自由利用|(#end");
+  assert.strictEqual(instruction.type, "range");
 
-  applyRangeCommand(index, command, "chapter.html#start", "chapter.html#end");
+  applyRangeInstruction(index, instruction, "chapter.html#start", "chapter.html#end");
 
   assert.deepStrictEqual(dropSequences(index), {
     children: [
@@ -65,12 +65,12 @@ void test("applies range commands", () => {
   });
 });
 
-void test("applies reference commands", () => {
+void test("applies reference instructions", () => {
   const index: Index = { children: [] };
-  const command = parseCommand("ち!ちょさくけん@著作権|=>ち!ちてきざいさんけん@知的財産権");
-  assert.ok(command.type === "see" || command.type === "seeAlso");
+  const instruction = parseInstruction("ち!ちょさくけん@著作権|=>ち!ちてきざいさんけん@知的財産権");
+  assert.ok(instruction.type === "see" || instruction.type === "seeAlso");
 
-  applyReferenceCommand(index, command);
+  applyReferenceInstruction(index, instruction);
 
   assert.deepStrictEqual(dropSequences(index), {
     children: [
