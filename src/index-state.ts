@@ -72,8 +72,8 @@ export class IndexState {
   #messages = new Map<string, readonly MessageArguments[]>();
 
   constructor(entryPaths: readonly string[]) {
-    this.entryPaths = entryPaths;
     this.entryPathSet = new Set(entryPaths);
+    this.entryPaths = [...this.entryPathSet];
   }
 
   get indexes(): ReadonlyMap<TargetKey, BuiltIndex> {

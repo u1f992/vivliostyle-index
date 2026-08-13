@@ -5,6 +5,7 @@ import { fromHtml } from "hast-util-from-html";
 
 import type { FileSystem } from "../src/file-system.ts";
 import { IndexState, type EntryProcessorInput } from "../src/index-state.ts";
+import { createTargetKey } from "../src/target.ts";
 
 const entryProcessor = {
   processSync: ({ contents }: { contents: unknown }) => ({ toString: () => String(contents) }),
@@ -95,6 +96,31 @@ void test("flags only the first update whose snapshot disagrees with the entry p
 
   assert.strictEqual(mismatch.entryProcessorMismatch, true);
   assert.strictEqual(edited.entryProcessorMismatch, false);
+});
+
+void test("applies an entry listed twice once", () => {
+  const chapterPath = "/publication/chapter.md";
+  const indexPath = "/publication/index.md";
+  const files = {
+    [chapterPath]: '<span id="a" data-index="index.md?q=a!Apple#index"></span>',
+    [indexPath]: '<nav id="index"></nav>',
+  };
+  const reads: string[] = [];
+  const fileSystem: FileSystem = {
+    readFileSync: (path) => {
+      reads.push(path);
+      return files[path as keyof typeof files];
+    },
+    touchSync: () => {},
+  };
+  const state = new IndexState([chapterPath, indexPath, chapterPath]);
+
+  state.initialize(fileSystem, () => entryProcessor as never);
+  const builtIndex = state.indexes.get(createTargetKey({ path: indexPath, id: "index" }));
+
+  assert.deepStrictEqual(state.entryPaths, [chapterPath, indexPath]);
+  assert.deepStrictEqual(reads, [chapterPath, indexPath]);
+  assert.strictEqual(builtIndex?.index.children[0]?.children[0]?.locators.length, 1);
 });
 
 void test("rejects an entry processor that reaches the index plugin", () => {
