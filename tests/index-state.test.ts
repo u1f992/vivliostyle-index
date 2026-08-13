@@ -97,6 +97,27 @@ void test("flags only the first update whose snapshot disagrees with the entry p
   assert.strictEqual(edited.entryProcessorMismatch, false);
 });
 
+void test("rejects an entry processor that reaches the index plugin", () => {
+  const chapterPath = "/publication/chapter.md";
+  const fileSystem: FileSystem = {
+    readFileSync: () => "",
+    touchSync: () => {},
+  };
+  const state = new IndexState([chapterPath]);
+  const createEntryProcessor = () =>
+    ({
+      processSync: () => {
+        state.initialize(fileSystem, createEntryProcessor as never);
+        return { toString: () => "" };
+      },
+    }) as never;
+
+  assert.throws(
+    () => state.initialize(fileSystem, createEntryProcessor as never),
+    /without the index plugin/,
+  );
+});
+
 void test("names the entry and entryContext when an entry cannot be read", () => {
   const missingPath = "/elsewhere/chapter.md";
   const fileSystem: FileSystem = {

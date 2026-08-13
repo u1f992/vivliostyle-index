@@ -65,6 +65,7 @@ export class IndexState {
   readonly entryPaths: readonly string[];
   readonly entryPathSet: ReadonlySet<string>;
   #initialized = false;
+  #initializing = false;
   #updatedPaths = new Set<string>();
   #sources = new Map<string, SourceSnapshot>();
   #indexes = new Map<TargetKey, BuiltIndex>();
@@ -87,13 +88,23 @@ export class IndexState {
     if (this.#initialized) {
       return;
     }
+    if (this.#initializing) {
+      throw new Error(
+        "the entry processor reached the index plugin that invoked it. createEntryProcessor must return a processor without the index plugin.",
+      );
+    }
 
-    for (const entryPath of this.entryPaths) {
-      const contents = readEntry(fileSystem, entryPath);
-      const input = { path: entryPath, contents } satisfies VFileCompatible;
-      const processor = createEntryProcessor(input);
-      const html = processor.processSync(input).toString();
-      this.#sources.set(entryPath, collectSourceSnapshot(fromHtml(html), entryPath));
+    this.#initializing = true;
+    try {
+      for (const entryPath of this.entryPaths) {
+        const contents = readEntry(fileSystem, entryPath);
+        const input = { path: entryPath, contents } satisfies VFileCompatible;
+        const processor = createEntryProcessor(input);
+        const html = processor.processSync(input).toString();
+        this.#sources.set(entryPath, collectSourceSnapshot(fromHtml(html), entryPath));
+      }
+    } finally {
+      this.#initializing = false;
     }
 
     this.#rebuild();
