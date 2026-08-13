@@ -37,6 +37,16 @@ export const messages = {
     undefined,
     rule("invalid-index-reference"),
   ],
+  missingTargetFragment: (reference: string): MessageArguments => [
+    `index reference has no target fragment: ${reference}`,
+    undefined,
+    rule("missing-target-fragment"),
+  ],
+  missingInstruction: (reference: string): MessageArguments => [
+    `index reference has no q instruction: ${reference}`,
+    undefined,
+    rule("missing-instruction"),
+  ],
   invalidInstruction: (error: unknown, instructionSource: string): MessageArguments => [
     error instanceof InstructionSyntaxError
       ? error.message

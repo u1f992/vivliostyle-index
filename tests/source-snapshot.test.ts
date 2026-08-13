@@ -40,14 +40,26 @@ void test("extracts instructions, targets, locations, and element IDs", () => {
 
 void test("reports invalid references and instructions", () => {
   const root = fromHtml(
-    '<span data-index="https://example.test/index.md?q=a!Apple#index"></span><span data-index="index.md?q=%5B#index"></span><span data-index="index.md?q=a!Apple|(end.md#index"></span>',
+    [
+      '<span data-index="https://example.test/index.md?q=a!Apple#index"></span>',
+      '<span data-index="index.md?q=%5B#index"></span>',
+      '<span data-index="index.md?q=a!Apple|(end.md#index"></span>',
+      '<span data-index="index.md?q=a!Apple"></span>',
+      '<span data-index="index.md#index"></span>',
+    ].join(""),
   );
 
   const snapshot = collectSourceSnapshot(root, "/publication/chapter.md");
 
   assert.deepStrictEqual(
     snapshot.messages.map((message) => message[2]?.split(":")[1]),
-    ["invalid-index-reference", "instruction-parse-error", "invalid-range-end-reference"],
+    [
+      "invalid-index-reference",
+      "instruction-parse-error",
+      "invalid-range-end-reference",
+      "missing-target-fragment",
+      "missing-instruction",
+    ],
   );
   assert.strictEqual(snapshot.attachments.length, 0);
 });

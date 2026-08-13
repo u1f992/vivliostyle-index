@@ -1094,7 +1094,7 @@ void test("reports an invalid entry reference on its index file", () => {
   );
 });
 
-void test("reports an index reference without a fragment as a missing target", () => {
+void test("rejects an index reference without a fragment where it is written", () => {
   const files = {
     "/publication/chapter.md": '<span data-index="index.md?q=a!Apple">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
@@ -1103,14 +1103,18 @@ void test("reports an index reference without a fragment as a missing target", (
     entries: ["chapter.md", "index.md"],
     files,
   });
-  const root = fromHtml(files["/publication/index.md"]);
-  const file = VFile({ path: "/publication/index.md" });
+  const chapterRoot = fromHtml(files["/publication/chapter.md"]);
+  const chapterFile = VFile({ path: "/publication/chapter.md" });
+  const indexRoot = fromHtml(files["/publication/index.md"]);
+  const indexFile = VFile({ path: "/publication/index.md" });
 
-  processor.runSync(root, file);
+  processor.runSync(chapterRoot, chapterFile);
+  processor.runSync(indexRoot, indexFile);
 
-  assert.deepStrictEqual(locatorLinks(root), []);
-  assert.strictEqual(file.messages.length, 1);
-  assert.strictEqual(file.messages[0]?.ruleId, "missing-index-target");
+  assert.deepStrictEqual(locatorLinks(indexRoot), []);
+  assert.strictEqual(chapterFile.messages.length, 1);
+  assert.strictEqual(chapterFile.messages[0]?.ruleId, "missing-target-fragment");
+  assert.deepStrictEqual(indexFile.messages, []);
 });
 
 void test("uses the same generated locator ID during discovery and transformation", () => {

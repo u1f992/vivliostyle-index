@@ -72,8 +72,14 @@ export function collectSourceSnapshot(root: hast.Root, sourcePath: string): Sour
       continue;
     }
 
+    if (target.id === "") {
+      documentMessages.push(messages.missingTargetFragment(reference));
+      continue;
+    }
+
     const instructionSource = url.searchParams.get("q");
     if (instructionSource === null) {
+      documentMessages.push(messages.missingInstruction(reference));
       continue;
     }
     let instruction: ParsedInstruction;
