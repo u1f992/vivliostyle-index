@@ -74,6 +74,11 @@ export const messages = {
     undefined,
     rule("target-not-in-entries"),
   ],
+  unsupportedLanguage: (language: string): MessageArguments => [
+    `cannot sort by language ${JSON.stringify(language)}. the index is sorted without it.`,
+    undefined,
+    rule("unsupported-language"),
+  ],
   missingIndexTarget: (target: Target): MessageArguments => [
     `index target ${formatTarget(target)} does not exist`,
     undefined,

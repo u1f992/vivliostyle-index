@@ -28,6 +28,26 @@ function findClosestLang(root: hast.Root, target: hast.Element): string | undefi
   return closestLang;
 }
 
+function collatableLanguage(language: string): boolean {
+  try {
+    return Intl.Collator.supportedLocalesOf(language).length !== 0;
+  } catch {
+    return false;
+  }
+}
+
+function resolveLocales(root: hast.Root, target: hast.Element, file: VFile): Intl.LocalesArgument {
+  const language = findClosestLang(root, target);
+  if (language === undefined || language === "") {
+    return undefined;
+  }
+  if (collatableLanguage(language)) {
+    return language;
+  }
+  file.message(...messages.unsupportedLanguage(language));
+  return undefined;
+}
+
 function findTargetElement(root: hast.Root, id: string): hast.Element | undefined {
   // Valid HTML IDs are not necessarily valid unescaped CSS ID selectors.
   return selectAll("[id]", root).find((element) => getAttribute(element, "id") === id);
@@ -50,7 +70,7 @@ export function renderDocumentIndexes(
       continue;
     }
     const createComparator = comparators.get(targetKey) ?? defaultComparator;
-    const comparator = createComparator(findClosestLang(root, element));
+    const comparator = createComparator(resolveLocales(root, element, file));
     renderIndex(sort(index, comparator), element, target.id);
   }
 }

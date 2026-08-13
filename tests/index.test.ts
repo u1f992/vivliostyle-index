@@ -1129,3 +1129,23 @@ void test("resolves a configured comparator with the closest language", () => {
   assert.deepStrictEqual(requestedLocales, ["sv"]);
 });
 
+void test("warns through the pipeline when the document language cannot be collated", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span data-index="index.md?q=z!Z#index">Z</span>',
+      '<span data-index="index.md?q=ä!Ä#index">Ä</span>',
+    ].join(""),
+    "/publication/index.md": '<section lang="jp"><nav id="index"></nav></section>',
+  };
+  const { processor } = createProcessor({ entries: ["index.md", "chapter.md"], files });
+  const root = fromHtml(files["/publication/index.md"]);
+  const file = VFile({ path: "/publication/index.md" });
+
+  processor.runSync(root, file);
+
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["unsupported-language"],
+  );
+  assert.strictEqual(groupHeadings(root).length, 2);
+});

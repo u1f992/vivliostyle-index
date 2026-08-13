@@ -151,3 +151,145 @@ void test("exposes the sorted index on the target element", () => {
     ["a", "z"],
   );
 });
+
+void test("reports a language the runtime cannot sort by", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, id: "index" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePaths: ["/publication/chapter.md"],
+  };
+  const requestedLocales: Intl.LocalesArgument[] = [];
+  const root = fromHtml('<section lang="en_US"><nav id="index"></nav></section>');
+  const file = VFile({ path: documentPath });
+
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map([
+      [
+        targetKey,
+        (locales: Intl.LocalesArgument) => {
+          requestedLocales.push(locales);
+          return defaultComparator(locales);
+        },
+      ],
+    ]),
+    file,
+  );
+
+  assert.deepStrictEqual(requestedLocales, [undefined]);
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["unsupported-language"],
+  );
+  assert.deepStrictEqual(
+    selectAll("li.index-group", root).map((group) => toText(group).slice(0, 1)),
+    ["a", "z"],
+  );
+});
+
+void test("takes an empty language as no language at all", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, id: "index" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePaths: ["/publication/chapter.md"],
+  };
+  const requestedLocales: Intl.LocalesArgument[] = [];
+  const root = fromHtml('<section lang=""><nav id="index"></nav></section>');
+  const file = VFile({ path: documentPath });
+
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map([
+      [
+        targetKey,
+        (locales: Intl.LocalesArgument) => {
+          requestedLocales.push(locales);
+          return defaultComparator(locales);
+        },
+      ],
+    ]),
+    file,
+  );
+
+  assert.deepStrictEqual(requestedLocales, [undefined]);
+  assert.deepStrictEqual(file.messages, []);
+});
+
+void test("reports a language the runtime has no collation for", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, id: "index" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePaths: ["/publication/chapter.md"],
+  };
+  const requestedLocales: Intl.LocalesArgument[] = [];
+  const root = fromHtml('<section lang="jp"><nav id="index"></nav></section>');
+  const file = VFile({ path: documentPath });
+
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map([
+      [
+        targetKey,
+        (locales: Intl.LocalesArgument) => {
+          requestedLocales.push(locales);
+          return defaultComparator(locales);
+        },
+      ],
+    ]),
+    file,
+  );
+
+  assert.deepStrictEqual(requestedLocales, [undefined]);
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["unsupported-language"],
+  );
+});
+
+void test("keeps a language the runtime can collate", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, id: "index" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePaths: ["/publication/chapter.md"],
+  };
+  const requestedLocales: Intl.LocalesArgument[] = [];
+  const root = fromHtml('<section lang="sv"><nav id="index"></nav></section>');
+  const file = VFile({ path: documentPath });
+
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map([
+      [
+        targetKey,
+        (locales: Intl.LocalesArgument) => {
+          requestedLocales.push(locales);
+          return defaultComparator(locales);
+        },
+      ],
+    ]),
+    file,
+  );
+
+  assert.deepStrictEqual(requestedLocales, ["sv"]);
+  assert.deepStrictEqual(file.messages, []);
+});
