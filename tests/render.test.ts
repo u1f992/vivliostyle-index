@@ -1,4 +1,5 @@
 import assert from "node:assert";
+import { Buffer } from "node:buffer";
 import test from "node:test";
 
 import type * as hast from "hast";
@@ -65,7 +66,12 @@ void test("renders an index into the target element", () => {
 
   const entry = select(ENTRY, rootOf(target));
   assert.ok(entry);
-  assert.ok(getAttribute(entry, "id")?.startsWith("index--"));
+  assert.strictEqual(
+    getAttribute(entry, "id"),
+    ["index", "ち", "ち", "ちょさくけん", "著作権"]
+      .map((segment) => Buffer.from(segment, "utf-8").toString("base64url"))
+      .join("."),
+  );
 });
 
 void test("wraps every key in an element of its own", () => {
