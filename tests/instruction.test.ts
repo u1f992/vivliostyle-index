@@ -161,7 +161,7 @@ void test("preserves HTML fragments at every entry position", () => {
   );
 });
 
-void test("does not normalize readings or HTML", () => {
+void test("normalizes readings and HTML to NFC", () => {
   const nfc = "é";
   const nfd = "e\u0301";
 
@@ -169,7 +169,7 @@ void test("does not normalize readings or HTML", () => {
   assert.deepStrictEqual(parseInstruction(`${nfd}@${nfd}!main`), {
     type: "page",
     address: {
-      group: { html: nfd, reading: nfd },
+      group: { html: nfc, reading: nfc },
       entry: { html: "main", reading: "main" },
     },
   });

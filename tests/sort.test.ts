@@ -87,6 +87,18 @@ void test("matches a listed key only when both the reading and the HTML agree", 
   ]);
 });
 
+void test("matches a listed key across Unicode normalization forms", () => {
+  const nfd = { html: "a\u0308", reading: "a\u0308" };
+  const groups = createGroups(z, nfd);
+
+  groups.sort(byKeys(byListedOrder([umlaut, z])("en")));
+
+  assert.deepStrictEqual(keysOf(groups), [
+    ["a\u0308", "a\u0308"],
+    ["z", "z"],
+  ]);
+});
+
 void test("keeps the first position of a key listed more than once", () => {
   const groups = createGroups(aRow, kaRow);
 

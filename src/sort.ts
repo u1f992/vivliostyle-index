@@ -44,8 +44,10 @@ export function byKeys(compareKeys: KeyComparator): EntryComparator {
 
 export type ListedKey = string | Key;
 
-const listedKeyIdentity = (key: ListedKey): string =>
-  typeof key === "string" ? JSON.stringify([key, key]) : JSON.stringify([key.html, key.reading]);
+const listedKeyIdentity = (key: ListedKey): string => {
+  const { html, reading } = typeof key === "string" ? { html: key, reading: key } : key;
+  return JSON.stringify([html.normalize("NFC"), reading.normalize("NFC")]);
+};
 
 export function byLocales(locales: Intl.LocalesArgument): KeyComparator {
   const collator = new Intl.Collator(locales);

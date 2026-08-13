@@ -132,7 +132,11 @@ function parseHierarchy(
     if (hasHtml && html.trim() === "") {
       syntaxError(input, offset, "a display value must contain a non-whitespace character");
     }
-    const key = { html: hasHtml ? html : reading, reading };
+    const normalizedReading = reading.normalize("NFC");
+    const key = {
+      html: hasHtml ? html.normalize("NFC") : normalizedReading,
+      reading: normalizedReading,
+    };
     if (address.group === undefined) {
       address.group = key;
     } else if (address.entry === undefined) {
