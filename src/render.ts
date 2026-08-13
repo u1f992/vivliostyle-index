@@ -82,8 +82,8 @@ const generateLocators = (locators: readonly Locator[]): hast.Element =>
 
 const generateLocator = ({ location, template }: Locator): hast.ElementContent[] => {
   const anchors =
-    typeof location === "string"
-      ? [h("a", { href: location })]
+    location.type === "page"
+      ? [h("a", { href: location.href })]
       : [h("a", { href: location.start }), h("span"), h("a", { href: location.end })];
   return template === undefined ? anchors : fillSlot(template, anchors);
 };

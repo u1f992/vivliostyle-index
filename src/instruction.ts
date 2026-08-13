@@ -301,7 +301,7 @@ export function applyPageInstruction(
   locationHref: string,
 ): Revocation {
   return insertLocator(ensureEntry(index, instruction.address), {
-    location: locationHref,
+    location: { type: "page", href: locationHref },
     ...(instruction.template === undefined ? {} : { template: instruction.template }),
   });
 }
@@ -313,7 +313,7 @@ export function applyRangeInstruction(
   endHref: string,
 ): Revocation {
   return insertLocator(ensureEntry(index, instruction.address), {
-    location: { start: startHref, end: endHref },
+    location: { type: "range", start: startHref, end: endHref },
     ...(instruction.template === undefined ? {} : { template: instruction.template }),
   });
 }

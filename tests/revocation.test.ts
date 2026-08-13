@@ -66,7 +66,7 @@ void test("keeps a heading while one of its references resolves", () => {
   const messagesByDocument = new Map<string, MessageArguments[]>();
   const index: Index = { children: [] };
   insertLocator(ensureEntry(index, { group, entry: banana }), {
-    location: "chapter.html#banana",
+    location: { type: "page", href: "chapter.html#banana" },
   });
 
   revokeViolations(

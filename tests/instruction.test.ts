@@ -400,7 +400,7 @@ void test("applies page instructions", () => {
             children: [],
             locators: [
               {
-                location: "chapter.html#fair-use",
+                location: { type: "page", href: "chapter.html#fair-use" },
                 template: "<strong><slot></slot></strong>",
               },
             ],
@@ -430,7 +430,7 @@ void test("applies range instructions", () => {
             children: [],
             locators: [
               {
-                location: { start: "chapter.html#start", end: "chapter.html#end" },
+                location: { type: "range", start: "chapter.html#start", end: "chapter.html#end" },
               },
             ],
             see: [],
@@ -451,7 +451,7 @@ void test("applies the template of a range instruction", () => {
 
   assert.deepStrictEqual(index.children[0]?.children[0]?.locators, [
     {
-      location: { start: "chapter.html#start", end: "chapter.html#end" },
+      location: { type: "range", start: "chapter.html#start", end: "chapter.html#end" },
       template: "<em><slot></slot></em>",
     },
   ]);

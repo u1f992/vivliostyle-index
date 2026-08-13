@@ -38,6 +38,7 @@ void test("builds range locators from ordered source snapshots", () => {
             locators: [
               {
                 location: {
+                  type: "range",
                   start: "chapter.html#start",
                   end: "end.html#end",
                 },
@@ -240,7 +241,10 @@ void test("builds locators and references in the order the sources list them", (
 
   assert.deepStrictEqual(
     apple?.locators.map(({ location }) => location),
-    ["chapter.html#second", "chapter.html#first"],
+    [
+      { type: "page", href: "chapter.html#second" },
+      { type: "page", href: "chapter.html#first" },
+    ],
   );
   assert.deepStrictEqual(
     apple?.seeAlso.map(({ target }) => target.entry.html),

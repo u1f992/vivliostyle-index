@@ -120,7 +120,7 @@ void test("revokes headings that hold no locator or reference", () => {
 });
 
 void test("keeps a heading that only carries subentries", () => {
-  const index = createIndexWithSubentry([{ location: "chapter.html#a" }]);
+  const index = createIndexWithSubentry([{ location: { type: "page", href: "chapter.html#a" } }]);
 
   const revoked = revokeVacantEntries(index);
 
@@ -143,8 +143,8 @@ void test("revokes a group left without headings", () => {
 void test("revokes only the locator that was inserted", () => {
   const index: Index = { children: [] };
   const intellectualPropertyEntry = ensureEntry(index, { group, entry: intellectualProperty });
-  const locators = ["001.html#a", "002.html#b", "003.html#c"].map((location) => ({
-    location,
+  const locators = ["001.html#a", "002.html#b", "003.html#c"].map((href) => ({
+    location: { type: "page", href } as const,
   }));
   const revocations = locators.map((locator) => insertLocator(intellectualPropertyEntry, locator));
 
@@ -152,7 +152,10 @@ void test("revokes only the locator that was inserted", () => {
 
   assert.deepStrictEqual(
     intellectualPropertyEntry.locators.map(({ location }) => location),
-    ["002.html#b", "003.html#c"],
+    [
+      { type: "page", href: "002.html#b" },
+      { type: "page", href: "003.html#c" },
+    ],
   );
 });
 
@@ -174,7 +177,7 @@ void test("distinguishes headings that share HTML but not their reading", () => 
 void test("revokes an inserted locator only once", () => {
   const index: Index = { children: [] };
   const intellectualPropertyEntry = ensureEntry(index, { group, entry: intellectualProperty });
-  const input = { location: "001.html#a" };
+  const input = { location: { type: "page", href: "001.html#a" } } as const;
   const revoke = insertLocator(intellectualPropertyEntry, input);
   insertLocator(intellectualPropertyEntry, input);
 

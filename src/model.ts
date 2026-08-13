@@ -4,10 +4,14 @@ export type Key = Readonly<{
 }>;
 export type HasKey = { key: Key };
 
-type PageLocation = string;
+type PageLocation = Readonly<{
+  type: "page";
+  href: string;
+}>;
 type RangeLocation = Readonly<{
-  start: PageLocation;
-  end: PageLocation;
+  type: "range";
+  start: string;
+  end: string;
 }>;
 
 export type EntryAddress = Readonly<{

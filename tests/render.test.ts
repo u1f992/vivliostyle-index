@@ -18,7 +18,7 @@ const index: Index = {
         {
           key: { html: "著作権", reading: "ちょさくけん" },
           children: [],
-          locators: [{ location: "003.html#a" }],
+          locators: [{ location: { type: "page", href: "003.html#a" } }],
           see: [],
           seeAlso: [],
         },
@@ -30,7 +30,7 @@ const index: Index = {
         {
           key: { html: "相続", reading: "そうぞく" },
           children: [],
-          locators: [{ location: "088.html#b" }],
+          locators: [{ location: { type: "page", href: "088.html#b" } }],
           see: [],
           seeAlso: [],
         },
@@ -83,12 +83,12 @@ void test("wraps every key in an element of its own", () => {
             children: [
               {
                 key: { html: "一身専属", reading: "いっしんせんぞく" },
-                locators: [{ location: "076.html#c" }],
+                locators: [{ location: { type: "page", href: "076.html#c" } }],
                 see: [],
                 seeAlso: [],
               },
             ],
-            locators: [{ location: "088.html#b" }],
+            locators: [{ location: { type: "page", href: "088.html#b" } }],
             see: [],
             seeAlso: [],
           },
@@ -127,7 +127,7 @@ void test("gives every entry the same lists in the same order", () => {
         children: [
           {
             key: { html: "A", reading: "あ" },
-            locators: [{ location: "001.html#a" }],
+            locators: [{ location: { type: "page", href: "001.html#a" } }],
             see: [
               {
                 target: {
@@ -160,7 +160,7 @@ void test("gives every entry the same lists in the same order", () => {
         children: [
           {
             key: { html: "E", reading: "い" },
-            locators: [{ location: "002.html#b" }],
+            locators: [{ location: { type: "page", href: "002.html#b" } }],
             see: [],
             seeAlso: [],
             children: [],
@@ -203,15 +203,23 @@ void test("wraps a locator in the template of its instruction", () => {
           {
             key: { html: "自由利用", reading: "じゆうりよう" },
             locators: [
-              { location: "104.html#a", template: "<strong><slot></slot></strong>" },
-              { location: "112.html#b" },
+              {
+                location: { type: "page", href: "104.html#a" },
+                template: "<strong><slot></slot></strong>",
+              },
+              { location: { type: "page", href: "112.html#b" } },
             ],
             see: [],
             seeAlso: [],
             children: [
               {
                 key: { html: "私的複製", reading: "してきふくせい" },
-                locators: [{ location: "106.html#c", template: "<em><slot></slot></em>" }],
+                locators: [
+                  {
+                    location: { type: "page", href: "106.html#c" },
+                    template: "<em><slot></slot></em>",
+                  },
+                ],
                 see: [],
                 seeAlso: [],
               },
@@ -330,7 +338,12 @@ void test("names the keys of the exposed index", () => {
         children: [
           {
             key: { html: "A", reading: "あ" },
-            locators: [{ location: "001.html#a", template: "<em><slot></slot></em>" }],
+            locators: [
+              {
+                location: { type: "page", href: "001.html#a" },
+                template: "<em><slot></slot></em>",
+              },
+            ],
             see: [
               {
                 target: {
