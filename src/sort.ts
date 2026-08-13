@@ -49,11 +49,21 @@ const listedKeyIdentity = (key: ListedKey): string =>
 
 export function byLocales(locales: Intl.LocalesArgument): KeyComparator {
   const collator = new Intl.Collator(locales);
+  const htmlTexts = new Map<string, string>();
+  const htmlText = (html: string): string => {
+    const cached = htmlTexts.get(html);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const text = fragmentToText(html);
+    htmlTexts.set(html, text);
+    return text;
+  };
   return (a, b) => {
     const readingCompare = collator.compare(a.reading, b.reading);
     return readingCompare !== 0
       ? readingCompare
-      : collator.compare(fragmentToText(a.html), fragmentToText(b.html));
+      : collator.compare(htmlText(a.html), htmlText(b.html));
   };
 }
 
