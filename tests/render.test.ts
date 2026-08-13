@@ -39,11 +39,14 @@ const index: Index = {
   ],
 };
 
+const listOf = (role: string) => `[data-index-list="${role}"]`;
 const GROUP = "#index > ol > li";
 const ENTRY = `${GROUP} > ol > li`;
-const LOCATORS = `${ENTRY} > ol:nth-of-type(1)`;
+const LOCATORS = `${ENTRY} > ${listOf("locators")}`;
+const SEE = `${ENTRY} > ${listOf("see")}`;
+const SEE_ALSO = `${ENTRY} > ${listOf("see-also")}`;
 const SUBENTRY = `${ENTRY} > ol:nth-of-type(4) > li`;
-const SUBENTRY_LOCATORS = `${SUBENTRY} > ol:nth-of-type(1)`;
+const SUBENTRY_LOCATORS = `${SUBENTRY} > ${listOf("locators")}`;
 
 function createTarget(): hast.Element {
   return {
@@ -180,11 +183,11 @@ void test("gives every entry the same lists in the same order", () => {
     ["001.html#a", "002.html#b"],
   );
   assert.deepStrictEqual(
-    selectAll(`${ENTRY} > ol:nth-of-type(2) > li > a`, root).map((link) => toText(link)),
+    selectAll(`${SEE} > li > a`, root).map((link) => toText(link)),
     ["B"],
   );
   assert.deepStrictEqual(
-    selectAll(`${ENTRY} > ol:nth-of-type(3) > li > a`, root).map((link) => toText(link)),
+    selectAll(`${SEE_ALSO} > li > a`, root).map((link) => toText(link)),
     ["C"],
   );
   assert.deepStrictEqual(
@@ -288,11 +291,11 @@ void test("wraps a reference in the template of its instruction", () => {
   const root = rootOf(target);
 
   assert.deepStrictEqual(
-    selectAll(`${ENTRY} > ol:nth-of-type(2) > li > strong > a`, root).map((link) => toText(link)),
+    selectAll(`${SEE} > li > strong > a`, root).map((link) => toText(link)),
     ["知的財産権"],
   );
   assert.deepStrictEqual(
-    selectAll(`${ENTRY} > ol:nth-of-type(3) > li > a`, root).map((link) => toText(link)),
+    selectAll(`${SEE_ALSO} > li > a`, root).map((link) => toText(link)),
     ["パブリックドメイン"],
   );
 });

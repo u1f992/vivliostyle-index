@@ -69,15 +69,16 @@ function createProcessor({
   return { processor, reads };
 }
 
+const listOf = (role: string) => `[data-index-list="${role}"]`;
 const entryOf = (targetId: string) => `#${targetId} > ol > li > ol > li`;
-const locatorsOf = (targetId: string) => `${entryOf(targetId)} > ol:nth-of-type(1)`;
+const locatorsOf = (targetId: string) => `${entryOf(targetId)} > ${listOf("locators")}`;
 
 const GROUP = "#index > ol > li";
 const ENTRY = entryOf("index");
 const ENTRY_KEY = `${ENTRY} > span`;
 const LOCATORS = locatorsOf("index");
-const SEE = `${ENTRY} > ol:nth-of-type(2)`;
-const SEE_ALSO = `${ENTRY} > ol:nth-of-type(3)`;
+const SEE = `${ENTRY} > ${listOf("see")}`;
+const SEE_ALSO = `${ENTRY} > ${listOf("see-also")}`;
 const SUBENTRY = `${ENTRY} > ol:nth-of-type(4) > li`;
 
 function locatorLinks(root: hast.Root | hast.Element, targetId = "index") {

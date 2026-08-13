@@ -1,5 +1,14 @@
 import { parseFragment } from "./html.ts";
-import type { Entry, Group, Index, Key, Locator, Reference, Subentry } from "./model.ts";
+import type {
+  Entry,
+  Group,
+  Index,
+  Key,
+  Locator,
+  Reference,
+  ReferenceType,
+  Subentry,
+} from "./model.ts";
 import type { Target } from "./target.ts";
 import { fillSlot } from "./template.ts";
 
@@ -51,8 +60,8 @@ const generateEntries = (entries: Entry[], indexId: string, groupKey: Key): hast
     h("li", { id: headingId(indexId, [groupKey, entry.key]) }, [
       h("span", parseFragment(entry.key.html)),
       generateLocators(entry.locators),
-      generateReferences(entry.see, indexId),
-      generateReferences(entry.seeAlso, indexId),
+      generateReferences(entry.see, indexId, "see"),
+      generateReferences(entry.seeAlso, indexId, "see-also"),
       generateSubentries(entry.children, indexId, [groupKey, entry.key]),
     ]),
   );
@@ -68,8 +77,8 @@ const generateSubentries = (
       h("li", { id: headingId(indexId, [...parentKeys, subentry.key]) }, [
         h("span", parseFragment(subentry.key.html)),
         generateLocators(subentry.locators),
-        generateReferences(subentry.see, indexId),
-        generateReferences(subentry.seeAlso, indexId),
+        generateReferences(subentry.see, indexId, "see"),
+        generateReferences(subentry.seeAlso, indexId, "see-also"),
       ]),
     ),
   );
@@ -77,6 +86,7 @@ const generateSubentries = (
 const generateLocators = (locators: readonly Locator[]): hast.Element =>
   h(
     "ol",
+    { dataIndexList: "locators" },
     locators.map((locator) => h("li", generateLocator(locator))),
   );
 
@@ -88,9 +98,14 @@ const generateLocator = ({ location, template }: Locator): hast.ElementContent[]
   return template === undefined ? anchors : fillSlot(template, anchors);
 };
 
-const generateReferences = (references: readonly Reference[], indexId: string): hast.Element =>
+const generateReferences = (
+  references: readonly Reference[],
+  indexId: string,
+  type: ReferenceType,
+): hast.Element =>
   h(
     "ol",
+    { dataIndexList: type },
     references.map(({ target, template }) => {
       const [href, children] =
         target.subentry === undefined
