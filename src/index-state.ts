@@ -141,10 +141,15 @@ export class IndexState {
     this.#sources.set(documentPath, current);
     const previousMessages = this.#messages;
     this.#rebuild();
-    const affectedPaths = new Set([
-      ...affectedDocumentPaths(this.#sources, documentPath, previous, current),
-      ...documentsWithChangedMessages(previousMessages, this.#messages),
-    ]);
+    // The host runs the plugin identically with and without a file watcher.
+    // A first update is indistinguishable from the only pass of a one-shot
+    // build, where touching an affected document has no consumer.
+    const affectedPaths = firstUpdate
+      ? new Set<string>()
+      : new Set([
+          ...affectedDocumentPaths(this.#sources, documentPath, previous, current),
+          ...documentsWithChangedMessages(previousMessages, this.#messages),
+        ]);
     return { affectedPaths, entryProcessorMismatch: firstUpdate && previous !== undefined };
   }
 

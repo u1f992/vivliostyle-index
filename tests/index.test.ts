@@ -715,6 +715,7 @@ void test("keeps mutually referencing headings that hold no locator", () => {
 });
 
 void test("warns when the build disagrees with the entry processor", () => {
+  const updates: string[] = [];
   const files = {
     "/publication/chapter.md": '<span data-index="index.md?q=a!Apple#index">Apple</span>',
     "/publication/index.md": '<nav id="index"></nav>',
@@ -722,6 +723,7 @@ void test("warns when the build disagrees with the entry processor", () => {
   const { processor } = createProcessor({
     entries: ["chapter.md", "index.md"],
     files,
+    updates,
   });
   const file = VFile({ path: "/publication/chapter.md" });
 
@@ -731,6 +733,7 @@ void test("warns when the build disagrees with the entry processor", () => {
     file.messages.map((message) => message.ruleId),
     ["entry-processor-mismatch"],
   );
+  assert.deepStrictEqual(updates, []);
 });
 
 void test("touches an affected target after a source changes", () => {

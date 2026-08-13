@@ -62,6 +62,7 @@ void test("marks range sources and index targets after an end document changes",
   const state = new IndexState([chapterPath, endPath, indexPath]);
 
   state.initialize(fileSystem, () => entryProcessor as never);
+  state.update(endPath, fromHtml(files[endPath]));
   const affected = state.update(endPath, fromHtml(""));
 
   assert.deepStrictEqual([...affected.affectedPaths], [chapterPath, indexPath]);
@@ -95,7 +96,9 @@ void test("flags only the first update whose snapshot disagrees with the entry p
   );
 
   assert.strictEqual(mismatch.entryProcessorMismatch, true);
+  assert.deepStrictEqual([...mismatch.affectedPaths], []);
   assert.strictEqual(edited.entryProcessorMismatch, false);
+  assert.deepStrictEqual([...edited.affectedPaths], [indexPath]);
 });
 
 void test("marks documents whose diagnostics change after another source updates", () => {
