@@ -349,6 +349,270 @@ void test("links a reference to a later subentry", () => {
   );
 });
 
+void test("revokes a heading left without content by an unresolved reference", () => {
+  const files = {
+    "/publication/chapter.md":
+      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
+    "/publication/index.md": '<nav id="index">placeholder</nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  const target = select("#index", root);
+  assert.ok(target);
+  assert.deepStrictEqual(target.children, []);
+});
+
+void test("leaves a target alone when no instruction names it", () => {
+  const files = {
+    "/publication/chapter.md": "<span>Apple</span>",
+    "/publication/index.md": '<nav id="index">placeholder</nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  const target = select("#index", root);
+  assert.ok(target);
+  assert.strictEqual(toText(target), "placeholder");
+});
+
+void test("reports a missing target of an index whose entries are all revoked", () => {
+  const files = {
+    "/publication/chapter.md":
+      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
+    "/publication/index.md": "<p>no index target here</p>",
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const file = VFile({ path: "/publication/index.md" });
+
+  processor.runSync(fromHtml(files["/publication/index.md"]), file);
+
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["invalid-reference", "vacant-entry", "missing-index-target"],
+  );
+});
+
+void test("revokes a reference whose target was revoked for being vacant", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
+      '<span data-index="index.md?q=b!Banana|->c!Cherry#index">Banana</span>',
+    ].join(""),
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+  const file = VFile({ path: "/publication/index.md" });
+
+  processor.runSync(root, file);
+
+  assert.deepStrictEqual(selectAll("li.index-main-entry", root), []);
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["invalid-reference", "vacant-entry", "invalid-reference", "vacant-entry"],
+  );
+});
+
+void test("keeps a heading whose locator outlives a revoked reference", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span id="apple" data-index="index.md?q=a!Apple#index">Apple</span>',
+      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
+    ].join(""),
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#apple"]);
+  assert.strictEqual(select(".index-main-entry-see", root), null);
+});
+
+void test("revokes a heading left without content by an invalid range", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span data-index="index.md?q=a!Apple|(%23missing#index">Apple</span>',
+      '<span id="banana" data-index="index.md?q=b!Banana#index">Banana</span>',
+    ].join(""),
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(groupHeadings(root), ["b"]);
+  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#banana"]);
+});
+
+void test("revokes a reference to a heading revoked by an invalid range", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span data-index="index.md?q=a!Apple|(%23missing#index">Apple</span>',
+      '<span data-index="index.md?q=b!Banana|->a!Apple#index">Banana</span>',
+    ].join(""),
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+  const indexFile = VFile({ path: "/publication/index.md" });
+  const chapterFile = VFile({ path: "/publication/chapter.md" });
+
+  processor.runSync(root, indexFile);
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), chapterFile);
+
+  assert.deepStrictEqual(groupHeadings(root), []);
+  assert.deepStrictEqual(
+    indexFile.messages.map((message) => message.ruleId),
+    ["vacant-entry", "invalid-reference", "vacant-entry"],
+  );
+  assert.deepStrictEqual(
+    chapterFile.messages.map((message) => message.ruleId),
+    ["missing-range-end"],
+  );
+});
+
+void test("revokes an unresolved see also reference while keeping a resolved one", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span id="banana" data-index="index.md?q=b!Banana#index">Banana</span>',
+      '<span data-index="index.md?q=a!Apple|=>b!Banana#index">Apple</span>',
+      '<span data-index="index.md?q=a!Apple|=>c!Cherry#index">Apple</span>',
+    ].join(""),
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(groupHeadings(root), ["a", "b"]);
+  assert.deepStrictEqual(
+    selectAll(".index-main-entry-see-also a", root).map((link) => toText(link)),
+    ["Banana"],
+  );
+});
+
+void test("revokes a reference chain across several rounds", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
+      '<span data-index="index.md?q=b!Banana|->c!Cherry#index">Banana</span>',
+      '<span data-index="index.md?q=c!Cherry|->d!Date#index">Cherry</span>',
+    ].join(""),
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+  const file = VFile({ path: "/publication/index.md" });
+
+  processor.runSync(root, file);
+
+  assert.deepStrictEqual(groupHeadings(root), []);
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    [
+      "invalid-reference",
+      "vacant-entry",
+      "invalid-reference",
+      "vacant-entry",
+      "invalid-reference",
+      "vacant-entry",
+    ],
+  );
+  assert.deepStrictEqual(
+    file.messages
+      .filter((message) => message.ruleId === "vacant-entry")
+      .map((message) =>
+        ["Cherry", "Banana", "Apple"].find((name) => message.reason.includes(name)),
+      ),
+    ["Cherry", "Banana", "Apple"],
+  );
+});
+
+void test("revokes a heading emptied by revoking its subentry", () => {
+  const files = {
+    "/publication/chapter.md":
+      '<span data-index="index.md?q=a!Apple!Fuji|->b!Banana#index">Fuji</span>',
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+  const file = VFile({ path: "/publication/index.md" });
+
+  processor.runSync(root, file);
+
+  assert.deepStrictEqual(groupHeadings(root), []);
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["invalid-reference", "vacant-entry", "vacant-entry"],
+  );
+  assert.deepStrictEqual(
+    file.messages
+      .filter((message) => message.ruleId === "vacant-entry")
+      .map((message) => message.reason.includes("Fuji")),
+    [true, false],
+  );
+});
+
+void test("keeps mutually referencing headings that hold no locator", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
+      '<span data-index="index.md?q=b!Banana|->a!Apple#index">Banana</span>',
+    ].join(""),
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+  const file = VFile({ path: "/publication/index.md" });
+
+  processor.runSync(root, file);
+
+  assert.deepStrictEqual(groupHeadings(root), ["a", "b"]);
+  assert.deepStrictEqual(file.messages, []);
+});
+
 void test("touches an affected target after a source changes", () => {
   const updates: string[] = [];
   const files = {
@@ -512,7 +776,7 @@ void test("discards a range end query when resolving its document target", () =>
   assert.deepStrictEqual(locatorLinks(root), ["chapter.html#range-start", "end.html#range-end"]);
 });
 
-void test("reports and ignores a range whose end target does not exist", () => {
+void test("reports and revokes a range whose end target does not exist", () => {
   const files = {
     "/publication/chapter.md":
       '<span data-index="index.md?q=a!Apple|(%23missing#index">Apple</span>',
@@ -534,11 +798,11 @@ void test("reports and ignores a range whose end target does not exist", () => {
   assert.strictEqual(file.messages[0]?.ruleId, "missing-range-end");
 });
 
-void test("reports and ignores a range end reference without a fragment", () => {
+void test("reports and rejects a range end reference without a fragment", () => {
   const files = {
     "/publication/chapter.md": '<span data-index="index.md?q=a!Apple|(end.md#index">Apple</span>',
     "/publication/end.md": '<span id="range-end"></span>',
-    "/publication/index.md": '<nav id="index"></nav>',
+    "/publication/index.md": '<nav id="index">placeholder</nav>',
   };
   const { processor } = createProcessor({
     entries: ["chapter.md", "end.md", "index.md"],
@@ -550,13 +814,15 @@ void test("reports and ignores a range end reference without a fragment", () => 
   const file = VFile({ path: "/publication/chapter.md" });
   processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
 
-  assert.deepStrictEqual(locatorLinks(root), []);
+  const target = select("#index", root);
+  assert.ok(target);
+  assert.strictEqual(toText(target), "placeholder");
   assert.strictEqual(file.messages.length, 1);
   assert.match(file.messages[0]?.reason ?? "", /invalid range end reference/v);
   assert.strictEqual(file.messages[0]?.ruleId, "invalid-range-end-reference");
 });
 
-void test("reports and ignores a range whose end precedes its start in the same entry", () => {
+void test("reports and revokes a range whose end precedes its start in the same entry", () => {
   const files = {
     "/publication/chapter.md": [
       '<span id="range-end"></span>',
@@ -580,7 +846,7 @@ void test("reports and ignores a range whose end precedes its start in the same 
   assert.strictEqual(file.messages[0]?.ruleId, "range-end-order");
 });
 
-void test("reports and ignores a range whose end is its start", () => {
+void test("reports and revokes a range whose end is its start", () => {
   const files = {
     "/publication/chapter.md":
       '<span id="range-start" data-index="index.md?q=a!Apple|(%23range-start#index">Apple</span>',
@@ -602,7 +868,7 @@ void test("reports and ignores a range whose end is its start", () => {
   assert.strictEqual(file.messages[0]?.ruleId, "range-end-order");
 });
 
-void test("reports and ignores a range whose end is in an earlier entry", () => {
+void test("reports and revokes a range whose end is in an earlier entry", () => {
   const files = {
     "/publication/001.md": '<span id="range-end"></span>',
     "/publication/100.md":
@@ -647,7 +913,7 @@ void test("touches an index target after its range end changes", () => {
   assert.deepStrictEqual(updates, ["/publication/chapter.md", "/publication/index.md"]);
 });
 
-void test("reports and ignores index references that cannot be normalized", () => {
+void test("reports and rejects index references that cannot be normalized", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="https://example.test/index.md?q=a!Apple#index">Apple</span>',
@@ -725,8 +991,10 @@ void test("reports an invalid entry reference on its index file", () => {
 
   processor.runSync(fromHtml(files["/publication/index.md"]), file);
 
-  assert.strictEqual(file.messages.length, 1);
-  assert.strictEqual(file.messages[0]?.ruleId, "invalid-reference");
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["invalid-reference", "vacant-entry"],
+  );
 });
 
 void test("reports an index reference without a fragment as a missing target", () => {

@@ -55,7 +55,7 @@ void test("builds range locators from ordered source snapshots", () => {
   assert.deepStrictEqual([...messages.values()], [[], [], []]);
 });
 
-void test("rejects reversed ranges while preserving source messages", () => {
+void test("revokes reversed ranges while preserving source messages", () => {
   const endPath = "/publication/001.md";
   const chapterPath = "/publication/100.md";
   const indexPath = "/publication/index.md";
@@ -72,8 +72,10 @@ void test("rejects reversed ranges while preserving source messages", () => {
   ]);
 
   const { indexes, messages } = buildIndexes([endPath, chapterPath, indexPath], sources);
+  const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
 
-  assert.strictEqual(indexes.size, 0);
+  assert.ok(builtIndex);
+  assert.deepStrictEqual(builtIndex.index.children, []);
   assert.deepStrictEqual(
     messages.get(chapterPath)?.map((message) => message[2]?.split(":")[1]),
     ["instruction-parse-error", "range-end-order"],
@@ -96,6 +98,38 @@ void test("reports unresolved references and targets outside the entry list", ()
 
   assert.deepStrictEqual(
     messages.get(chapterPath)?.map((message) => message[2]?.split(":")[1]),
-    ["invalid-reference", "target-not-in-entries"],
+    ["invalid-reference", "vacant-entry", "target-not-in-entries"],
+  );
+});
+
+void test("reports index-wide diagnostics to every document naming a target outside the entry list", () => {
+  const soundPath = "/publication/one.md";
+  const brokenPath = "/publication/two.md";
+  const sources = new Map([
+    [
+      soundPath,
+      collectSourceSnapshot(
+        fromHtml('<span data-index="index.md?q=a!Apple#index"></span>'),
+        soundPath,
+      ),
+    ],
+    [
+      brokenPath,
+      collectSourceSnapshot(
+        fromHtml('<span data-index="index.md?q=b!Banana|->c!Cherry#index"></span>'),
+        brokenPath,
+      ),
+    ],
+  ]);
+
+  const { messages } = buildIndexes([soundPath, brokenPath], sources);
+
+  assert.deepStrictEqual(
+    messages.get(soundPath)?.map((message) => message[2]?.split(":")[1]),
+    ["vacant-entry", "target-not-in-entries"],
+  );
+  assert.deepStrictEqual(
+    messages.get(brokenPath)?.map((message) => message[2]?.split(":")[1]),
+    ["invalid-reference", "vacant-entry", "target-not-in-entries"],
   );
 });

@@ -5,6 +5,7 @@ import {
   type EntryAddress,
   type Index,
   type Key,
+  type Revocation,
 } from "./model.ts";
 
 export type ParsedEntry = EntryAddress;
@@ -258,8 +259,8 @@ export function applyPageInstruction(
   index: Index,
   instruction: PageInstruction,
   locatorHref: string,
-): void {
-  insertLocator(ensureEntry(index, instruction.entry), {
+): Revocation {
+  return insertLocator(ensureEntry(index, instruction.entry), {
     locator: locatorHref,
     important: instruction.important,
   });
@@ -270,13 +271,20 @@ export function applyRangeInstruction(
   instruction: RangeInstruction,
   startHref: string,
   endHref: string,
-): void {
-  insertLocator(ensureEntry(index, instruction.entry), {
+): Revocation {
+  return insertLocator(ensureEntry(index, instruction.entry), {
     locator: { start: startHref, end: endHref },
     important: instruction.important,
   });
 }
 
-export function applyReferenceInstruction(index: Index, instruction: ReferenceInstruction): void {
-  insertReference(ensureEntry(index, instruction.entry), instruction.type, instruction.target);
+export function applyReferenceInstruction(
+  index: Index,
+  instruction: ReferenceInstruction,
+): Revocation {
+  return insertReference(
+    ensureEntry(index, instruction.entry),
+    instruction.type,
+    instruction.target,
+  );
 }

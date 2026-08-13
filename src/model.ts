@@ -32,6 +32,18 @@ function getId(): SequentialId {
   return counter.toString().padStart(16, "0") as SequentialId;
 }
 
+export type Revocation = () => void;
+
+function insert<T>(list: T[], item: T): Revocation {
+  list.push(item);
+  return () => {
+    const position = list.indexOf(item);
+    if (position !== -1) {
+      list.splice(position, 1);
+    }
+  };
+}
+
 type LocatorEntry = Readonly<{
   sequence: SequentialId;
   locator: Locator;
@@ -39,8 +51,8 @@ type LocatorEntry = Readonly<{
 }>;
 type LocatorInput = Omit<LocatorEntry, "sequence">;
 type HasLocators = { locators: LocatorEntry[] };
-export function insertLocator(entry: HasLocators, input: LocatorInput) {
-  entry.locators.push({ sequence: getId(), ...input });
+export function insertLocator(entry: HasLocators, input: LocatorInput): Revocation {
+  return insert(entry.locators, { sequence: getId(), ...input });
 }
 
 type ReferenceEntry = Readonly<{
@@ -55,8 +67,8 @@ export function insertReference(
   entry: HasReferences,
   type: "see" | "seeAlso",
   target: ReferenceTarget,
-) {
-  entry[type].push({ sequence: getId(), target });
+): Revocation {
+  return insert(entry[type], { sequence: getId(), target });
 }
 
 export type EntryBase = HasLocators & HasReferences;
@@ -106,33 +118,48 @@ export function ensureEntry(index: Index, address: EntryAddress): EntryBase {
       });
 }
 
-export function validateReferences(index: Index): UnresolvedReference[] {
-  const unresolvedReferences: UnresolvedReference[] = [];
-  const references: ReferenceEntry[] = [];
+export function findUnresolvedReference(
+  index: Index,
+  target: ReferenceTarget,
+): UnresolvedReference | undefined {
+  const group = getChild(index, target.group);
+  if (!group) {
+    return { target, missing: "group" };
+  }
+  const mainEntry = getChild(group, target.mainEntry);
+  if (!mainEntry) {
+    return { target, missing: "mainEntry" };
+  }
+  if (target.subentry !== undefined && !getChild(mainEntry, target.subentry)) {
+    return { target, missing: "subentry" };
+  }
+  return undefined;
+}
+
+function isVacant(entry: EntryBase): boolean {
+  return entry.locators.length === 0 && entry.see.length === 0 && entry.seeAlso.length === 0;
+}
+
+export function revokeVacantEntries(index: Index): EntryAddress[] {
+  const revoked: EntryAddress[] = [];
   for (const group of index.children) {
     for (const mainEntry of group.children) {
-      references.push(...mainEntry.see, ...mainEntry.seeAlso);
-      for (const subentry of mainEntry.children) {
-        references.push(...subentry.see, ...subentry.seeAlso);
+      mainEntry.children = mainEntry.children.filter((subentry) => {
+        if (!isVacant(subentry)) {
+          return true;
+        }
+        revoked.push({ group: group.key, mainEntry: mainEntry.key, subentry: subentry.key });
+        return false;
+      });
+    }
+    group.children = group.children.filter((mainEntry) => {
+      if (!isVacant(mainEntry) || mainEntry.children.length !== 0) {
+        return true;
       }
-    }
+      revoked.push({ group: group.key, mainEntry: mainEntry.key });
+      return false;
+    });
   }
-
-  for (const { target } of references) {
-    const group = getChild(index, target.group);
-    if (!group) {
-      unresolvedReferences.push({ target, missing: "group" });
-      continue;
-    }
-    const mainEntry = getChild(group, target.mainEntry);
-    if (!mainEntry) {
-      unresolvedReferences.push({ target, missing: "mainEntry" });
-      continue;
-    }
-    if (target.subentry !== undefined && !getChild(mainEntry, target.subentry)) {
-      unresolvedReferences.push({ target, missing: "subentry" });
-    }
-  }
-
-  return unresolvedReferences;
+  index.children = index.children.filter((group) => group.children.length !== 0);
+  return revoked;
 }

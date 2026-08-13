@@ -1,20 +1,27 @@
 import type { VFile } from "vfile";
 
 import { InstructionSyntaxError } from "./instruction.ts";
-import type { UnresolvedReference } from "./model.ts";
+import type { EntryAddress, UnresolvedReference } from "./model.ts";
 import type { Target } from "./target.ts";
 
 export type MessageArguments = Parameters<VFile["message"]>;
 
 const rule = (ruleId: string): string => `vivliostyle-index:${ruleId}`;
 const formatTarget = (target: Target): string => `${target.path}#${target.id}`;
+const formatEntryAddress = ({ group, mainEntry, subentry }: EntryAddress): string => {
+  const parts = [`group=${JSON.stringify(group)}`, `mainEntry=${JSON.stringify(mainEntry)}`];
+  if (subentry !== undefined) {
+    parts.push(`subentry=${JSON.stringify(subentry)}`);
+  }
+  return parts.join(",");
+};
 const formatUnresolvedReference = ({ target, missing }: UnresolvedReference): string => {
   const parts = [`group=${JSON.stringify(target.group)}`];
   if (missing !== "group") {
     parts.push(`mainEntry=${JSON.stringify(target.mainEntry)}`);
   }
   if (missing === "subentry") {
-    parts.push(`subEntry=${JSON.stringify(target.subentry)}`);
+    parts.push(`subentry=${JSON.stringify(target.subentry)}`);
   }
   return parts.join(",");
 };
@@ -43,19 +50,24 @@ export const messages = {
     rule("invalid-range-end-reference"),
   ],
   missingRangeEnd: (target: Target): MessageArguments => [
-    `range end target ${formatTarget(target)} does not exist`,
+    `range end target ${formatTarget(target)} does not exist. the range is revoked.`,
     undefined,
     rule("missing-range-end"),
   ],
   rangeEndOrder: (target: Target): MessageArguments => [
-    `range end target ${formatTarget(target)} does not follow its start`,
+    `range end target ${formatTarget(target)} does not follow its start. the range is revoked.`,
     undefined,
     rule("range-end-order"),
   ],
   invalidReference: (reference: UnresolvedReference): MessageArguments => [
-    `index does not contain ${formatUnresolvedReference(reference)}. link will likely be invalid.`,
+    `index does not contain ${formatUnresolvedReference(reference)}. the reference is revoked.`,
     undefined,
     rule("invalid-reference"),
+  ],
+  vacantEntry: (target: Target, address: EntryAddress): MessageArguments => [
+    `entry ${formatEntryAddress(address)} of index target ${formatTarget(target)} holds no locator, reference, or subentry. the entry is revoked.`,
+    undefined,
+    rule("vacant-entry"),
   ],
   targetNotInEntries: (target: Target): MessageArguments => [
     `index target ${formatTarget(target)} is not included in entries`,

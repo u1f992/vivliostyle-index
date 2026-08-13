@@ -5,14 +5,15 @@ import {
 } from "./instruction.ts";
 import { createLocatorHref } from "./locator.ts";
 import { addMessage, messages, type MessageArguments } from "./messages.ts";
-import { validateReferences, type Index } from "./model.ts";
+import { findUnresolvedReference, type Index } from "./model.ts";
+import { revokeViolations, type Revocable } from "./revocation.ts";
 import type { Attachment, SourceSnapshot } from "./source-snapshot.ts";
 import type { Target, TargetKey } from "./target.ts";
 
 export type BuiltIndex = Readonly<{
   target: Target;
   index: Index;
-  sourcePath: string;
+  sourcePaths: readonly string[];
 }>;
 
 export type BuiltIndexes = Readonly<{
@@ -20,20 +21,22 @@ export type BuiltIndexes = Readonly<{
   messages: ReadonlyMap<string, readonly MessageArguments[]>;
 }>;
 
-function resolveRangeEndHref(
+type PendingIndex = Readonly<{
+  target: Target;
+  index: Index;
+  sourcePaths: Set<string>;
+  revocables: Revocable[];
+}>;
+
+function findRangeEndViolation(
   entryPaths: readonly string[],
   sources: ReadonlyMap<string, SourceSnapshot>,
   attachment: Attachment,
-  messagesByDocument: Map<string, MessageArguments[]>,
-): string | undefined {
-  const rangeEnd = attachment.rangeEnd;
-  if (rangeEnd === undefined) {
-    return undefined;
-  }
+  rangeEnd: Target,
+): MessageArguments | undefined {
   const rangeEndSource = sources.get(rangeEnd.path);
   if (!rangeEndSource?.ids.includes(rangeEnd.id)) {
-    addMessage(messagesByDocument, attachment.sourcePath, messages.missingRangeEnd(rangeEnd));
-    return undefined;
+    return messages.missingRangeEnd(rangeEnd);
   }
   const sourceEntryIndex = entryPaths.indexOf(attachment.sourcePath);
   const endEntryIndex = entryPaths.indexOf(rangeEnd.path);
@@ -41,11 +44,84 @@ function resolveRangeEndHref(
   const endDoesNotFollowSourceElement =
     endEntryIndex === sourceEntryIndex &&
     rangeEndSource.ids.indexOf(rangeEnd.id) <= rangeEndSource.ids.indexOf(attachment.sourceId);
-  if (endPrecedesSource || endDoesNotFollowSourceElement) {
-    addMessage(messagesByDocument, attachment.sourcePath, messages.rangeEndOrder(rangeEnd));
+  return endPrecedesSource || endDoesNotFollowSourceElement
+    ? messages.rangeEndOrder(rangeEnd)
+    : undefined;
+}
+
+function ensurePendingIndex(
+  pendingIndexes: Map<TargetKey, PendingIndex>,
+  attachment: Attachment,
+): PendingIndex {
+  const pendingIndex = pendingIndexes.get(attachment.targetKey);
+  if (pendingIndex) {
+    pendingIndex.sourcePaths.add(attachment.sourcePath);
+    return pendingIndex;
+  }
+  const created: PendingIndex = {
+    target: attachment.target,
+    index: { children: [] },
+    sourcePaths: new Set([attachment.sourcePath]),
+    revocables: [],
+  };
+  pendingIndexes.set(attachment.targetKey, created);
+  return created;
+}
+
+function resolveReportingPath(entryPathSet: ReadonlySet<string>, attachment: Attachment): string {
+  return entryPathSet.has(attachment.target.path) ? attachment.target.path : attachment.sourcePath;
+}
+
+function resolveReportingPaths(
+  entryPathSet: ReadonlySet<string>,
+  { target, sourcePaths }: BuiltIndex,
+): readonly string[] {
+  return entryPathSet.has(target.path) ? [target.path] : sourcePaths;
+}
+
+function applyAttachment(
+  entryPaths: readonly string[],
+  entryPathSet: ReadonlySet<string>,
+  sources: ReadonlyMap<string, SourceSnapshot>,
+  index: Index,
+  attachment: Attachment,
+): Revocable | undefined {
+  const { instruction } = attachment;
+
+  if (instruction.type === "page") {
+    applyPageInstruction(index, instruction, attachment.locatorHref);
     return undefined;
   }
-  return createLocatorHref(rangeEnd.path, attachment.target.path, rangeEnd.id);
+
+  if (instruction.type === "range") {
+    const rangeEnd = attachment.rangeEnd;
+    if (rangeEnd === undefined) {
+      return undefined;
+    }
+    const revoke = applyRangeInstruction(
+      index,
+      instruction,
+      attachment.locatorHref,
+      createLocatorHref(rangeEnd.path, attachment.target.path, rangeEnd.id),
+    );
+    return {
+      reportingPath: attachment.sourcePath,
+      revoke,
+      findViolation: () => findRangeEndViolation(entryPaths, sources, attachment, rangeEnd),
+    };
+  }
+
+  const revoke = applyReferenceInstruction(index, instruction);
+  return {
+    reportingPath: resolveReportingPath(entryPathSet, attachment),
+    revoke,
+    findViolation: () => {
+      const unresolvedReference = findUnresolvedReference(index, instruction.target);
+      return unresolvedReference === undefined
+        ? undefined
+        : messages.invalidReference(unresolvedReference);
+    },
+  };
 }
 
 export function buildIndexes(
@@ -53,7 +129,7 @@ export function buildIndexes(
   sources: ReadonlyMap<string, SourceSnapshot>,
 ): BuiltIndexes {
   const entryPathSet = new Set(entryPaths);
-  const indexes = new Map<TargetKey, BuiltIndex>();
+  const pendingIndexes = new Map<TargetKey, PendingIndex>();
   const messagesByDocument = new Map<string, MessageArguments[]>();
 
   for (const [sourcePath, snapshot] of sources) {
@@ -66,53 +142,40 @@ export function buildIndexes(
       continue;
     }
     for (const attachment of snapshot.attachments) {
-      const rangeEndHref =
-        attachment.instruction.type === "range"
-          ? resolveRangeEndHref(entryPaths, sources, attachment, messagesByDocument)
-          : undefined;
-      if (attachment.instruction.type === "range" && rangeEndHref === undefined) {
-        continue;
-      }
-      let builtIndex = indexes.get(attachment.targetKey);
-      if (!builtIndex) {
-        builtIndex = {
-          target: attachment.target,
-          index: { children: [] },
-          sourcePath: attachment.sourcePath,
-        };
-        indexes.set(attachment.targetKey, builtIndex);
-      }
-      switch (attachment.instruction.type) {
-        case "page":
-          applyPageInstruction(builtIndex.index, attachment.instruction, attachment.locatorHref);
-          break;
-        case "range":
-          if (rangeEndHref !== undefined) {
-            applyRangeInstruction(
-              builtIndex.index,
-              attachment.instruction,
-              attachment.locatorHref,
-              rangeEndHref,
-            );
-          }
-          break;
-        case "see":
-        case "seeAlso":
-          applyReferenceInstruction(builtIndex.index, attachment.instruction);
-          break;
+      const pendingIndex = ensurePendingIndex(pendingIndexes, attachment);
+      const revocable = applyAttachment(
+        entryPaths,
+        entryPathSet,
+        sources,
+        pendingIndex.index,
+        attachment,
+      );
+      if (revocable) {
+        pendingIndex.revocables.push(revocable);
       }
     }
   }
 
-  for (const { target, index, sourcePath } of indexes.values()) {
-    for (const unresolvedReference of validateReferences(index)) {
-      addMessage(
-        messagesByDocument,
-        entryPathSet.has(target.path) ? target.path : sourcePath,
-        messages.invalidReference(unresolvedReference),
-      );
+  const indexes = new Map<TargetKey, BuiltIndex>();
+  for (const [targetKey, { target, index, sourcePaths, revocables }] of pendingIndexes) {
+    const builtIndex: BuiltIndex = { target, index, sourcePaths: [...sourcePaths] };
+    indexes.set(targetKey, builtIndex);
+    revokeViolations(
+      {
+        index,
+        target,
+        reportingPaths: resolveReportingPaths(entryPathSet, builtIndex),
+        revocables,
+      },
+      messagesByDocument,
+    );
+  }
+
+  for (const { target, sourcePaths } of indexes.values()) {
+    if (entryPathSet.has(target.path)) {
+      continue;
     }
-    if (!entryPathSet.has(target.path)) {
+    for (const sourcePath of sourcePaths) {
       addMessage(messagesByDocument, sourcePath, messages.targetNotInEntries(target));
     }
   }

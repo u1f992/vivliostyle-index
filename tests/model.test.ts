@@ -1,16 +1,44 @@
 import assert from "node:assert";
 import test from "node:test";
 
-import { validateReferences, type Index } from "../src/model.ts";
+import {
+  findUnresolvedReference,
+  revokeVacantEntries,
+  type Index,
+  type Subentry,
+} from "../src/model.ts";
 
-function createIndex(targetWord: string): Index {
+const group = { html: "ち", reading: "ち" };
+const intellectualProperty = { html: "知的財産権", reading: "ちてきざいさんけん" };
+const patent = { html: "特許権", reading: "とっきょけん" };
+
+function createIndexWithSubentry(locators: Subentry["locators"]): Index {
   return {
     children: [
       {
-        key: { html: "ち", reading: "ち" },
+        key: group,
         children: [
           {
-            key: { html: "知的財産権", reading: "ちてきざいさんけん" },
+            key: intellectualProperty,
+            children: [{ key: patent, locators, see: [], seeAlso: [] }],
+            locators: [],
+            see: [],
+            seeAlso: [],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function createIndex(): Index {
+  return {
+    children: [
+      {
+        key: group,
+        children: [
+          {
+            key: intellectualProperty,
             children: [],
             locators: [],
             see: [],
@@ -24,10 +52,7 @@ function createIndex(targetWord: string): Index {
             seeAlso: [
               {
                 sequence: "" as never,
-                target: {
-                  group: { html: "ち", reading: "ち" },
-                  mainEntry: { html: targetWord, reading: "ちてきざいさんけん" },
-                },
+                target: { group, mainEntry: intellectualProperty },
               },
             ],
           },
@@ -38,21 +63,82 @@ function createIndex(targetWord: string): Index {
 }
 
 void test("accepts references to registered entries", () => {
-  assert.deepStrictEqual(validateReferences(createIndex("知的財産権")), []);
+  assert.strictEqual(
+    findUnresolvedReference(createIndex(), { group, mainEntry: intellectualProperty }),
+    undefined,
+  );
 });
 
 void test("reports references to unregistered entries", () => {
-  assert.deepStrictEqual(validateReferences(createIndex("工業所有権")), [
-    {
-      target: {
-        group: { html: "ち", reading: "ち" },
-        mainEntry: { html: "工業所有権", reading: "ちてきざいさんけん" },
-      },
-      missing: "mainEntry",
-    },
-  ]);
+  const mainEntry = { html: "工業所有権", reading: "こうぎょうしょゆうけん" };
+
+  assert.deepStrictEqual(findUnresolvedReference(createIndex(), { group, mainEntry }), {
+    target: { group, mainEntry },
+    missing: "mainEntry",
+  });
 });
 
 void test("reports a reference that uses different inner HTML", () => {
-  assert.strictEqual(validateReferences(createIndex("<em>知的財産権</em>")).length, 1);
+  const mainEntry = { html: "<em>知的財産権</em>", reading: "ちてきざいさんけん" };
+
+  assert.strictEqual(
+    findUnresolvedReference(createIndex(), { group, mainEntry })?.missing,
+    "mainEntry",
+  );
+});
+
+void test("reports a missing group before a missing heading", () => {
+  assert.strictEqual(
+    findUnresolvedReference(createIndex(), {
+      group: { html: "こ", reading: "こ" },
+      mainEntry: intellectualProperty,
+    })?.missing,
+    "group",
+  );
+});
+
+void test("reports a missing subentry of a registered heading", () => {
+  assert.strictEqual(
+    findUnresolvedReference(createIndex(), {
+      group,
+      mainEntry: intellectualProperty,
+      subentry: { html: "特許権", reading: "とっきょけん" },
+    })?.missing,
+    "subentry",
+  );
+});
+
+void test("revokes headings that hold no locator or reference", () => {
+  const index = createIndex();
+
+  const revoked = revokeVacantEntries(index);
+
+  assert.deepStrictEqual(
+    index.children[0]?.children.map(({ key }) => key.html),
+    ["著作権"],
+  );
+  assert.deepStrictEqual(revoked, [{ group, mainEntry: intellectualProperty }]);
+});
+
+void test("keeps a heading that only carries subentries", () => {
+  const index = createIndexWithSubentry([
+    { sequence: "" as never, locator: "chapter.html#a", important: false },
+  ]);
+
+  const revoked = revokeVacantEntries(index);
+
+  assert.strictEqual(index.children[0]?.children.length, 1);
+  assert.deepStrictEqual(revoked, []);
+});
+
+void test("revokes a group left without headings", () => {
+  const index = createIndexWithSubentry([]);
+
+  const revoked = revokeVacantEntries(index);
+
+  assert.deepStrictEqual(index.children, []);
+  assert.deepStrictEqual(revoked, [
+    { group, mainEntry: intellectualProperty, subentry: patent },
+    { group, mainEntry: intellectualProperty },
+  ]);
 });

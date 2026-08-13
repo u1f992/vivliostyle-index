@@ -31,6 +31,30 @@ void test("groups message arguments by document and emits VFile messages", () =>
       missing: "mainEntry",
     }),
   );
+  addMessage(
+    messagesByDocument,
+    "/publication/chapter.md",
+    messages.invalidReference({
+      target: {
+        group: { html: "ち", reading: "ち" },
+        mainEntry: { html: "著作権", reading: "ちょさくけん" },
+        subentry: { html: "――の相続", reading: "ちょさくけんのそうぞく" },
+      },
+      missing: "subentry",
+    }),
+  );
+  addMessage(
+    messagesByDocument,
+    "/publication/chapter.md",
+    messages.vacantEntry(
+      { path: "/publication/index.md", id: "index" },
+      {
+        group: { html: "ち", reading: "ち" },
+        mainEntry: { html: "著作権", reading: "ちょさくけん" },
+        subentry: { html: "――の相続", reading: "ちょさくけんのそうぞく" },
+      },
+    ),
+  );
   const file = VFile({ path: "/publication/chapter.md" });
 
   emitMessages(file, messagesByDocument.get("/publication/chapter.md") ?? []);
@@ -52,7 +76,19 @@ void test("groups message arguments by document and emits VFile messages", () =>
         source: "vivliostyle-index",
         ruleId: "invalid-reference",
         reason:
-          'index does not contain group={"html":"ち","reading":"ち"},mainEntry={"html":"工業所有権","reading":"こうぎょうしょゆうけん"}. link will likely be invalid.',
+          'index does not contain group={"html":"ち","reading":"ち"},mainEntry={"html":"工業所有権","reading":"こうぎょうしょゆうけん"}. the reference is revoked.',
+      },
+      {
+        source: "vivliostyle-index",
+        ruleId: "invalid-reference",
+        reason:
+          'index does not contain group={"html":"ち","reading":"ち"},mainEntry={"html":"著作権","reading":"ちょさくけん"},subentry={"html":"――の相続","reading":"ちょさくけんのそうぞく"}. the reference is revoked.',
+      },
+      {
+        source: "vivliostyle-index",
+        ruleId: "vacant-entry",
+        reason:
+          'entry group={"html":"ち","reading":"ち"},mainEntry={"html":"著作権","reading":"ちょさくけん"},subentry={"html":"――の相続","reading":"ちょさくけんのそうぞく"} of index target /publication/index.md#index holds no locator, reference, or subentry. the entry is revoked.',
       },
     ],
   );

@@ -36,7 +36,7 @@ void test("renders indexes into targets in the current document", () => {
   const builtIndex: BuiltIndex = {
     target,
     index: createIndex(),
-    sourcePath: "/publication/chapter.md",
+    sourcePaths: ["/publication/chapter.md"],
   };
   const root = fromHtml('<nav id="index"></nav>');
   const file = VFile({ path: documentPath });
@@ -57,7 +57,7 @@ void test("renders into a target whose ID requires CSS escaping", () => {
   const builtIndex: BuiltIndex = {
     target,
     index: createIndex(),
-    sourcePath: "/publication/chapter.md",
+    sourcePaths: ["/publication/chapter.md"],
   };
   const root = fromHtml('<nav id="index/main"></nav>');
   const file = VFile({ path: documentPath });
@@ -75,7 +75,7 @@ void test("uses a comparator configured for the target", () => {
   const builtIndex: BuiltIndex = {
     target,
     index: createIndex(),
-    sourcePath: "/publication/chapter.md",
+    sourcePaths: ["/publication/chapter.md"],
   };
   const comparator = defaultComparator("en");
   const reverseComparator = {
@@ -107,7 +107,7 @@ void test("reports a missing target", () => {
   const builtIndex: BuiltIndex = {
     target,
     index: createIndex(),
-    sourcePath: "/publication/chapter.md",
+    sourcePaths: ["/publication/chapter.md"],
   };
   const file = VFile({ path: documentPath });
 

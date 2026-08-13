@@ -1,29 +1,26 @@
 import { parseFragment } from "./html.ts";
-import type { EntryBase, Index, MainEntry, Subentry } from "./model.ts";
+import type { EntryBase, Group, Index, MainEntry, Subentry } from "./model.ts";
 
 import type * as hast from "hast";
 import { h } from "hastscript";
 
 export function renderIndex(index: Index, target: hast.Element, indexId: string): void {
-  target.children = [
-    h(
-      "ol.index-groups",
-      index.children.map((group) =>
-        h("li.index-group", [
-          ...parseFragment(group.key.html),
-          h(
-            "ol.index-main-entries",
-            generateMainEntries(
-              group.children,
-              indexId,
-              `${indexId}--${JSON.stringify(group.key)}`,
-            ),
-          ),
-        ]),
-      ),
-    ),
-  ];
+  target.children = index.children.length === 0 ? [] : [generateGroups(index.children, indexId)];
 }
+
+const generateGroups = (groups: Group[], indexId: string): hast.Element =>
+  h(
+    "ol.index-groups",
+    groups.map((group) =>
+      h("li.index-group", [
+        ...parseFragment(group.key.html),
+        h(
+          "ol.index-main-entries",
+          generateMainEntries(group.children, indexId, `${indexId}--${JSON.stringify(group.key)}`),
+        ),
+      ]),
+    ),
+  );
 
 const generateMainEntries = (
   mainEntries: MainEntry[],
