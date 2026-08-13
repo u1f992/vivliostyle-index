@@ -16,6 +16,17 @@ export type EntryProcessorInput = {
 
 export type CreateEntryProcessor = (input: Readonly<EntryProcessorInput>) => unified.Processor;
 
+function readEntry(fileSystem: Readonly<FileSystem>, entryPath: string): string {
+  try {
+    return fileSystem.readFileSync(entryPath);
+  } catch (cause) {
+    throw new Error(
+      `cannot read entry ${entryPath}. entry paths resolve against entryContext, which defaults to the current working directory.`,
+      { cause },
+    );
+  }
+}
+
 function sourceSnapshotsEqual(
   previous: SourceSnapshot | undefined,
   current: SourceSnapshot,
@@ -72,7 +83,7 @@ export class IndexState {
     }
 
     for (const entryPath of this.entryPaths) {
-      const contents = fileSystem.readFileSync(entryPath);
+      const contents = readEntry(fileSystem, entryPath);
       const input = { path: entryPath, contents } satisfies VFileCompatible;
       const processor = createEntryProcessor(input);
       const html = processor.processSync(input).toString();

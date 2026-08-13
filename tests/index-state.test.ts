@@ -68,6 +68,27 @@ void test("marks range sources and index targets after an end document changes",
   );
 });
 
+void test("names the entry and entryContext when an entry cannot be read", () => {
+  const missingPath = "/elsewhere/chapter.md";
+  const fileSystem: FileSystem = {
+    readFileSync: () => {
+      throw new Error("ENOENT");
+    },
+    touchSync: () => {},
+  };
+  const state = new IndexState([missingPath]);
+
+  assert.throws(
+    () => state.initialize(fileSystem, () => entryProcessor as never),
+    (error: unknown) =>
+      error instanceof Error &&
+      error.message.includes(missingPath) &&
+      error.message.includes("entryContext") &&
+      error.cause instanceof Error &&
+      error.cause.message === "ENOENT",
+  );
+});
+
 void test("keeps EntryProcessorInput properties mutable", () => {
   const input: EntryProcessorInput = { path: "chapter.md", contents: "before" };
 
