@@ -40,13 +40,13 @@ function collatableLanguage(language: string): boolean {
 function resolveLocales(root: hast.Root, target: hast.Element, file: VFile): Intl.LocalesArgument {
   const language = findClosestLang(root, target);
   if (language === undefined || language === "") {
-    return undefined;
+    return "en";
   }
   if (collatableLanguage(language)) {
     return language;
   }
   file.message(...messages.unsupportedLanguage(language));
-  return undefined;
+  return "en";
 }
 
 function findTargetElement(root: hast.Root, id: string): hast.Element | undefined {

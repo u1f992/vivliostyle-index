@@ -199,7 +199,7 @@ void test("reports a language the runtime cannot sort by", () => {
     file,
   );
 
-  assert.deepStrictEqual(requestedLocales, [undefined]);
+  assert.deepStrictEqual(requestedLocales, ["en"]);
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
     ["unsupported-language"],
@@ -240,7 +240,7 @@ void test("takes an empty language as no language at all", () => {
     file,
   );
 
-  assert.deepStrictEqual(requestedLocales, [undefined]);
+  assert.deepStrictEqual(requestedLocales, ["en"]);
   assert.deepStrictEqual(file.messages, []);
 });
 
@@ -274,7 +274,7 @@ void test("reports a language the runtime has no collation for", () => {
     file,
   );
 
-  assert.deepStrictEqual(requestedLocales, [undefined]);
+  assert.deepStrictEqual(requestedLocales, ["en"]);
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
     ["unsupported-language"],
