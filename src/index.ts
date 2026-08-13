@@ -4,7 +4,13 @@ import upath from "upath";
 
 import { renderDocumentIndexes } from "./document-renderer.ts";
 import { nodeFileSystem, type FileSystem } from "./file-system.ts";
-import { IndexState, type CreateEntryProcessor } from "./index-state.ts";
+import {
+  createIndexState,
+  initializeIndexState,
+  messagesFor,
+  updateIndexState,
+  type CreateEntryProcessor,
+} from "./index-state.ts";
 import { emitMessages, messages } from "./messages.ts";
 import { workingDirectory } from "./platform.ts";
 import type { Preambles } from "./render.ts";
@@ -63,7 +69,7 @@ export function createIndexPlugin({
   // https://github.com/vivliostyle/vivliostyle-cli/blob/v11.1.0/src/config/resolve.ts#L627-L632
   const context = upath.resolve(cwd, entryContext ?? ".");
   const entryPaths = entries.map((entry) => upath.resolve(context, entry));
-  const state = new IndexState(entryPaths);
+  let state = createIndexState(entryPaths);
   const comparatorsByTarget = mapByTarget(comparators, context);
   const preamblesByTarget = mapByTarget(preambles, context);
 
@@ -77,19 +83,20 @@ export function createIndexPlugin({
 
       const documentPath = upath.resolve(cwd, rawPath);
       const root = tree as hast.Root;
-      state.initialize(fileSystem, createEntryProcessor);
+      state = initializeIndexState(state, fileSystem, createEntryProcessor);
 
-      const { affectedPaths, entryProcessorMismatch } = state.update(documentPath, root);
-      for (const targetPath of affectedPaths) {
+      const updated = updateIndexState(state, documentPath, root);
+      state = updated.state;
+      for (const targetPath of updated.affectedPaths) {
         if (targetPath !== documentPath && state.entryPathSet.has(targetPath)) {
           fileSystem.touchSync(targetPath);
         }
       }
 
-      if (entryProcessorMismatch) {
+      if (updated.entryProcessorMismatch) {
         file.message(...messages.entryProcessorMismatch(documentPath));
       }
-      emitMessages(file, state.messagesFor(documentPath));
+      emitMessages(file, messagesFor(state, documentPath));
       renderDocumentIndexes(
         root,
         documentPath,

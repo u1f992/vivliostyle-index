@@ -17,7 +17,18 @@ export type EntryProcessorInput = {
 
 export type CreateEntryProcessor = (input: Readonly<EntryProcessorInput>) => unified.Processor;
 
+export type IndexState = Readonly<{
+  entryPaths: readonly string[];
+  entryPathSet: ReadonlySet<string>;
+  initialized: boolean;
+  updatedPaths: ReadonlySet<string>;
+  sources: ReadonlyMap<string, SourceSnapshot>;
+  indexes: ReadonlyMap<TargetKey, BuiltIndex>;
+  messages: ReadonlyMap<string, readonly MessageArguments[]>;
+}>;
+
 export type UpdateResult = Readonly<{
+  state: IndexState;
   affectedPaths: ReadonlySet<string>;
   entryProcessorMismatch: boolean;
 }>;
@@ -79,83 +90,90 @@ function documentsWithChangedMessages(
   return changed;
 }
 
-export class IndexState {
-  readonly entryPaths: readonly string[];
-  readonly entryPathSet: ReadonlySet<string>;
-  #initialized = false;
-  #initializing = false;
-  #updatedPaths = new Set<string>();
-  #sources = new Map<string, SourceSnapshot>();
-  #indexes = new Map<TargetKey, BuiltIndex>();
-  #messages = new Map<string, readonly MessageArguments[]>();
+function rebuild(state: IndexState): IndexState {
+  const { indexes, messages } = buildIndexes(state.entryPaths, state.sources);
+  return { ...state, indexes, messages };
+}
 
-  constructor(entryPaths: readonly string[]) {
-    this.entryPathSet = new Set(entryPaths);
-    this.entryPaths = [...this.entryPathSet];
+export function createIndexState(entryPaths: readonly string[]): IndexState {
+  const entryPathSet: ReadonlySet<string> = new Set(entryPaths);
+  return {
+    entryPaths: [...entryPathSet],
+    entryPathSet,
+    initialized: false,
+    updatedPaths: new Set(),
+    sources: new Map(),
+    indexes: new Map(),
+    messages: new Map(),
+  };
+}
+
+const initializingStates = new WeakSet<IndexState>();
+
+export function initializeIndexState(
+  state: IndexState,
+  fileSystem: Readonly<FileSystem>,
+  createEntryProcessor: CreateEntryProcessor,
+): IndexState {
+  if (state.initialized) {
+    return state;
+  }
+  if (initializingStates.has(state)) {
+    throw new Error(
+      "the entry processor reached the index plugin that invoked it. createEntryProcessor must return a processor without the index plugin.",
+    );
   }
 
-  get indexes(): ReadonlyMap<TargetKey, BuiltIndex> {
-    return this.#indexes;
-  }
-
-  messagesFor(documentPath: string): readonly MessageArguments[] {
-    return this.#messages.get(documentPath) ?? [];
-  }
-
-  initialize(fileSystem: Readonly<FileSystem>, createEntryProcessor: CreateEntryProcessor): void {
-    if (this.#initialized) {
-      return;
+  initializingStates.add(state);
+  const sources = new Map<string, SourceSnapshot>();
+  try {
+    for (const entryPath of state.entryPaths) {
+      const contents = readEntry(fileSystem, entryPath);
+      const input = { path: entryPath, contents } satisfies VFileCompatible;
+      const processor = createEntryProcessor(input);
+      const html = processor.processSync(input).toString();
+      sources.set(entryPath, collectSourceSnapshot(fromHtml(html), entryPath));
     }
-    if (this.#initializing) {
-      throw new Error(
-        "the entry processor reached the index plugin that invoked it. createEntryProcessor must return a processor without the index plugin.",
-      );
-    }
-
-    this.#initializing = true;
-    try {
-      for (const entryPath of this.entryPaths) {
-        const contents = readEntry(fileSystem, entryPath);
-        const input = { path: entryPath, contents } satisfies VFileCompatible;
-        const processor = createEntryProcessor(input);
-        const html = processor.processSync(input).toString();
-        this.#sources.set(entryPath, collectSourceSnapshot(fromHtml(html), entryPath));
-      }
-    } finally {
-      this.#initializing = false;
-    }
-
-    this.#rebuild();
-    this.#initialized = true;
+  } finally {
+    initializingStates.delete(state);
   }
 
-  update(documentPath: string, root: hast.Root): UpdateResult {
-    const previous = this.#sources.get(documentPath);
-    const current = collectSourceSnapshot(root, documentPath);
-    const firstUpdate = !this.#updatedPaths.has(documentPath);
-    this.#updatedPaths.add(documentPath);
-    if (sourceSnapshotsEqual(previous, current)) {
-      return { affectedPaths: new Set(), entryProcessorMismatch: false };
-    }
+  return rebuild({ ...state, initialized: true, sources });
+}
 
-    this.#sources.set(documentPath, current);
-    const previousMessages = this.#messages;
-    this.#rebuild();
-    // The host runs the plugin identically with and without a file watcher.
-    // A first update is indistinguishable from the only pass of a one-shot
-    // build, where touching an affected document has no consumer.
-    const affectedPaths = firstUpdate
-      ? new Set<string>()
-      : new Set([
-          ...affectedDocumentPaths(this.#sources, documentPath, previous, current),
-          ...documentsWithChangedMessages(previousMessages, this.#messages),
-        ]);
-    return { affectedPaths, entryProcessorMismatch: firstUpdate && previous !== undefined };
+export function updateIndexState(
+  state: IndexState,
+  documentPath: string,
+  root: hast.Root,
+): UpdateResult {
+  const previous = state.sources.get(documentPath);
+  const current = collectSourceSnapshot(root, documentPath);
+  const firstUpdate = !state.updatedPaths.has(documentPath);
+  const visited = firstUpdate
+    ? { ...state, updatedPaths: new Set(state.updatedPaths).add(documentPath) }
+    : state;
+  if (sourceSnapshotsEqual(previous, current)) {
+    return { state: visited, affectedPaths: new Set(), entryProcessorMismatch: false };
   }
 
-  #rebuild(): void {
-    const { indexes, messages } = buildIndexes(this.entryPaths, this.#sources);
-    this.#indexes = new Map(indexes);
-    this.#messages = new Map(messages);
-  }
+  const sources = new Map(state.sources).set(documentPath, current);
+  const rebuilt = rebuild({ ...visited, sources });
+  // The host runs the plugin identically with and without a file watcher.
+  // A first update is indistinguishable from the only pass of a one-shot
+  // build, where touching an affected document has no consumer.
+  const affectedPaths = firstUpdate
+    ? new Set<string>()
+    : new Set([
+        ...affectedDocumentPaths(sources, documentPath, previous, current),
+        ...documentsWithChangedMessages(state.messages, rebuilt.messages),
+      ]);
+  return {
+    state: rebuilt,
+    affectedPaths,
+    entryProcessorMismatch: firstUpdate && previous !== undefined,
+  };
+}
+
+export function messagesFor(state: IndexState, documentPath: string): readonly MessageArguments[] {
+  return state.messages.get(documentPath) ?? [];
 }
