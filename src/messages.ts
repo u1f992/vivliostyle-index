@@ -7,7 +7,7 @@ import type { Target } from "./target.ts";
 export type MessageArguments = Parameters<VFile["message"]>;
 
 const rule = (ruleId: string): string => `vivliostyle-index:${ruleId}`;
-const formatTarget = (target: Target): string => `${target.documentPath}#${target.elementId}`;
+const formatTarget = (target: Target): string => `${target.path}#${target.id}`;
 const formatUnresolvedReference = ({ target, missing }: UnresolvedReference): string => {
   const parts = [`group=${JSON.stringify(target.group)}`];
   if (missing !== "group") {

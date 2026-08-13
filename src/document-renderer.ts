@@ -28,8 +28,9 @@ function findClosestLang(root: hast.Root, target: hast.Element): string | undefi
   return closestLang;
 }
 
-function findTargetElement(root: hast.Root, elementId: string): hast.Element | undefined {
-  return selectAll("[id]", root).find((element) => getAttribute(element, "id") === elementId);
+function findTargetElement(root: hast.Root, id: string): hast.Element | undefined {
+  // Valid HTML IDs are not necessarily valid unescaped CSS ID selectors.
+  return selectAll("[id]", root).find((element) => getAttribute(element, "id") === id);
 }
 
 export function renderDocumentIndexes(
@@ -40,16 +41,16 @@ export function renderDocumentIndexes(
   file: VFile,
 ): void {
   for (const [targetKey, { target, index }] of indexes) {
-    if (target.documentPath !== documentPath) {
+    if (target.path !== documentPath) {
       continue;
     }
-    const element = findTargetElement(root, target.elementId);
+    const element = findTargetElement(root, target.id);
     if (!element) {
       file.message(...messages.missingIndexTarget(target));
       continue;
     }
     const comparator =
       comparators.get(targetKey) ?? defaultComparator(findClosestLang(root, element));
-    renderIndex(sort(index, comparator), element, target.elementId);
+    renderIndex(sort(index, comparator), element, target.id);
   }
 }

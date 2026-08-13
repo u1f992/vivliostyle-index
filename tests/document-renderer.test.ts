@@ -31,7 +31,7 @@ function createIndex(): Index {
 
 void test("renders indexes into targets in the current document", () => {
   const documentPath = "/publication/index.md";
-  const target = { documentPath, elementId: "index" };
+  const target = { path: documentPath, id: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -50,9 +50,27 @@ void test("renders indexes into targets in the current document", () => {
   assert.strictEqual(file.messages.length, 0);
 });
 
+void test("renders into a target whose ID requires CSS escaping", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, id: "index/main" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePath: "/publication/chapter.md",
+  };
+  const root = fromHtml('<nav id="index/main"></nav>');
+  const file = VFile({ path: documentPath });
+
+  renderDocumentIndexes(root, documentPath, new Map([[targetKey, builtIndex]]), new Map(), file);
+
+  assert.strictEqual(selectAll("li.index-group", root).length, 2);
+  assert.strictEqual(file.messages.length, 0);
+});
+
 void test("uses a comparator configured for the target", () => {
   const documentPath = "/publication/index.md";
-  const target = { documentPath, elementId: "index" };
+  const target = { path: documentPath, id: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -84,7 +102,7 @@ void test("uses a comparator configured for the target", () => {
 
 void test("reports a missing target", () => {
   const documentPath = "/publication/index.md";
-  const target = { documentPath, elementId: "missing" };
+  const target = { path: documentPath, id: "missing" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,

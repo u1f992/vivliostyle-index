@@ -18,18 +18,18 @@ import {
 
 export type Attachment = Readonly<{
   sourcePath: string;
-  sourceElementId: string;
+  sourceId: string;
   target: Target;
   targetKey: TargetKey;
   instruction: ParsedInstruction;
   locatorHref: string;
-  rangeEndTarget?: Target;
+  rangeEnd?: Target;
 }>;
 
 export type SourceSnapshot = Readonly<{
   attachments: readonly Attachment[];
   messages: readonly MessageArguments[];
-  elementIds: readonly string[];
+  ids: readonly string[];
 }>;
 
 function ensureId(tree: Readonly<hast.Root>, element: hast.Element): string {
@@ -84,12 +84,12 @@ export function collectSourceSnapshot(root: hast.Root, sourcePath: string): Sour
       continue;
     }
 
-    const sourceElementId = ensureId(root, element);
-    let rangeEndTarget: Target | undefined;
+    const sourceId = ensureId(root, element);
+    let rangeEnd: Target | undefined;
     if (instruction.type === "range") {
       try {
-        rangeEndTarget = resolveTarget(instruction.endReference, baseUrl);
-        if (rangeEndTarget.elementId === "") {
+        rangeEnd = resolveTarget(instruction.endReference, baseUrl);
+        if (rangeEnd.id === "") {
           throw new TypeError();
         }
       } catch {
@@ -99,18 +99,18 @@ export function collectSourceSnapshot(root: hast.Root, sourcePath: string): Sour
     }
     attachments.push({
       sourcePath,
-      sourceElementId,
+      sourceId,
       target,
       targetKey: createTargetKey(target),
       instruction,
-      locatorHref: createLocatorHref(sourcePath, target.documentPath, sourceElementId),
-      ...(rangeEndTarget === undefined ? {} : { rangeEndTarget }),
+      locatorHref: createLocatorHref(sourcePath, target.path, sourceId),
+      ...(rangeEnd === undefined ? {} : { rangeEnd }),
     });
   }
 
-  const elementIds = selectAll("[id]", root).flatMap((element) => {
+  const ids = selectAll("[id]", root).flatMap((element) => {
     const id = getAttribute(element, "id");
     return id === null ? [] : [id];
   });
-  return { attachments, messages: documentMessages, elementIds };
+  return { attachments, messages: documentMessages, ids };
 }

@@ -18,8 +18,8 @@ void test("extracts instructions, targets, locators, and element IDs", () => {
   assert.strictEqual(snapshot.attachments.length, 1);
   assert.deepStrictEqual(snapshot.attachments[0], {
     sourcePath: "/publication/chapter.md",
-    sourceElementId: "/html/body/span",
-    target: { documentPath: "/publication/index.md", elementId: "index" },
+    sourceId: "/html/body/span",
+    target: { path: "/publication/index.md", id: "index" },
     targetKey: '["/publication/index.md","index"]',
     instruction: {
       type: "range",
@@ -31,9 +31,9 @@ void test("extracts instructions, targets, locators, and element IDs", () => {
       endReference: "end.md?x=1#end",
     },
     locatorHref: "chapter.html#%2Fhtml%2Fbody%2Fspan",
-    rangeEndTarget: { documentPath: "/publication/end.md", elementId: "end" },
+    rangeEnd: { path: "/publication/end.md", id: "end" },
   });
-  assert.deepStrictEqual(snapshot.elementIds, ["/html/body/span", "end"]);
+  assert.deepStrictEqual(snapshot.ids, ["/html/body/span", "end"]);
   const source = select("[data-index]", root);
   assert.ok(source);
   assert.strictEqual(getAttribute(source, "id"), "/html/body/span");

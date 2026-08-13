@@ -25,7 +25,7 @@ void test("builds range locators from ordered source snapshots", () => {
   ]);
 
   const { indexes, messages } = buildIndexes([chapterPath, endPath, indexPath], sources);
-  const builtIndex = indexes.get(createTargetKey({ documentPath: indexPath, elementId: "index" }));
+  const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
 
   assert.ok(builtIndex);
   assert.deepStrictEqual(dropSequences(builtIndex.index), {

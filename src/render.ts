@@ -4,7 +4,7 @@ import type { EntryBase, Index, MainEntry, Subentry } from "./model.ts";
 import type * as hast from "hast";
 import { h } from "hastscript";
 
-export function renderIndex(index: Index, target: hast.Element, elementId: string): void {
+export function renderIndex(index: Index, target: hast.Element, indexId: string): void {
   target.children = [
     h(
       "ol.index-groups",
@@ -15,8 +15,8 @@ export function renderIndex(index: Index, target: hast.Element, elementId: strin
             "ol.index-main-entries",
             generateMainEntries(
               group.children,
-              elementId,
-              `${elementId}--${JSON.stringify(group.key)}`,
+              indexId,
+              `${indexId}--${JSON.stringify(group.key)}`,
             ),
           ),
         ]),
@@ -27,7 +27,7 @@ export function renderIndex(index: Index, target: hast.Element, elementId: strin
 
 const generateMainEntries = (
   mainEntries: MainEntry[],
-  elementId: string,
+  indexId: string,
   parentId: string,
 ): hast.Element[] =>
   mainEntries.map((mainEntry) => {
@@ -38,20 +38,20 @@ const generateMainEntries = (
         ? [generateLocators(mainEntry.locators, "index-main-entry-locators")]
         : []),
       ...(mainEntry.see.length !== 0
-        ? [generateReferences(mainEntry.see, "index-main-entry-see", elementId)]
+        ? [generateReferences(mainEntry.see, "index-main-entry-see", indexId)]
         : []),
       ...(mainEntry.seeAlso.length !== 0
-        ? [generateReferences(mainEntry.seeAlso, "index-main-entry-see-also", elementId)]
+        ? [generateReferences(mainEntry.seeAlso, "index-main-entry-see-also", indexId)]
         : []),
       ...(mainEntry.children.length !== 0
-        ? [generateSubentries(mainEntry.children, elementId, entryId)]
+        ? [generateSubentries(mainEntry.children, indexId, entryId)]
         : []),
     ]);
   });
 
 const generateSubentries = (
   subentries: Subentry[],
-  elementId: string,
+  indexId: string,
   parentId: string,
 ): hast.Element =>
   h(
@@ -63,10 +63,10 @@ const generateSubentries = (
           ? [generateLocators(subentry.locators, "index-subentry-locators")]
           : []),
         ...(subentry.see.length !== 0
-          ? [generateReferences(subentry.see, "index-subentry-see", elementId)]
+          ? [generateReferences(subentry.see, "index-subentry-see", indexId)]
           : []),
         ...(subentry.seeAlso.length !== 0
-          ? [generateReferences(subentry.seeAlso, "index-subentry-see-also", elementId)]
+          ? [generateReferences(subentry.seeAlso, "index-subentry-see-also", indexId)]
           : []),
       ]),
     ),
@@ -94,13 +94,13 @@ const generateLocators = (locators: EntryBase["locators"], className: string): h
 const generateReferences = (
   references: EntryBase["see"],
   className: string,
-  elementId: string,
+  indexId: string,
 ): hast.Element =>
   h(
     "ol",
     { className },
     references.map(({ target }) => {
-      const mainEntryHref = `#${elementId}--${JSON.stringify(target.group)}--${JSON.stringify(target.mainEntry)}`;
+      const mainEntryHref = `#${indexId}--${JSON.stringify(target.group)}--${JSON.stringify(target.mainEntry)}`;
       const [href, children] =
         target.subentry === undefined
           ? [mainEntryHref, parseFragment(target.mainEntry.html)]

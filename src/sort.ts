@@ -2,7 +2,7 @@ import upath from "upath";
 
 import { fragmentToText } from "./html.ts";
 import type { Group, HasKey, Index, MainEntry, Subentry } from "./model.ts";
-import { createTargetKey, type TargetKey } from "./target.ts";
+import { createTargetKey, type Target, type TargetKey } from "./target.ts";
 
 type Locator = MainEntry["locators"][0];
 type Reference = MainEntry["see"][0];
@@ -20,12 +20,7 @@ export type IndexComparator = {
   subentrySeeAlso: Comparator<Reference>;
 };
 
-export type IndexTarget = Readonly<{
-  path: string;
-  id: string;
-}>;
-
-export type Comparators = readonly (readonly [IndexTarget, IndexComparator])[];
+export type Comparators = readonly (readonly [Target, IndexComparator])[];
 
 export const byListedOrder: Comparator<Locator> & Comparator<Reference> = (a, b) =>
   a.sequence.localeCompare(b.sequence);
@@ -111,8 +106,8 @@ export function normalizeComparators(
 
   for (const [{ path, id }, comparator] of comparators) {
     const targetKey = createTargetKey({
-      documentPath: upath.resolve(entryContext, path),
-      elementId: id,
+      path: upath.resolve(entryContext, path),
+      id,
     });
     normalized.set(targetKey, comparator);
   }

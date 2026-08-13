@@ -11,8 +11,8 @@ void test("separates a document target from its query and fragment", () => {
   );
 
   assert.deepStrictEqual(createTarget(url), {
-    documentPath: "/publication/index.md",
-    elementId: "索引",
+    path: "/publication/index.md",
+    id: "索引",
   });
 });
 
@@ -20,8 +20,8 @@ void test("resolves targets relative to the source document", () => {
   const target = resolveTarget("../index.md?q=x#main", pathToFileURL("/publication/chapters/1.md"));
 
   assert.deepStrictEqual(target, {
-    documentPath: "/publication/index.md",
-    elementId: "main",
+    path: "/publication/index.md",
+    id: "main",
   });
   assert.strictEqual(createTargetKey(target), '["/publication/index.md","main"]');
 });

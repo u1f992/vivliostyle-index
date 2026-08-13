@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 import upath from "upath";
 
 export type Target = Readonly<{
-  documentPath: string;
-  elementId: string;
+  path: string;
+  id: string;
 }>;
 
 export type TargetKey = string;
@@ -14,8 +14,8 @@ export function createTarget(url: URL): Target {
   documentUrl.search = "";
   documentUrl.hash = "";
   return {
-    documentPath: upath.normalize(fileURLToPath(documentUrl)),
-    elementId: decodeURIComponent(url.hash.slice(1)),
+    path: upath.normalize(fileURLToPath(documentUrl)),
+    id: decodeURIComponent(url.hash.slice(1)),
   };
 }
 
@@ -24,5 +24,5 @@ export function resolveTarget(reference: string, baseUrl: URL): Target {
 }
 
 export function createTargetKey(target: Target): TargetKey {
-  return JSON.stringify([target.documentPath, target.elementId]);
+  return JSON.stringify([target.path, target.id]);
 }

@@ -26,31 +26,26 @@ function resolveRangeEndHref(
   attachment: Attachment,
   messagesByDocument: Map<string, MessageArguments[]>,
 ): string | undefined {
-  const rangeEndTarget = attachment.rangeEndTarget;
-  if (rangeEndTarget === undefined) {
+  const rangeEnd = attachment.rangeEnd;
+  if (rangeEnd === undefined) {
     return undefined;
   }
-  const rangeEndSource = sources.get(rangeEndTarget.documentPath);
-  if (!rangeEndSource?.elementIds.includes(rangeEndTarget.elementId)) {
-    addMessage(messagesByDocument, attachment.sourcePath, messages.missingRangeEnd(rangeEndTarget));
+  const rangeEndSource = sources.get(rangeEnd.path);
+  if (!rangeEndSource?.ids.includes(rangeEnd.id)) {
+    addMessage(messagesByDocument, attachment.sourcePath, messages.missingRangeEnd(rangeEnd));
     return undefined;
   }
   const sourceEntryIndex = entryPaths.indexOf(attachment.sourcePath);
-  const endEntryIndex = entryPaths.indexOf(rangeEndTarget.documentPath);
+  const endEntryIndex = entryPaths.indexOf(rangeEnd.path);
   const endPrecedesSource = endEntryIndex < sourceEntryIndex;
   const endDoesNotFollowSourceElement =
     endEntryIndex === sourceEntryIndex &&
-    rangeEndSource.elementIds.indexOf(rangeEndTarget.elementId) <=
-      rangeEndSource.elementIds.indexOf(attachment.sourceElementId);
+    rangeEndSource.ids.indexOf(rangeEnd.id) <= rangeEndSource.ids.indexOf(attachment.sourceId);
   if (endPrecedesSource || endDoesNotFollowSourceElement) {
-    addMessage(messagesByDocument, attachment.sourcePath, messages.rangeEndOrder(rangeEndTarget));
+    addMessage(messagesByDocument, attachment.sourcePath, messages.rangeEndOrder(rangeEnd));
     return undefined;
   }
-  return createLocatorHref(
-    rangeEndTarget.documentPath,
-    attachment.target.documentPath,
-    rangeEndTarget.elementId,
-  );
+  return createLocatorHref(rangeEnd.path, attachment.target.path, rangeEnd.id);
 }
 
 export function buildIndexes(
@@ -113,11 +108,11 @@ export function buildIndexes(
     for (const unresolvedReference of validateReferences(index)) {
       addMessage(
         messagesByDocument,
-        entryPathSet.has(target.documentPath) ? target.documentPath : sourcePath,
+        entryPathSet.has(target.path) ? target.path : sourcePath,
         messages.invalidReference(unresolvedReference),
       );
     }
-    if (!entryPathSet.has(target.documentPath)) {
+    if (!entryPathSet.has(target.path)) {
       addMessage(messagesByDocument, sourcePath, messages.targetNotInEntries(target));
     }
   }

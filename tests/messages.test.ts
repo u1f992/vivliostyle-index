@@ -16,8 +16,8 @@ void test("groups message arguments by document and emits VFile messages", () =>
     messagesByDocument,
     "/publication/chapter.md",
     messages.missingIndexTarget({
-      documentPath: "/publication/index.md",
-      elementId: "index",
+      path: "/publication/index.md",
+      id: "index",
     }),
   );
   addMessage(

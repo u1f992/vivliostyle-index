@@ -32,8 +32,8 @@ void test("normalizes comparator targets and keeps the last configuration", () =
     "/publication",
   );
   const key = createTargetKey({
-    documentPath: "/publication/indexes/index.md",
-    elementId: "main",
+    path: "/publication/indexes/index.md",
+    id: "main",
   });
 
   assert.strictEqual(comparators.size, 1);

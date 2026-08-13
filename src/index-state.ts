@@ -31,14 +31,14 @@ function affectedDocumentPaths(
 ): Set<string> {
   const targetPaths = new Set(
     [...(previous?.attachments ?? []), ...current.attachments].map(
-      (attachment) => attachment.target.documentPath,
+      (attachment) => attachment.target.path,
     ),
   );
   for (const snapshot of sources.values()) {
     for (const attachment of snapshot.attachments) {
-      if (attachment.rangeEndTarget?.documentPath === sourcePath) {
+      if (attachment.rangeEnd?.path === sourcePath) {
         targetPaths.add(attachment.sourcePath);
-        targetPaths.add(attachment.target.documentPath);
+        targetPaths.add(attachment.target.path);
       }
     }
   }
