@@ -24,9 +24,12 @@ function updateTimestamp(base: BaseFileSystem, fileName: string) {
 function appendAndRestoreSize(base: BaseFileSystem, fileName: string) {
   const originalSize = base.statSync(fileName).size;
   const fd = base.openSync(fileName, "a");
-  base.writeSync(fd, " ");
-  base.ftruncateSync(fd, originalSize);
-  base.closeSync(fd);
+  try {
+    base.writeSync(fd, " ");
+    base.ftruncateSync(fd, originalSize);
+  } finally {
+    base.closeSync(fd);
+  }
 }
 
 /**
