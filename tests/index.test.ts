@@ -302,6 +302,33 @@ void test("links a reference to a later entry", () => {
   assert.strictEqual(getAttribute(reference, "href"), `#${getAttribute(target, "id")}`);
 });
 
+void test("links a reference to a later subentry", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span data-index="index.md?q=a!Alpha|->b!Beta!Gamma#index">Alpha</span>',
+      '<span data-index="index.md?q=b!Beta!Gamma#index">Gamma</span>',
+    ].join(""),
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  const reference = select(".index-main-entry-see a", root);
+  const target = select("li.index-subentry", root);
+  assert.ok(reference);
+  assert.ok(target);
+  assert.strictEqual(getAttribute(reference, "href"), `#${getAttribute(target, "id")}`);
+  assert.deepStrictEqual(
+    selectAll("span", reference).map((part) => toText(part)),
+    ["Beta", "", "Gamma"],
+  );
+});
+
 void test("touches an affected target after a source changes", () => {
   const updates: string[] = [];
   const files = {

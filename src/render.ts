@@ -2,91 +2,62 @@ import { parseFragment } from "./html.ts";
 import type { EntryBase, Index, MainEntry, Subentry } from "./model.ts";
 
 import type * as hast from "hast";
+import { h } from "hastscript";
 
 export function renderIndex(index: Index, target: hast.Element, elementId: string): void {
-  const indexGroups: hast.Element = {
-    type: "element",
-    tagName: "ol",
-    properties: { className: "index-groups" },
-    children: [],
-  };
-
-  for (const group of index.children) {
-    const groupElement: hast.Element = {
-      type: "element",
-      tagName: "li",
-      properties: { className: "index-group" },
-      children: [
-        ...parseFragment(group.key.html),
-        {
-          type: "element",
-          tagName: "ol",
-          properties: { className: "index-main-entries" },
-          children: generateMainEntries(
-            group.children,
-            elementId,
-            `${elementId}--${JSON.stringify(group.key)}`,
+  target.children = [
+    h(
+      "ol.index-groups",
+      index.children.map((group) =>
+        h("li.index-group", [
+          ...parseFragment(group.key.html),
+          h(
+            "ol.index-main-entries",
+            generateMainEntries(
+              group.children,
+              elementId,
+              `${elementId}--${JSON.stringify(group.key)}`,
+            ),
           ),
-        },
-      ],
-    };
-    indexGroups.children.push(groupElement);
-  }
-
-  target.children = [indexGroups];
+        ]),
+      ),
+    ),
+  ];
 }
 
-function generateMainEntries(
+const generateMainEntries = (
   mainEntries: MainEntry[],
   elementId: string,
   parentId: string,
-): hast.ElementContent[] {
-  return mainEntries.map((mainEntry) => {
+): hast.Element[] =>
+  mainEntries.map((mainEntry) => {
     const entryId = `${parentId}--${JSON.stringify(mainEntry.key)}`;
-    const mainElement: hast.Element = {
-      type: "element",
-      tagName: "li",
-      properties: {
-        className: "index-main-entry",
-        id: entryId,
-      },
-      children: [
-        ...parseFragment(mainEntry.key.html),
-        ...(mainEntry.locators.length !== 0
-          ? [generateLocators(mainEntry.locators, "index-main-entry-locators")]
-          : []),
-        ...(mainEntry.see.length !== 0
-          ? [generateReferences(mainEntry.see, "index-main-entry-see", elementId)]
-          : []),
-        ...(mainEntry.seeAlso.length !== 0
-          ? [generateReferences(mainEntry.seeAlso, "index-main-entry-see-also", elementId)]
-          : []),
-        ...(mainEntry.children.length !== 0
-          ? [generateSubentries(mainEntry.children, elementId, entryId)]
-          : []),
-      ],
-    };
-    return mainElement;
+    return h("li.index-main-entry", { id: entryId }, [
+      ...parseFragment(mainEntry.key.html),
+      ...(mainEntry.locators.length !== 0
+        ? [generateLocators(mainEntry.locators, "index-main-entry-locators")]
+        : []),
+      ...(mainEntry.see.length !== 0
+        ? [generateReferences(mainEntry.see, "index-main-entry-see", elementId)]
+        : []),
+      ...(mainEntry.seeAlso.length !== 0
+        ? [generateReferences(mainEntry.seeAlso, "index-main-entry-see-also", elementId)]
+        : []),
+      ...(mainEntry.children.length !== 0
+        ? [generateSubentries(mainEntry.children, elementId, entryId)]
+        : []),
+    ]);
   });
-}
 
-function generateSubentries(
+const generateSubentries = (
   subentries: Subentry[],
   elementId: string,
   parentId: string,
-): hast.Element {
-  return {
-    type: "element",
-    tagName: "ol",
-    properties: { className: "index-subentries" },
-    children: subentries.map((subentry) => ({
-      type: "element",
-      tagName: "li",
-      properties: {
-        className: "index-subentry",
-        id: `${parentId}--${JSON.stringify(subentry.key)}`,
-      },
-      children: [
+): hast.Element =>
+  h(
+    "ol.index-subentries",
+    subentries.map((subentry) =>
+      h("li.index-subentry", { id: `${parentId}--${JSON.stringify(subentry.key)}` }, [
         ...parseFragment(subentry.key.html),
         ...(subentry.locators.length !== 0
           ? [generateLocators(subentry.locators, "index-subentry-locators")]
@@ -97,105 +68,50 @@ function generateSubentries(
         ...(subentry.seeAlso.length !== 0
           ? [generateReferences(subentry.seeAlso, "index-subentry-see-also", elementId)]
           : []),
-      ],
-    })),
-  };
-}
+      ]),
+    ),
+  );
 
-function generateLocators(locators: EntryBase["locators"], className: string): hast.Element {
-  return {
-    type: "element",
-    tagName: "ol",
-    properties: { className },
-    children: locators.map(({ locator, important }) => ({
-      type: "element",
-      tagName: "li",
-      properties: important ? { className: "important" } : {},
-      children:
+const generateLocators = (locators: EntryBase["locators"], className: string): hast.Element =>
+  h(
+    "ol",
+    { className },
+    locators.map(({ locator, important }) =>
+      h(
+        "li",
+        important ? { className: "important" } : {},
         typeof locator === "string"
-          ? [
-              {
-                type: "element",
-                tagName: "a",
-                properties: { href: locator },
-                children: [],
-              },
-            ]
+          ? [h("a", { href: locator })]
           : [
-              {
-                type: "element",
-                tagName: "a",
-                properties: { href: locator.start },
-                children: [],
-              },
-              {
-                type: "element",
-                tagName: "span",
-                properties: { className: className + "-separator" },
-                children: [],
-              },
-              {
-                type: "element",
-                tagName: "a",
-                properties: { href: locator.end },
-                children: [],
-              },
+              h("a", { href: locator.start }),
+              h("span", { className: className + "-separator" }),
+              h("a", { href: locator.end }),
             ],
-    })),
-  };
-}
+      ),
+    ),
+  );
 
-function generateReferences(
+const generateReferences = (
   references: EntryBase["see"],
   className: string,
   elementId: string,
-): hast.Element {
-  return {
-    type: "element",
-    tagName: "ol",
-    properties: { className },
-    children: references.map(({ target }) => ({
-      type: "element",
-      tagName: "li",
-      children:
+): hast.Element =>
+  h(
+    "ol",
+    { className },
+    references.map(({ target }) => {
+      const mainEntryHref = `#${elementId}--${JSON.stringify(target.group)}--${JSON.stringify(target.mainEntry)}`;
+      const [href, children] =
         target.subentry === undefined
-          ? [
-              {
-                type: "element",
-                tagName: "a",
-                properties: {
-                  href: `#${elementId}--${JSON.stringify(target.group)}--${JSON.stringify(target.mainEntry)}`,
-                },
-                children: parseFragment(target.mainEntry.html),
-              },
-            ]
+          ? [mainEntryHref, parseFragment(target.mainEntry.html)]
           : [
-              {
-                type: "element",
-                tagName: "a",
-                properties: {
-                  href: `#${elementId}--${JSON.stringify(target.group)}--${JSON.stringify(target.mainEntry)}--${JSON.stringify(target.subentry)}`,
-                },
-                children: [
-                  {
-                    type: "element",
-                    tagName: "span",
-                    children: parseFragment(target.mainEntry.html),
-                  },
-                  {
-                    type: "element",
-                    tagName: "span",
-                    properties: { className: className + "-separator" },
-                    children: [],
-                  },
-                  {
-                    type: "element",
-                    tagName: "span",
-                    children: parseFragment(target.subentry.html),
-                  },
-                ],
-              },
-            ],
-    })),
-  };
-}
+              `${mainEntryHref}--${JSON.stringify(target.subentry)}`,
+              [
+                h("span", parseFragment(target.mainEntry.html)),
+                h("span", { className: className + "-separator" }),
+                h("span", parseFragment(target.subentry.html)),
+              ],
+            ];
+      return h("li", [h("a", { href }, children)]);
+    }),
+  );
