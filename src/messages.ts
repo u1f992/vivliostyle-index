@@ -74,6 +74,11 @@ export const messages = {
     undefined,
     rule("target-not-in-entries"),
   ],
+  documentNotInEntries: (documentPath: string): MessageArguments => [
+    `document ${documentPath} is not included in entries. its index instructions are ignored.`,
+    undefined,
+    rule("document-not-in-entries"),
+  ],
   unsupportedLanguage: (language: string): MessageArguments => [
     `cannot sort by language ${JSON.stringify(language)}. the index is sorted without it.`,
     undefined,

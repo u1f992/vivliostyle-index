@@ -100,6 +100,29 @@ void test("reports unresolved references and targets outside the entry list", ()
   );
 });
 
+void test("reports instructions carried by a document outside the entry list", () => {
+  const chapterPath = "/publication/chapter.md";
+  const indexPath = "/publication/index.md";
+  const sources = new Map([
+    [
+      chapterPath,
+      collectSourceSnapshot(
+        fromHtml('<span data-index="index.md?q=a!Apple#index"></span>'),
+        chapterPath,
+      ),
+    ],
+    [indexPath, collectSourceSnapshot(fromHtml('<nav id="index"></nav>'), indexPath)],
+  ]);
+
+  const { indexes, messages } = buildIndexes([indexPath], sources);
+
+  assert.strictEqual(indexes.size, 0);
+  assert.deepStrictEqual(
+    messages.get(chapterPath)?.map((message) => message[2]?.split(":")[1]),
+    ["document-not-in-entries"],
+  );
+});
+
 void test("reports index-wide diagnostics to every document naming a target outside the entry list", () => {
   const soundPath = "/publication/one.md";
   const brokenPath = "/publication/two.md";

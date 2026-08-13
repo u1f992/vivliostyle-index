@@ -134,6 +134,9 @@ export function buildIndexes(
 
   for (const [sourcePath, snapshot] of sources) {
     messagesByDocument.set(sourcePath, [...snapshot.messages]);
+    if (!entryPathSet.has(sourcePath) && snapshot.attachments.length !== 0) {
+      addMessage(messagesByDocument, sourcePath, messages.documentNotInEntries(sourcePath));
+    }
   }
 
   for (const entryPath of entryPaths) {
