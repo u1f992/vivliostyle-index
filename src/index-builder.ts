@@ -7,7 +7,7 @@ import { createLocationHref } from "./location.ts";
 import { addMessage, messages, type MessageArguments } from "./messages.ts";
 import { findUnresolvedReference, type Index } from "./model.ts";
 import { revokeViolations, type Revocable } from "./revocation.ts";
-import type { Attachment, SourceSnapshot } from "./source-snapshot.ts";
+import type { Attachment, RangeAttachment, SourceSnapshot } from "./source-snapshot.ts";
 import type { Target, TargetKey } from "./target.ts";
 
 export type BuiltIndex = Readonly<{
@@ -31,9 +31,9 @@ type PendingIndex = Readonly<{
 function findRangeEndViolation(
   entryPaths: readonly string[],
   sources: ReadonlyMap<string, SourceSnapshot>,
-  attachment: Attachment,
-  rangeEnd: Target,
+  attachment: RangeAttachment,
 ): MessageArguments | undefined {
+  const { rangeEnd } = attachment;
   const endEntryIndex = entryPaths.indexOf(rangeEnd.path);
   if (endEntryIndex === -1) {
     return messages.rangeEndNotInEntries(rangeEnd);
@@ -89,29 +89,25 @@ function applyAttachment(
   index: Index,
   attachment: Attachment,
 ): Revocable | undefined {
+  if ("rangeEnd" in attachment) {
+    const revoke = applyRangeInstruction(
+      index,
+      attachment.instruction,
+      attachment.locationHref,
+      createLocationHref(attachment.rangeEnd.path, attachment.target.path, attachment.rangeEnd.id),
+    );
+    return {
+      reportingPath: attachment.sourcePath,
+      revoke,
+      findViolation: () => findRangeEndViolation(entryPaths, sources, attachment),
+    };
+  }
+
   const { instruction } = attachment;
 
   if (instruction.type === "page") {
     applyPageInstruction(index, instruction, attachment.locationHref);
     return undefined;
-  }
-
-  if (instruction.type === "range") {
-    const rangeEnd = attachment.rangeEnd;
-    if (rangeEnd === undefined) {
-      return undefined;
-    }
-    const revoke = applyRangeInstruction(
-      index,
-      instruction,
-      attachment.locationHref,
-      createLocationHref(rangeEnd.path, attachment.target.path, rangeEnd.id),
-    );
-    return {
-      reportingPath: attachment.sourcePath,
-      revoke,
-      findViolation: () => findRangeEndViolation(entryPaths, sources, attachment, rangeEnd),
-    };
   }
 
   const revoke = applyReferenceInstruction(index, instruction);

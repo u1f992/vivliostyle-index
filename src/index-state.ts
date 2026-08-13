@@ -52,7 +52,7 @@ function affectedDocumentPaths(
   );
   for (const snapshot of sources.values()) {
     for (const attachment of snapshot.attachments) {
-      if (attachment.rangeEnd?.path === sourcePath) {
+      if ("rangeEnd" in attachment && attachment.rangeEnd.path === sourcePath) {
         targetPaths.add(attachment.sourcePath);
         targetPaths.add(attachment.target.path);
       }
