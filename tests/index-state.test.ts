@@ -6,7 +6,6 @@ import { fromHtml } from "hast-util-from-html";
 import type { FileSystem } from "../src/file-system.ts";
 import {
   createIndexState,
-  initializeIndexState,
   messagesFor,
   updateIndexState,
   type EntryProcessorInput,
@@ -18,7 +17,7 @@ const entryProcessor = {
   processSync: ({ contents }: { contents: unknown }) => ({ toString: () => String(contents) }),
 };
 
-void test("initializes once and rebuilds indexes after a source update", () => {
+void test("builds indexes at creation and rebuilds them after a source update", () => {
   const chapterPath = "/publication/chapter.md";
   const indexPath = "/publication/index.md";
   const files = {
@@ -33,23 +32,21 @@ void test("initializes once and rebuilds indexes after a source update", () => {
     },
     touchSync: () => {},
   };
-  const createEntryProcessor = () => entryProcessor as never;
 
-  const initialized = initializeIndexState(
-    createIndexState([chapterPath, indexPath]),
+  const created = createIndexState(
+    [chapterPath, indexPath],
     fileSystem,
-    createEntryProcessor,
+    () => entryProcessor as never,
   );
-  const again = initializeIndexState(initialized, fileSystem, createEntryProcessor);
-  const unchanged = updateIndexState(initialized, chapterPath, fromHtml(files[chapterPath]));
+  const unchanged = updateIndexState(created, chapterPath, fromHtml(files[chapterPath]));
   const affected = updateIndexState(
     unchanged.state,
     chapterPath,
     fromHtml('<span data-index="index.md?q=b!Banana#index"></span>'),
   );
 
-  assert.strictEqual(again, initialized);
   assert.deepStrictEqual(reads, [chapterPath, indexPath]);
+  assert.strictEqual(created.indexes.size, 1);
   assert.deepStrictEqual([...unchanged.affectedPaths], []);
   assert.strictEqual(unchanged.entryProcessorMismatch, false);
   assert.deepStrictEqual([...affected.affectedPaths], [indexPath]);
@@ -74,12 +71,12 @@ void test("returns a new state and leaves the given one unchanged", () => {
       index.children.map((group) => group.key.reading),
     );
 
-  const initialized = initializeIndexState(
-    createIndexState([chapterPath, indexPath]),
+  const created = createIndexState(
+    [chapterPath, indexPath],
     fileSystem,
     () => entryProcessor as never,
   );
-  const first = updateIndexState(initialized, chapterPath, fromHtml(files[chapterPath]));
+  const first = updateIndexState(created, chapterPath, fromHtml(files[chapterPath]));
   const edited = updateIndexState(
     first.state,
     chapterPath,
@@ -111,12 +108,12 @@ void test("marks range sources and index targets after an end document changes",
     touchSync: () => {},
   };
 
-  const initialized = initializeIndexState(
-    createIndexState([chapterPath, endPath, indexPath]),
+  const created = createIndexState(
+    [chapterPath, endPath, indexPath],
     fileSystem,
     () => entryProcessor as never,
   );
-  const first = updateIndexState(initialized, endPath, fromHtml(files[endPath]));
+  const first = updateIndexState(created, endPath, fromHtml(files[endPath]));
   const affected = updateIndexState(first.state, endPath, fromHtml(""));
 
   assert.deepStrictEqual([...affected.affectedPaths], [chapterPath, indexPath]);
@@ -138,13 +135,13 @@ void test("flags only the first update whose snapshot disagrees with the entry p
     touchSync: () => {},
   };
 
-  const initialized = initializeIndexState(
-    createIndexState([chapterPath, indexPath]),
+  const created = createIndexState(
+    [chapterPath, indexPath],
     fileSystem,
     () => entryProcessor as never,
   );
   const mismatch = updateIndexState(
-    initialized,
+    created,
     chapterPath,
     fromHtml('<span data-index="index.md?q=b!Banana#index"></span>'),
   );
@@ -172,12 +169,12 @@ void test("marks documents whose diagnostics change after another source updates
     touchSync: () => {},
   };
 
-  const initialized = initializeIndexState(
-    createIndexState([applePath, bananaPath]),
+  const created = createIndexState(
+    [applePath, bananaPath],
     fileSystem,
     () => entryProcessor as never,
   );
-  const first = updateIndexState(initialized, applePath, fromHtml(files[applePath]));
+  const first = updateIndexState(created, applePath, fromHtml(files[applePath]));
   const affected = updateIndexState(first.state, applePath, fromHtml(""));
 
   assert.ok(affected.affectedPaths.has(bananaPath));
@@ -203,8 +200,8 @@ void test("applies an entry listed twice once", () => {
     touchSync: () => {},
   };
 
-  const state = initializeIndexState(
-    createIndexState([chapterPath, indexPath, chapterPath]),
+  const state = createIndexState(
+    [chapterPath, indexPath, chapterPath],
     fileSystem,
     () => entryProcessor as never,
   );
@@ -221,17 +218,16 @@ void test("rejects an entry processor that reaches the index plugin", () => {
     readFileSync: () => "",
     touchSync: () => {},
   };
-  const state = createIndexState([chapterPath]);
   const createEntryProcessor = () =>
     ({
       processSync: () => {
-        initializeIndexState(state, fileSystem, createEntryProcessor as never);
+        createIndexState([chapterPath], fileSystem, createEntryProcessor as never);
         return { toString: () => "" };
       },
     }) as never;
 
   assert.throws(
-    () => initializeIndexState(state, fileSystem, createEntryProcessor as never),
+    () => createIndexState([chapterPath], fileSystem, createEntryProcessor as never),
     /without the index plugin/,
   );
 });
@@ -246,12 +242,7 @@ void test("names the entry and entryContext when an entry cannot be read", () =>
   };
 
   assert.throws(
-    () =>
-      initializeIndexState(
-        createIndexState([missingPath]),
-        fileSystem,
-        () => entryProcessor as never,
-      ),
+    () => createIndexState([missingPath], fileSystem, () => entryProcessor as never),
     (error: unknown) =>
       error instanceof Error &&
       error.message.includes(missingPath) &&

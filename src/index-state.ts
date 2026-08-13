@@ -20,7 +20,6 @@ export type CreateEntryProcessor = (input: Readonly<EntryProcessorInput>) => uni
 export type IndexState = Readonly<{
   entryPaths: readonly string[];
   entryPathSet: ReadonlySet<string>;
-  initialized: boolean;
   updatedPaths: ReadonlySet<string>;
   sources: ReadonlyMap<string, SourceSnapshot>;
   indexes: ReadonlyMap<TargetKey, BuiltIndex>;
@@ -95,39 +94,25 @@ function rebuild(state: IndexState): IndexState {
   return { ...state, indexes, messages };
 }
 
-export function createIndexState(entryPaths: readonly string[]): IndexState {
-  const entryPathSet: ReadonlySet<string> = new Set(entryPaths);
-  return {
-    entryPaths: [...entryPathSet],
-    entryPathSet,
-    initialized: false,
-    updatedPaths: new Set(),
-    sources: new Map(),
-    indexes: new Map(),
-    messages: new Map(),
-  };
-}
+const creatingProcessors = new WeakSet<CreateEntryProcessor>();
 
-const initializingStates = new WeakSet<IndexState>();
-
-export function initializeIndexState(
-  state: IndexState,
+export function createIndexState(
+  entryPaths: readonly string[],
   fileSystem: Readonly<FileSystem>,
   createEntryProcessor: CreateEntryProcessor,
 ): IndexState {
-  if (state.initialized) {
-    return state;
-  }
-  if (initializingStates.has(state)) {
+  if (creatingProcessors.has(createEntryProcessor)) {
     throw new Error(
       "the entry processor reached the index plugin that invoked it. createEntryProcessor must return a processor without the index plugin.",
     );
   }
 
-  initializingStates.add(state);
+  const entryPathSet: ReadonlySet<string> = new Set(entryPaths);
+  const uniqueEntryPaths = [...entryPathSet];
+  creatingProcessors.add(createEntryProcessor);
   const sources = new Map<string, SourceSnapshot>();
   try {
-    for (const entryPath of state.entryPaths) {
+    for (const entryPath of uniqueEntryPaths) {
       const contents = readEntry(fileSystem, entryPath);
       const input = { path: entryPath, contents } satisfies VFileCompatible;
       const processor = createEntryProcessor(input);
@@ -135,10 +120,17 @@ export function initializeIndexState(
       sources.set(entryPath, collectSourceSnapshot(fromHtml(html), entryPath));
     }
   } finally {
-    initializingStates.delete(state);
+    creatingProcessors.delete(createEntryProcessor);
   }
 
-  return rebuild({ ...state, initialized: true, sources });
+  return rebuild({
+    entryPaths: uniqueEntryPaths,
+    entryPathSet,
+    updatedPaths: new Set(),
+    sources,
+    indexes: new Map(),
+    messages: new Map(),
+  });
 }
 
 export function updateIndexState(
