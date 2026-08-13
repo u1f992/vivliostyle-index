@@ -25,9 +25,10 @@ function readEntry(fileSystem: Readonly<FileSystem>, entryPath: string): string 
   try {
     return fileSystem.readFileSync(entryPath);
   } catch (cause) {
-    throw new Error(`cannot read entry ${entryPath}. entry paths resolve against entryContext.`, {
-      cause,
-    });
+    throw new Error(
+      `cannot read entry ${entryPath}. entry paths resolve against entryContext, which defaults to the current working directory.`,
+      { cause },
+    );
   }
 }
 

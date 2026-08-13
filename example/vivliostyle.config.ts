@@ -2,7 +2,7 @@ import { defineConfig, readMetadata, VFM } from "@vivliostyle/cli";
 import { createIndexPlugin, logMessages } from "@u1f992/vivliostyle-index";
 
 const entry = ["001-050.md", "051-099.md", "index.md", "100-150.md"];
-const index = createIndexPlugin({ entry, entryContext: import.meta.dirname });
+const index = createIndexPlugin({ entry });
 
 export default defineConfig({
   title: "example",
