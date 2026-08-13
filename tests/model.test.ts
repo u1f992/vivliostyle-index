@@ -123,7 +123,7 @@ void test("revokes headings that hold no locator or reference", () => {
 });
 
 void test("keeps a heading that only carries subentries", () => {
-  const index = createIndexWithSubentry([{ locator: "chapter.html#a", important: false }]);
+  const index = createIndexWithSubentry([{ locator: "chapter.html#a" }]);
 
   const revoked = revokeVacantEntries(index);
 
@@ -148,7 +148,6 @@ void test("revokes only the locator that was inserted", () => {
   const entry = ensureEntry(index, { group, mainEntry: intellectualProperty });
   const locators = ["001.html#a", "002.html#b", "003.html#c"].map((locator) => ({
     locator,
-    important: false,
   }));
   const revocations = locators.map((locator) => insertLocator(entry, locator));
 
@@ -178,7 +177,7 @@ void test("distinguishes headings that share HTML but not their reading", () => 
 void test("revokes an inserted locator only once", () => {
   const index: Index = { children: [] };
   const entry = ensureEntry(index, { group, mainEntry: intellectualProperty });
-  const input = { locator: "001.html#a", important: false };
+  const input = { locator: "001.html#a" };
   const revoke = insertLocator(entry, input);
   insertLocator(entry, input);
 

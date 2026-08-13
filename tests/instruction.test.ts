@@ -18,11 +18,13 @@ const entry = { group, mainEntry, subentry };
 void test("parses page instructions", () => {
   assert.deepStrictEqual(
     parseInstruction("ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し"),
-    { type: "page", entry, important: false },
+    { type: "page", entry },
   );
   assert.deepStrictEqual(
-    parseInstruction("ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|!"),
-    { type: "page", entry, important: true },
+    parseInstruction(
+      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し||<em><slot></slot></em>",
+    ),
+    { type: "page", entry, template: "<em><slot></slot></em>" },
   );
 });
 
@@ -32,19 +34,18 @@ void test("parses range instructions", () => {
     {
       type: "range",
       entry,
-      important: false,
       endReference: "path.md#fragment",
     },
   );
   assert.deepStrictEqual(
     parseInstruction(
-      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|!(path.md#fragment",
+      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|(path.md#fragment|<em><slot></slot></em>",
     ),
     {
       type: "range",
       entry,
-      important: true,
       endReference: "path.md#fragment",
+      template: "<em><slot></slot></em>",
     },
   );
   assert.deepStrictEqual(parseInstruction("group!main|(#fragment"), {
@@ -53,7 +54,6 @@ void test("parses range instructions", () => {
       group: { html: "group", reading: "group" },
       mainEntry: { html: "main", reading: "main" },
     },
-    important: false,
     endReference: "#fragment",
   });
 });
@@ -99,7 +99,6 @@ void test("uses an omitted display value as the reading and HTML", () => {
       group: { html: "group", reading: "group" },
       mainEntry: { html: "main", reading: "main" },
     },
-    important: false,
   });
 });
 
@@ -110,7 +109,6 @@ void test("unescapes an omitted display value into both the reading and HTML", (
       group: { html: "a@b!c|d\\e", reading: "a@b!c|d\\e" },
       mainEntry: { html: "main", reading: "main" },
     },
-    important: false,
   });
 });
 
@@ -131,7 +129,6 @@ void test("preserves display values as HTML fragments", () => {
           reading: "きょうとだいがく",
         },
       },
-      important: false,
     },
   );
   assert.deepStrictEqual(parseInstruction("g@<em>unclosed!main"), {
@@ -140,7 +137,6 @@ void test("preserves display values as HTML fragments", () => {
       group: { html: "<em>unclosed", reading: "g" },
       mainEntry: { html: "main", reading: "main" },
     },
-    important: false,
   });
 });
 
@@ -176,7 +172,6 @@ void test("does not normalize readings or HTML", () => {
       group: { html: nfd, reading: nfd },
       mainEntry: { html: "main", reading: "main" },
     },
-    important: false,
   });
 });
 
@@ -187,7 +182,6 @@ void test("preserves surrounding whitespace and HTML line breaks", () => {
       group: { html: "<span>\nG\t</span>", reading: " group " },
       mainEntry: { html: " main ", reading: " main " },
     },
-    important: false,
   });
 });
 
@@ -198,7 +192,6 @@ void test("unescapes metacharacters in readings and display values", () => {
       group: { html: "表@示!分類", reading: "よ@み" },
       mainEntry: { html: "主|表示|値", reading: "主!見出し" },
     },
-    important: false,
   });
 });
 
@@ -209,7 +202,6 @@ void test("distinguishes escaped metacharacters at syntax boundaries", () => {
       group: { html: "@b", reading: "a@" },
       mainEntry: { html: "main", reading: "main" },
     },
-    important: false,
   });
   assert.deepStrictEqual(parseInstruction("a\\!!\\!main"), {
     type: "page",
@@ -217,28 +209,57 @@ void test("distinguishes escaped metacharacters at syntax boundaries", () => {
       group: { html: "a!", reading: "a!" },
       mainEntry: { html: "!main", reading: "!main" },
     },
-    important: false,
   });
-  assert.deepStrictEqual(parseInstruction("group!main\\||!"), {
+  assert.deepStrictEqual(parseInstruction("group!main\\|||<b><slot></slot></b>"), {
     type: "page",
     entry: {
       group: { html: "group", reading: "group" },
       mainEntry: { html: "main|", reading: "main|" },
     },
-    important: true,
+    template: "<b><slot></slot></b>",
   });
 });
 
-void test("preserves every character after a range operator", () => {
-  assert.deepStrictEqual(parseInstruction("group!main|!(../章 @!|.md?x=1&y=2+#終点)"), {
+void test("keeps a template running to the end of the instruction", () => {
+  assert.deepStrictEqual(parseInstruction("group!main||<em>\\@\\!\\|\\\\<slot></slot></em>|x"), {
+    type: "page",
+    entry: {
+      group: { html: "group", reading: "group" },
+      mainEntry: { html: "main", reading: "main" },
+    },
+    template: "<em>@!|\\<slot></slot></em>|x",
+  });
+});
+
+void test("reads a range end reference up to the template", () => {
+  assert.deepStrictEqual(parseInstruction("group!main|(../章 @!.md?x=1&y=2+#終点)"), {
     type: "range",
     entry: {
       group: { html: "group", reading: "group" },
       mainEntry: { html: "main", reading: "main" },
     },
-    important: true,
-    endReference: "../章 @!|.md?x=1&y=2+#終点)",
+    endReference: "../章 @!.md?x=1&y=2+#終点)",
   });
+  assert.deepStrictEqual(parseInstruction("group!main|(a\\@b\\!c\\\\d#end"), {
+    type: "range",
+    entry: {
+      group: { html: "group", reading: "group" },
+      mainEntry: { html: "main", reading: "main" },
+    },
+    endReference: "a@b!c\\d#end",
+  });
+  assert.deepStrictEqual(
+    parseInstruction("group!main|(../章 @!\\|.md#終点|<em><slot></slot></em>"),
+    {
+      type: "range",
+      entry: {
+        group: { html: "group", reading: "group" },
+        mainEntry: { html: "main", reading: "main" },
+      },
+      endReference: "../章 @!|.md#終点",
+      template: "<em><slot></slot></em>",
+    },
+  );
 });
 
 void test("reports offsets in Intl en grapheme clusters", () => {
@@ -281,6 +302,14 @@ void test("rejects incomplete and structurally invalid instructions", () => {
     "group!main|!(",
     "group\\",
     "group\\x!main",
+    "group!main||",
+    "group!main||<em></em>",
+    "group!main||<slot></slot><slot></slot>",
+    'group!main||<a href="<slot></slot>">x</a>',
+    "group!main|(#end|",
+    "group!main|(#end|<em></em>",
+    "group!main||<em><slot></slot></em>\\",
+    "group!main|(#end\\",
   ];
 
   for (const instruction of invalidInstructions) {
@@ -303,6 +332,7 @@ void test("rejects blank values and forbidden control characters", () => {
     "group\nname!main",
     "group!main\u0000",
     "group!main|(path\u0000#end",
+    "group!main||<em>\u0000<slot></slot></em>",
   ];
 
   for (const instruction of invalidInstructions) {
@@ -312,7 +342,7 @@ void test("rejects blank values and forbidden control characters", () => {
 
 void test("applies page instructions", () => {
   const index: Index = { children: [] };
-  const instruction = parseInstruction("し!じゆうりよう@自由利用|!");
+  const instruction = parseInstruction("し!じゆうりよう@自由利用||<strong><slot></slot></strong>");
   assert.strictEqual(instruction.type, "page");
 
   applyPageInstruction(index, instruction, "chapter.html#fair-use");
@@ -325,7 +355,12 @@ void test("applies page instructions", () => {
           {
             key: { html: "自由利用", reading: "じゆうりよう" },
             children: [],
-            locators: [{ locator: "chapter.html#fair-use", important: true }],
+            locators: [
+              {
+                locator: "chapter.html#fair-use",
+                template: "<strong><slot></slot></strong>",
+              },
+            ],
             see: [],
             seeAlso: [],
           },
@@ -353,7 +388,6 @@ void test("applies range instructions", () => {
             locators: [
               {
                 locator: { start: "chapter.html#start", end: "chapter.html#end" },
-                important: false,
               },
             ],
             see: [],
@@ -363,6 +397,21 @@ void test("applies range instructions", () => {
       },
     ],
   });
+});
+
+void test("applies the template of a range instruction", () => {
+  const index: Index = { children: [] };
+  const instruction = parseInstruction("し!じゆうりよう@自由利用|(#end|<em><slot></slot></em>");
+  assert.strictEqual(instruction.type, "range");
+
+  applyRangeInstruction(index, instruction, "chapter.html#start", "chapter.html#end");
+
+  assert.deepStrictEqual(index.children[0]?.children[0]?.locators, [
+    {
+      locator: { start: "chapter.html#start", end: "chapter.html#end" },
+      template: "<em><slot></slot></em>",
+    },
+  ]);
 });
 
 void test("applies reference instructions", () => {

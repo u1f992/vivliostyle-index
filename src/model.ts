@@ -36,9 +36,9 @@ function insert<T>(list: T[], item: T): Revocation {
   };
 }
 
-type LocatorEntry = Readonly<{
+export type LocatorEntry = Readonly<{
   locator: Locator;
-  important: boolean;
+  template?: string;
 }>;
 type HasLocators = { locators: LocatorEntry[] };
 export function insertLocator(entry: HasLocators, locatorEntry: LocatorEntry): Revocation {

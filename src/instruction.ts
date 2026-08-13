@@ -7,6 +7,7 @@ import {
   type Key,
   type Revocation,
 } from "./model.ts";
+import { countSlots } from "./template.ts";
 
 export type ParsedEntry = EntryAddress;
 
@@ -14,13 +15,13 @@ export type ParsedInstruction =
   | Readonly<{
       type: "page";
       entry: ParsedEntry;
-      important: boolean;
+      template?: string;
     }>
   | Readonly<{
       type: "range";
       entry: ParsedEntry;
-      important: boolean;
       endReference: string;
+      template?: string;
     }>
   | Readonly<{
       type: "see" | "seeAlso";
@@ -84,6 +85,14 @@ function syntaxError(input: ParserInput, offset: number, reason: string): never 
   throw new InstructionSyntaxError(input.source, offset, reason);
 }
 
+function unescapeAt(input: ParserInput, offset: number): string {
+  const escapedCharacter = input.graphemes[offset + 1];
+  if (escapedCharacter === undefined || !escapableCharacters.has(escapedCharacter)) {
+    syntaxError(input, offset, "an escape must be followed by \\, @, !, or |");
+  }
+  return escapedCharacter;
+}
+
 function completeEntry(input: ParserInput, entry: MutableParsedEntry, offset: number): ParsedEntry {
   if (entry.group === undefined || entry.mainEntry === undefined) {
     return syntaxError(input, offset, "an entry must contain a group and one or two headings");
@@ -142,13 +151,9 @@ function parseHierarchy(
 
   while (offset < input.graphemes.length) {
     const character = input.graphemes[offset]!;
-    const nextCharacter = input.graphemes[offset + 1];
 
     if (character === "\\") {
-      if (nextCharacter === undefined || !escapableCharacters.has(nextCharacter)) {
-        syntaxError(input, offset, "an escape must be followed by \\, @, !, or |");
-      }
-      append(nextCharacter);
+      append(unescapeAt(input, offset));
       offset += 2;
       continue;
     }
@@ -184,28 +189,78 @@ function parseHierarchy(
   return { entry: completeEntry(input, entry, offset), offset };
 }
 
-function parseRange(
-  input: ParserInput,
-  entry: ParsedEntry,
-  referenceOffset: number,
-  important: boolean,
-): ParsedInstruction {
-  const referenceGraphemes = input.graphemes.slice(referenceOffset);
-  const endReference = referenceGraphemes.join("");
-  if (endReference.trim() === "") {
-    syntaxError(input, referenceOffset, "a range end reference must not be blank");
+function parseTemplate(input: ParserInput, start: number): string {
+  let template = "";
+  let offset = start;
+
+  while (offset < input.graphemes.length) {
+    const character = input.graphemes[offset]!;
+
+    if (character === "\\") {
+      template += unescapeAt(input, offset);
+      offset += 2;
+      continue;
+    }
+
+    if (containsForbiddenHtmlCharacter(character)) {
+      syntaxError(input, offset, "a template contains a forbidden control character");
+    }
+
+    template += character;
+    offset++;
   }
-  const forbiddenCharacterOffset = referenceGraphemes.findIndex((character) =>
-    forbiddenReferenceCharacter.test(character),
-  );
-  if (forbiddenCharacterOffset !== -1) {
+
+  if (countSlots(template) !== 1) {
     syntaxError(
       input,
-      referenceOffset + forbiddenCharacterOffset,
-      "a range end reference contains a control character",
+      start,
+      "an unescaped | starts a template, which must contain exactly one slot element",
     );
   }
-  return { type: "range", entry, important, endReference };
+  return template;
+}
+
+type EndReferenceResult = Readonly<{
+  endReference: string;
+  offset: number;
+}>;
+
+function parseEndReference(input: ParserInput, start: number): EndReferenceResult {
+  let endReference = "";
+  let offset = start;
+
+  while (offset < input.graphemes.length) {
+    const character = input.graphemes[offset]!;
+
+    if (character === "\\") {
+      endReference += unescapeAt(input, offset);
+      offset += 2;
+      continue;
+    }
+
+    if (character === "|") {
+      break;
+    }
+
+    if (forbiddenReferenceCharacter.test(character)) {
+      syntaxError(input, offset, "a range end reference contains a control character");
+    }
+
+    endReference += character;
+    offset++;
+  }
+
+  if (endReference.trim() === "") {
+    syntaxError(input, start, "a range end reference must not be blank");
+  }
+  return { endReference, offset };
+}
+
+function parseRange(input: ParserInput, entry: ParsedEntry, start: number): ParsedInstruction {
+  const { endReference, offset } = parseEndReference(input, start);
+  return offset === input.graphemes.length
+    ? { type: "range", entry, endReference }
+    : { type: "range", entry, endReference, template: parseTemplate(input, offset + 1) };
 }
 
 function parseReference(
@@ -229,18 +284,15 @@ export function parseInstruction(source: string): ParsedInstruction {
   const input = createParserInput(source);
   const { entry, offset } = parseHierarchy(input, 0, true);
   if (offset === input.graphemes.length) {
-    return { type: "page", entry, important: false };
+    return { type: "page", entry };
   }
 
   const operatorOffset = offset + 1;
-  if (input.graphemes.length === operatorOffset + 1 && input.graphemes[operatorOffset] === "!") {
-    return { type: "page", entry, important: true };
-  }
-  if (startsWith(input, operatorOffset, ["!", "("])) {
-    return parseRange(input, entry, operatorOffset + 2, true);
+  if (startsWith(input, operatorOffset, ["|"])) {
+    return { type: "page", entry, template: parseTemplate(input, operatorOffset + 1) };
   }
   if (startsWith(input, operatorOffset, ["("])) {
-    return parseRange(input, entry, operatorOffset + 1, false);
+    return parseRange(input, entry, operatorOffset + 1);
   }
   if (startsWith(input, operatorOffset, ["-", ">"])) {
     return parseReference(input, entry, operatorOffset + 2, "see");
@@ -262,7 +314,7 @@ export function applyPageInstruction(
 ): Revocation {
   return insertLocator(ensureEntry(index, instruction.entry), {
     locator: locatorHref,
-    important: instruction.important,
+    ...(instruction.template === undefined ? {} : { template: instruction.template }),
   });
 }
 
@@ -274,7 +326,7 @@ export function applyRangeInstruction(
 ): Revocation {
   return insertLocator(ensureEntry(index, instruction.entry), {
     locator: { start: startHref, end: endHref },
-    important: instruction.important,
+    ...(instruction.template === undefined ? {} : { template: instruction.template }),
   });
 }
 

@@ -1,5 +1,6 @@
 import { parseFragment } from "./html.ts";
-import type { EntryBase, Group, Index, MainEntry, Subentry } from "./model.ts";
+import type { EntryBase, Group, Index, LocatorEntry, MainEntry, Subentry } from "./model.ts";
+import { fillSlot } from "./template.ts";
 
 import type * as hast from "hast";
 import { h } from "hastscript";
@@ -74,20 +75,23 @@ const generateLocators = (locators: EntryBase["locators"], className: string): h
   h(
     "ol",
     { className },
-    locators.map(({ locator, important }) =>
-      h(
-        "li",
-        important ? { className: "important" } : {},
-        typeof locator === "string"
-          ? [h("a", { href: locator })]
-          : [
-              h("a", { href: locator.start }),
-              h("span", { className: className + "-separator" }),
-              h("a", { href: locator.end }),
-            ],
-      ),
-    ),
+    locators.map((locatorEntry) => h("li", generateLocator(locatorEntry, className))),
   );
+
+const generateLocator = (
+  { locator, template }: LocatorEntry,
+  className: string,
+): hast.ElementContent[] => {
+  const anchors =
+    typeof locator === "string"
+      ? [h("a", { href: locator })]
+      : [
+          h("a", { href: locator.start }),
+          h("span", { className: className + "-separator" }),
+          h("a", { href: locator.end }),
+        ];
+  return template === undefined ? anchors : fillSlot(template, anchors);
+};
 
 const generateReferences = (
   references: EntryBase["see"],

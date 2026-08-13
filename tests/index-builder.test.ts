@@ -41,7 +41,6 @@ void test("builds range locators from ordered source snapshots", () => {
                   start: "chapter.html#start",
                   end: "end.html#end",
                 },
-                important: false,
               },
             ],
             see: [],

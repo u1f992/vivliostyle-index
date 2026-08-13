@@ -37,7 +37,7 @@
   content: "";
 }
 
-.index-main-entry-locators li > a::before {
+.index-main-entry-locators li a::before {
   content: target-counter(attr(href url), page);
 }
 
@@ -124,7 +124,7 @@
   content: "";
 }
 
-.index-subentry-locators li > a::before {
+.index-subentry-locators li a::before {
   content: target-counter(attr(href url), page);
 }
 

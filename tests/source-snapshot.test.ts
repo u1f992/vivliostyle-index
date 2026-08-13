@@ -27,7 +27,6 @@ void test("extracts instructions, targets, locators, and element IDs", () => {
         group: { html: "a@b", reading: "a@b" },
         mainEntry: { html: "Apple", reading: "Apple" },
       },
-      important: false,
       endReference: "end.md?x=1#end",
     },
     locatorHref: "chapter.html#%2Fhtml%2Fbody%2Fspan",

@@ -67,7 +67,6 @@ void test("keeps a heading while one of its references resolves", () => {
   const index: Index = { children: [] };
   insertLocator(ensureEntry(index, { group, mainEntry: banana }), {
     locator: "chapter.html#banana",
-    important: false,
   });
 
   revokeViolations(

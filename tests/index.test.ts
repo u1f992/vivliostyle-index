@@ -295,6 +295,61 @@ void test("decodes a URL-encoded DSL query value", () => {
   assert.strictEqual(toText(heading), "C|D & E+F");
 });
 
+void test("wraps page and range locators in the template of their instruction", () => {
+  const files = {
+    "/publication/chapter.md": [
+      '<span id="range-start" data-index="index.md?q=そ!そうぞく@相続|(%23range-end|<em><slot></slot></em>#index">相続</span>',
+      '<span id="page" data-index="index.md?q=し!じゆうりよう@自由利用||<strong><slot></slot></strong>#index">自由利用</span>',
+      '<span id="range-end">おわり</span>',
+    ].join(""),
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(
+    selectAll(".index-main-entry-locators li > strong > a", root).map((link) =>
+      getAttribute(link, "href"),
+    ),
+    ["chapter.html#page"],
+  );
+  assert.deepStrictEqual(
+    selectAll(".index-main-entry-locators li > em > a", root).map((link) =>
+      getAttribute(link, "href"),
+    ),
+    ["chapter.html#range-start", "chapter.html#range-end"],
+  );
+  assert.strictEqual(select("slot", root), null);
+});
+
+void test("rejects a template without exactly one slot and keeps the target untouched", () => {
+  const files = {
+    "/publication/chapter.md":
+      '<span data-index="index.md?q=\u3057!\u3058\u3086\u3046\u308a\u3088\u3046@\u81ea\u7531\u5229\u7528||<em></em>#index">\u81ea\u7531\u5229\u7528</span>',
+    "/publication/index.md": '<nav id="index">untouched</nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["chapter.md", "index.md"],
+    files,
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+  processor.runSync(root, { path: "/publication/index.md" });
+  const file = VFile({ path: "/publication/chapter.md" });
+
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
+
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["instruction-parse-error"],
+  );
+  assert.strictEqual(toText(select("#index", root)!), "untouched");
+});
+
 void test("links a reference to a later entry", () => {
   const files = {
     "/publication/chapter.md": [

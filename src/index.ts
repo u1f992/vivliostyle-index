@@ -13,7 +13,7 @@ export type { FileSystem } from "./file-system.ts";
 export { InstructionSyntaxError, parseInstruction } from "./instruction.ts";
 export type { ParsedEntry, ParsedInstruction } from "./instruction.ts";
 export type { EntryProcessorInput } from "./index-state.ts";
-export type { Group, Index, Key, MainEntry, Subentry } from "./model.ts";
+export type { Group, Index, Key, LocatorEntry, MainEntry, Subentry } from "./model.ts";
 export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";
 export type {
   Comparators,
