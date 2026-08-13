@@ -262,6 +262,32 @@ void test("reads a range end reference up to the template", () => {
   );
 });
 
+void test("reads a reference target up to the template", () => {
+  assert.deepStrictEqual(parseInstruction("group!main|->tg!tm|<em><slot></slot></em>"), {
+    type: "see",
+    address: {
+      group: { html: "group", reading: "group" },
+      entry: { html: "main", reading: "main" },
+    },
+    target: {
+      group: { html: "tg", reading: "tg" },
+      entry: { html: "tm", reading: "tm" },
+    },
+    template: "<em><slot></slot></em>",
+  });
+  assert.deepStrictEqual(parseInstruction("group!main|=>tg!tm\\|x"), {
+    type: "seeAlso",
+    address: {
+      group: { html: "group", reading: "group" },
+      entry: { html: "main", reading: "main" },
+    },
+    target: {
+      group: { html: "tg", reading: "tg" },
+      entry: { html: "tm|x", reading: "tm|x" },
+    },
+  });
+});
+
 void test("reports offsets in Intl en grapheme clusters", () => {
   assert.throws(
     () => parseInstruction("👨‍👩‍👧‍👦!é@"),
@@ -310,6 +336,9 @@ void test("rejects incomplete and structurally invalid instructions", () => {
     "group!main|(#end|<em></em>",
     "group!main||<em><slot></slot></em>\\",
     "group!main|(#end\\",
+    "group!main|->tg!tm|",
+    "group!main|=>tg!tm|<em></em>",
+    "group!main|->tg!tm|<slot></slot><slot></slot>",
   ];
 
   for (const instruction of invalidInstructions) {
@@ -444,4 +473,24 @@ void test("applies reference instructions", () => {
       },
     ],
   });
+});
+
+void test("applies the template of a reference instruction", () => {
+  const index: Index = { children: [] };
+  const instruction = parseInstruction(
+    "ち!ちょさくけん@著作権|->ち!ちてきざいさんけん@知的財産権|<em><slot></slot></em>",
+  );
+  assert.ok(instruction.type === "see" || instruction.type === "seeAlso");
+
+  applyReferenceInstruction(index, instruction);
+
+  assert.deepStrictEqual(index.children[0]?.children[0]?.see, [
+    {
+      target: {
+        group: { html: "ち", reading: "ち" },
+        entry: { html: "知的財産権", reading: "ちてきざいさんけん" },
+      },
+      template: "<em><slot></slot></em>",
+    },
+  ]);
 });

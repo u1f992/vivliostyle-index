@@ -25,6 +25,7 @@ export type ParsedInstruction =
       type: "see" | "seeAlso";
       address: EntryAddress;
       target: EntryAddress;
+      template?: string;
     }>;
 
 export class InstructionSyntaxError extends SyntaxError {
@@ -100,11 +101,7 @@ function completeAddress(
     : { group: address.group, entry: address.entry, subentry: address.subentry };
 }
 
-function parseHierarchy(
-  input: ParserInput,
-  start: number,
-  stopAtOperator: boolean,
-): HierarchyResult {
+function parseHierarchy(input: ParserInput, start: number): HierarchyResult {
   const address: MutableEntryAddress = {};
   let reading = "";
   let html = "";
@@ -176,9 +173,6 @@ function parseHierarchy(
     }
 
     if (character === "|") {
-      if (!stopAtOperator) {
-        syntaxError(input, offset, "an unescaped | is not allowed in a reference target");
-      }
       finishKey();
       return { address: completeAddress(input, address, offset), offset };
     }
@@ -271,11 +265,10 @@ function parseReference(
   targetOffset: number,
   type: "see" | "seeAlso",
 ): ParsedInstruction {
-  const { address: target, offset } = parseHierarchy(input, targetOffset, false);
-  if (offset !== input.graphemes.length) {
-    syntaxError(input, offset, "unexpected content after a reference target");
-  }
-  return { type, address, target };
+  const { address: target, offset } = parseHierarchy(input, targetOffset);
+  return offset === input.graphemes.length
+    ? { type, address, target }
+    : { type, address, target, template: parseTemplate(input, offset + 1) };
 }
 
 function startsWith(input: ParserInput, offset: number, expected: readonly string[]): boolean {
@@ -284,7 +277,7 @@ function startsWith(input: ParserInput, offset: number, expected: readonly strin
 
 export function parseInstruction(source: string): ParsedInstruction {
   const input = createParserInput(source);
-  const { address, offset } = parseHierarchy(input, 0, true);
+  const { address, offset } = parseHierarchy(input, 0);
   if (offset === input.graphemes.length) {
     return { type: "page", address };
   }
@@ -340,5 +333,6 @@ export function applyReferenceInstruction(
     ensureEntry(index, instruction.address),
     instruction.type,
     instruction.target,
+    instruction.template,
   );
 }

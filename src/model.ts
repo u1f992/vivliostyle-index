@@ -44,6 +44,7 @@ export function insertLocator(entry: HasLocators, locator: Locator): Revocation 
 
 export type Reference = Readonly<{
   target: EntryAddress;
+  template?: string;
 }>;
 type HasReferences = {
   see: Reference[];
@@ -53,8 +54,9 @@ export function insertReference(
   entry: HasReferences,
   type: "see" | "seeAlso",
   target: EntryAddress,
+  template?: string,
 ): Revocation {
-  return insert(entry[type], { target });
+  return insert(entry[type], { target, ...(template === undefined ? {} : { template }) });
 }
 
 export type EntryBase = HasLocators & HasReferences;

@@ -242,6 +242,53 @@ void test("wraps a locator in the template of its instruction", () => {
   );
 });
 
+void test("wraps a reference in the template of its instruction", () => {
+  const target = createTarget();
+  const indexWithTemplate: Index = {
+    children: [
+      {
+        key: { html: "ち", reading: "ち" },
+        children: [
+          {
+            key: { html: "著作権", reading: "ちょさくけん" },
+            locators: [],
+            see: [
+              {
+                target: {
+                  group: { html: "ち", reading: "ち" },
+                  entry: { html: "知的財産権", reading: "ちてきざいさんけん" },
+                },
+                template: "<strong>→<slot></slot></strong>",
+              },
+            ],
+            seeAlso: [
+              {
+                target: {
+                  group: { html: "は", reading: "は" },
+                  entry: { html: "パブリックドメイン", reading: "ぱぶりっくどめいん" },
+                },
+              },
+            ],
+            children: [],
+          },
+        ],
+      },
+    ],
+  };
+
+  renderIndex(indexWithTemplate, target, "index");
+  const root = rootOf(target);
+
+  assert.deepStrictEqual(
+    selectAll(`${ENTRY} > ol:nth-of-type(2) > li > strong > a`, root).map((link) => toText(link)),
+    ["知的財産権"],
+  );
+  assert.deepStrictEqual(
+    selectAll(`${ENTRY} > ol:nth-of-type(3) > li > a`, root).map((link) => toText(link)),
+    ["パブリックドメイン"],
+  );
+});
+
 function childTagNames(element: hast.Element): string[] {
   return element.children.flatMap((child) => (child.type === "element" ? [child.tagName] : []));
 }

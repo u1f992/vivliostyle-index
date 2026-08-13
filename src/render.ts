@@ -91,7 +91,7 @@ const generateLocator = ({ location, template }: Locator): hast.ElementContent[]
 const generateReferences = (references: readonly Reference[], indexId: string): hast.Element =>
   h(
     "ol",
-    references.map(({ target }) => {
+    references.map(({ target, template }) => {
       const [href, children] =
         target.subentry === undefined
           ? [
@@ -106,6 +106,7 @@ const generateReferences = (references: readonly Reference[], indexId: string): 
                 h("span", parseFragment(target.subentry.html)),
               ],
             ];
-      return h("li", [h("a", { href }, children)]);
+      const anchor = h("a", { href }, children);
+      return h("li", template === undefined ? [anchor] : fillSlot(template, [anchor]));
     }),
   );
