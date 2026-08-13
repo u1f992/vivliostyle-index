@@ -33,7 +33,6 @@ function insert<T>(list: T[], item: T): Revocation {
   };
 }
 
-// probe
 export type Locator = Readonly<{
   location: PageLocation | RangeLocation;
   template?: string;
