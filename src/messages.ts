@@ -114,6 +114,11 @@ export const messages = {
     undefined,
     rule("missing-index-target"),
   ],
+  missingIndexRole: (target: Target): MessageArguments => [
+    `index target ${formatTarget(target)} does not carry the doc-index role. the index is not rendered.`,
+    undefined,
+    rule("missing-index-role"),
+  ],
 };
 
 export function addMessage(

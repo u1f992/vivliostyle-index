@@ -1,3 +1,3 @@
 # 索引
 
-<nav id="index"></nav>
+<nav id="index" role="doc-index"></nav>

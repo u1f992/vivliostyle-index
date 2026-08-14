@@ -54,6 +54,15 @@ function findTargetElement(root: hast.Root, id: string): hast.Element | undefine
   return selectAll("[id]", root).find((element) => getAttribute(element, "id") === id);
 }
 
+// The role attribute holds a token list (https://www.w3.org/TR/wai-aria-1.2/#host_general_role)
+// split on the host language's ASCII whitespace, which is narrower than \s.
+const roleSeparator = /[\t\n\f\r ]+/;
+
+function carriesDocIndexRole(element: hast.Element): boolean {
+  const role = getAttribute(element, "role");
+  return role !== null && role.split(roleSeparator).includes("doc-index");
+}
+
 export function renderDocumentIndexes(
   root: hast.Root,
   documentPath: string,
@@ -70,6 +79,10 @@ export function renderDocumentIndexes(
     const element = findTargetElement(root, target.id);
     if (!element) {
       file.message(...messages.missingIndexTarget(target));
+      continue;
+    }
+    if (!carriesDocIndexRole(element)) {
+      file.message(...messages.missingIndexRole(target));
       continue;
     }
     const createComparator = comparators.get(targetKey) ?? defaultComparator;

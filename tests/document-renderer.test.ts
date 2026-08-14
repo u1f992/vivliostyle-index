@@ -40,7 +40,7 @@ void test("renders indexes into targets in the current document", () => {
     index: createIndex(),
     sourcePaths: ["/publication/chapter.md"],
   };
-  const root = fromHtml('<nav id="index"></nav>');
+  const root = fromHtml('<nav id="index" role="doc-index"></nav>');
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
@@ -69,7 +69,7 @@ void test("renders into a target whose ID requires CSS escaping", () => {
     index: createIndex(),
     sourcePaths: ["/publication/chapter.md"],
   };
-  const root = fromHtml('<nav id="index/main"></nav>');
+  const root = fromHtml('<nav id="index/main" role="doc-index"></nav>');
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
@@ -101,7 +101,7 @@ void test("uses a comparator configured for the target", () => {
     group: (left: Index["children"][number], right: Index["children"][number]) =>
       -comparator.group(left, right),
   };
-  const root = fromHtml('<nav id="index"></nav>');
+  const root = fromHtml('<nav id="index" role="doc-index"></nav>');
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
@@ -131,7 +131,7 @@ void test("uses a heading generator configured for the target", () => {
   };
   const createHeading: CreateHeading = (createElement) => (tier, props, children) =>
     createElement(tier === "group" ? "h2" : "span", { ...props }, [...children]);
-  const root = fromHtml('<nav id="index"></nav>');
+  const root = fromHtml('<nav id="index" role="doc-index"></nav>');
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
@@ -167,7 +167,7 @@ void test("reports a missing target", () => {
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
-    fromHtml('<nav id="index"></nav>'),
+    fromHtml('<nav id="index" role="doc-index"></nav>'),
     documentPath,
     new Map([[targetKey, builtIndex]]),
     new Map(),
@@ -180,6 +180,89 @@ void test("reports a missing target", () => {
   assert.strictEqual(file.messages[0]?.ruleId, "missing-index-target");
 });
 
+void test("refuses a target without a role attribute", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, id: "index" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePaths: ["/publication/chapter.md"],
+  };
+  const root = fromHtml('<nav id="index">placeholder</nav>');
+  const file = VFile({ path: documentPath });
+
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map(),
+    new Map(),
+    new Map(),
+    file,
+  );
+
+  assert.strictEqual(file.messages.length, 1);
+  assert.strictEqual(file.messages[0]?.ruleId, "missing-index-role");
+  const element = select("#index", root);
+  assert.ok(element);
+  assert.strictEqual(toText(element), "placeholder");
+  assert.strictEqual(getAttribute(element, "data-index-result"), null);
+});
+
+void test("refuses a target whose role lacks the doc-index token", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, id: "index" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePaths: ["/publication/chapter.md"],
+  };
+  const root = fromHtml('<nav id="index" role="navigation doc-pagelist"></nav>');
+  const file = VFile({ path: documentPath });
+
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map(),
+    new Map(),
+    new Map(),
+    file,
+  );
+
+  assert.strictEqual(file.messages.length, 1);
+  assert.strictEqual(file.messages[0]?.ruleId, "missing-index-role");
+  assert.strictEqual(selectAll("#index > ol", root).length, 0);
+});
+
+void test("accepts a target carrying doc-index among other role tokens", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, id: "index" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePaths: ["/publication/chapter.md"],
+  };
+  const root = fromHtml('<nav id="index" role="navigation  doc-index"></nav>');
+  const file = VFile({ path: documentPath });
+
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map(),
+    new Map(),
+    new Map(),
+    file,
+  );
+
+  assert.strictEqual(selectAll("#index > ol > li", root).length, 2);
+  assert.strictEqual(file.messages.length, 0);
+});
+
 void test("exposes the sorted index on the target element", () => {
   const documentPath = "/publication/index.md";
   const target = { path: documentPath, id: "index" };
@@ -189,7 +272,7 @@ void test("exposes the sorted index on the target element", () => {
     index: createIndex(),
     sourcePaths: ["/publication/chapter.md"],
   };
-  const root = fromHtml('<nav id="index"></nav>');
+  const root = fromHtml('<nav id="index" role="doc-index"></nav>');
 
   renderDocumentIndexes(
     root,
@@ -220,7 +303,7 @@ void test("reports a language the runtime cannot sort by", () => {
     sourcePaths: ["/publication/chapter.md"],
   };
   const requestedLocales: Intl.LocalesArgument[] = [];
-  const root = fromHtml('<section lang="en_US"><nav id="index"></nav></section>');
+  const root = fromHtml('<section lang="en_US"><nav id="index" role="doc-index"></nav></section>');
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
@@ -262,7 +345,7 @@ void test("takes an empty language as no language at all", () => {
     sourcePaths: ["/publication/chapter.md"],
   };
   const requestedLocales: Intl.LocalesArgument[] = [];
-  const root = fromHtml('<section lang=""><nav id="index"></nav></section>');
+  const root = fromHtml('<section lang=""><nav id="index" role="doc-index"></nav></section>');
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
@@ -297,7 +380,7 @@ void test("reports a language the runtime has no collation for", () => {
     sourcePaths: ["/publication/chapter.md"],
   };
   const requestedLocales: Intl.LocalesArgument[] = [];
-  const root = fromHtml('<section lang="jp"><nav id="index"></nav></section>');
+  const root = fromHtml('<section lang="jp"><nav id="index" role="doc-index"></nav></section>');
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
@@ -335,7 +418,7 @@ void test("keeps a language the runtime can collate", () => {
     sourcePaths: ["/publication/chapter.md"],
   };
   const requestedLocales: Intl.LocalesArgument[] = [];
-  const root = fromHtml('<section lang="sv"><nav id="index"></nav></section>');
+  const root = fromHtml('<section lang="sv"><nav id="index" role="doc-index"></nav></section>');
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(

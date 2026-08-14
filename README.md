@@ -6,7 +6,7 @@ The project uses [本の索引の作り方](http://www.chijinshokan.co.jp/Books/
 
 ## Usage
 
-The instruction syntax is MakeIndex/upmendex-inspired. Put an instruction in the `q` query parameter of the URL in a `data-index` attribute. The URL path and fragment identify the element that receives the generated index. The HTML parser decodes the attribute before the URL parser reads `q`. Percent-encode any instruction character that URL query parsing would otherwise alter or treat as syntax. This includes literal `#`, `&`, `+`, and `%`, written as `%23`, `%26`, `%2B`, and `%25`, respectively. Characters preserved by query parsing can remain unencoded; the examples use this minimal form. Finally, escape the resulting URL for use in an HTML attribute.
+The instruction syntax is MakeIndex/upmendex-inspired. Put an instruction in the `q` query parameter of the URL in a `data-index` attribute. The URL path and fragment identify the element that receives the generated index. That element must carry the DPUB-ARIA role `doc-index` among the tokens of its `role` attribute, so that the published document exposes the index as a navigation landmark. The HTML parser decodes the attribute before the URL parser reads `q`. Percent-encode any instruction character that URL query parsing would otherwise alter or treat as syntax. This includes literal `#`, `&`, `+`, and `%`, written as `%23`, `%26`, `%2B`, and `%25`, respectively. Characters preserved by query parsing can remain unencoded; the examples use this minimal form. Finally, escape the resulting URL for use in an HTML attribute.
 
 | Format | Description |
 | --- | --- |
@@ -25,7 +25,7 @@ The instruction syntax is MakeIndex/upmendex-inspired. Put an instruction in the
 
 An instruction the plugin cannot read is rejected with a warning and contributes nothing: one whose syntax is invalid, and one whose `<endReference>` does not resolve to a document and an element. An accepted instruction can still be revoked later, again with a warning. A range is revoked when its end element is missing or does not follow its start; a "see" or "see also" reference is revoked when its target is absent from the index. An entry left with no locator, reference, or subentry is revoked as well, and that in turn can revoke references that pointed at it.
 
-An index exists once an instruction naming its target is accepted, and its target element is replaced even when every entry is later revoked. A target named only by rejected instructions, or by no instruction at all, keeps its original contents.
+An index exists once an instruction naming its target is accepted, and its target element is replaced even when every entry is later revoked. A target element whose `role` attribute lacks the `doc-index` token is reported with a warning and keeps its original contents. A target named only by rejected instructions, or by no instruction at all, keeps its original contents without a role check.
 
 ## Generated markup
 
