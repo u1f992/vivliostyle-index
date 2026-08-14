@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { fromHtml } from "hast-util-from-html";
 import { getAttribute } from "hast-util-get-attribute";
-import { select } from "hast-util-select";
+import { select, selectAll } from "hast-util-select";
 
 import { collectSourceSnapshot } from "../src/source-snapshot.ts";
 
@@ -33,9 +33,10 @@ void test("extracts instructions, targets, locations, and element IDs", () => {
     rangeEnd: { path: "/publication/end.md", id: "end" },
   });
   assert.deepStrictEqual(snapshot.ids, ["/html/body/span", "end"]);
-  const source = select("[data-index]", root);
+  const source = select("span", root);
   assert.ok(source);
   assert.strictEqual(getAttribute(source, "id"), "/html/body/span");
+  assert.strictEqual(getAttribute(source, "data-index"), null);
 });
 
 void test("warns once for each id a document repeats", () => {
@@ -75,4 +76,5 @@ void test("reports invalid references and instructions", () => {
     ],
   );
   assert.strictEqual(snapshot.attachments.length, 0);
+  assert.strictEqual(selectAll("[data-index]", root).length, 5);
 });
