@@ -45,7 +45,7 @@ const index: Index = {
 };
 
 const roleOf = (role: string) => `[data-index-role="${role}"]`;
-const GROUP = `#index > ${roleOf("group-list")} > li`;
+const GROUP = `#index > ${roleOf("group-list")} > section`;
 const ENTRY = `${GROUP} > ${roleOf("entry-list")} > li`;
 const LOCATORS = `${ENTRY} > ${roleOf("locator-list")}`;
 const XREF_PREFERRED = `${ENTRY} > ${roleOf("xref-preferred")}`;
@@ -121,10 +121,10 @@ void test("wraps every key in an element of its own", () => {
   );
 });
 
-function listRoles(element: hast.Element): (string | null)[] {
+function listRoles(element: hast.Element): string[] {
   return element.children.flatMap((child) =>
-    child.type === "element" && child.tagName === "ol"
-      ? [getAttribute(child, "data-index-role")]
+    child.type === "element" && (child.tagName === "ol" || child.tagName === "ul")
+      ? [`${child.tagName}:${getAttribute(child, "data-index-role")}`]
       : [],
   );
 }
@@ -184,10 +184,15 @@ void test("gives every entry the same lists in the same order", () => {
   renderIndex(indexWithEveryList, target, "index", defaultHeading(h));
   const root = rootOf(target);
 
-  const entryLists = ["locator-list", "xref-preferred", "xref-related", "subentry-list"];
+  const entryLists = [
+    "ol:locator-list",
+    "ul:xref-preferred",
+    "ul:xref-related",
+    "ul:subentry-list",
+  ];
   assert.deepStrictEqual(selectAll(ENTRY, root).map(listRoles), [entryLists, entryLists]);
   assert.deepStrictEqual(selectAll(SUBENTRY, root).map(listRoles), [
-    ["locator-list", "xref-preferred", "xref-related"],
+    ["ol:locator-list", "ul:xref-preferred", "ul:xref-related"],
   ]);
   assert.deepStrictEqual(
     selectAll(`${LOCATORS} > li > a`, root).map((link) => getAttribute(link, "href")),
@@ -320,7 +325,7 @@ void test("puts a preamble before the list", () => {
 
   renderIndex(index, target, "index", defaultHeading(h), h("p", "凡例"));
 
-  assert.deepStrictEqual(childTagNames(target), ["p", "ol"]);
+  assert.deepStrictEqual(childTagNames(target), ["p", "div"]);
   assert.strictEqual(toText(target.children[0] as hast.Element), "凡例");
 });
 

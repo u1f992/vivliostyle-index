@@ -75,10 +75,10 @@ function createProcessor({
 
 const roleOf = (role: string) => `[data-index-role="${role}"]`;
 const entryOf = (targetId: string) =>
-  `#${targetId} > ${roleOf("group-list")} > li > ${roleOf("entry-list")} > li`;
+  `#${targetId} > ${roleOf("group-list")} > section > ${roleOf("entry-list")} > li`;
 const locatorsOf = (targetId: string) => `${entryOf(targetId)} > ${roleOf("locator-list")}`;
 
-const GROUP = `#index > ${roleOf("group-list")} > li`;
+const GROUP = `#index > ${roleOf("group-list")} > section`;
 const ENTRY = entryOf("index");
 const ENTRY_KEY = `${ENTRY} > span`;
 const LOCATORS = locatorsOf("index");

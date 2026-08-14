@@ -29,28 +29,30 @@ An index exists once an instruction naming its target is accepted, and its targe
 
 ## Generated markup
 
-An index replaces the contents of its target element with a list, preceded by a preamble when one is configured for that target. The shape below is fixed, so a stylesheet addresses the index through it. The target also carries the whole index as JSON in a `data-index-result` attribute.
+An index replaces the contents of its target element with its groups, preceded by a preamble when one is configured for that target. The shape below is fixed, so a stylesheet addresses the index through it. The target also carries the whole index as JSON in a `data-index-result` attribute.
+
+The shape follows the index structure of the DAISY Accessible Publishing Knowledge Base, [Indexes](https://kb.daisy.org/publishing/docs/html/indexes.html): a target exposed through the DPUB-ARIA [`doc-index`](https://www.w3.org/TR/dpub-aria/#doc-index) role, a section per group holding its heading, and unordered lists of entries. It extends that form where the knowledge base leaves practical needs unaddressed. The `group-list` element wraps the sections so that a stylesheet can lay the groups out in columns while the preamble spans them. The headings come from a configurable factory because no fixed heading level suits every document outline; the knowledge base's `h2` presupposes its `h1` inside the `nav`. Subentries and cross-references, which the knowledge base's examples do not reach, take their structure from [EPUB Indexes 1.0](https://idpf.org/epub/idx/). The locators form an `ol` where the knowledge base writes inline links, because a generated locator holds no text until pagination and its order would otherwise be carried nowhere.
 
 ```
 target
-├── preamble               the element its factory returns
-└── ol                     group-list
-    └── li                 group
-        ├── span           group heading
-        └── ol             entry-list
-            └── li         entry, carrying the ID its cross-references link to
-                ├── span   entry heading
-                ├── ol     locator-list
-                ├── ol     xref-preferred ("see")
-                ├── ol     xref-related ("see also")
-                └── ol     subentry-list
-                    └── li subentry, carrying the ID its cross-references link to
+├── preamble                the element its factory returns
+└── div                     group-list
+    └── section             group
+        ├── span            group heading
+        └── ul              entry-list
+            └── li          entry, carrying the ID its cross-references link to
+                ├── span    entry heading
+                ├── ol      locator-list
+                ├── ul      xref-preferred ("see")
+                ├── ul      xref-related ("see also")
+                └── ul      subentry-list
+                    └── li  subentry, carrying the ID its cross-references link to
                         ├── span   subentry heading
                         ├── ol     locator-list
-                        ├── ol     xref-preferred ("see")
-                        └── ol     xref-related ("see also")
+                        ├── ul     xref-preferred ("see")
+                        └── ul     xref-related ("see also")
 ```
 
-Each generated list names its part in a `data-index-role` attribute: `group-list`, `entry-list`, `locator-list`, `xref-preferred`, `xref-related`, and `subentry-list`. The names follow the terms of the EPUB Structural Semantics Vocabulary with the `index-` prefix dropped. `group-list` and `subentry-list` extend that vocabulary: it has no term for an element holding every group, and it labels the list of subentries `index-entry-list` without distinguishing it from the list of main entries, so `subentry-list` is the finer term.
+Each generated element below the preamble names its part in a `data-index-role` attribute: `group-list` on the element holding every group, `group` on each group section, and `entry-list`, `locator-list`, `xref-preferred`, `xref-related`, and `subentry-list` on the lists. The names follow the terms of the [EPUB Structural Semantics Vocabulary](https://www.w3.org/TR/epub-ssv-11/#indexes) with the `index-` prefix dropped. `group-list` and `subentry-list` extend that vocabulary: it has no term for an element holding every group, and it labels the list of subentries `index-entry-list` without distinguishing it from the list of main entries, so `subentry-list` is the finer term. The locator list is an `ol`: locators run in publication order, and until pagination fills the anchors that order is carried nowhere else. Every other list is a `ul`, whose order can be reproduced from its contents and the configured comparators.
 
-A preamble is rendered whenever its target is replaced, including when the index holds no group; without one, the list is the target's only child. A heading is a `span` by default; a heading factory configured for the target creates the element instead, from the tier (`group`, `entry`, or `subentry`), the properties the element must carry, and the heading contents. The lists under a heading are always present and always in this order; an empty one holds no items. A locator item holds one link, or a start link, an empty `<span>`, and an end link for a range; a template wraps those nodes without reordering them. A locator link points at the built document, so the source extension becomes `.html` unless it already is `.html`, `.htm`, or `.xhtml`. A cross-reference item holds one link whose contents are the target heading, or the target entry heading, an empty `<span>`, and the target subentry heading when the cross-reference points at a subentry.
+A preamble is rendered whenever its target is replaced, including when the index holds no group; without one, the group list is the target's only child. A heading is a `span` by default; a heading factory configured for the target creates the element instead, from the tier (`group`, `entry`, or `subentry`), the properties the element must carry, and the heading contents. The lists under a heading are always present and always in this order; an empty one holds no items. A locator item holds one link, or a start link, an empty `<span>`, and an end link for a range; a template wraps those nodes without reordering them. A locator link points at the built document, so the source extension becomes `.html` unless it already is `.html`, `.htm`, or `.xhtml`. A cross-reference item holds one link whose contents are the target heading, or the target entry heading, an empty `<span>`, and the target subentry heading when the cross-reference points at a subentry.

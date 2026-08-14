@@ -54,13 +54,13 @@ const generateGroups = (
   heading: HeadingGenerator,
 ): hast.Element =>
   h(
-    "ol",
+    "div",
     { dataIndexRole: "group-list" },
     groups.map((group) =>
-      h("li", [
+      h("section", { dataIndexRole: "group" }, [
         heading("group", {}, parseFragment(group.key.html)),
         h(
-          "ol",
+          "ul",
           { dataIndexRole: "entry-list" },
           generateEntries(group.children, indexId, group.key, heading),
         ),
@@ -91,7 +91,7 @@ const generateSubentries = (
   heading: HeadingGenerator,
 ): hast.Element =>
   h(
-    "ol",
+    "ul",
     { dataIndexRole: "subentry-list" },
     subentries.map((subentry) =>
       h("li", { id: headingId(indexId, [...parentKeys, subentry.key]) }, [
@@ -120,7 +120,7 @@ const generateLocator = ({ location, template }: Locator): hast.ElementContent[]
 
 const generateXrefs = (xrefs: readonly Xref[], indexId: string, type: XrefType): hast.Element =>
   h(
-    "ol",
+    "ul",
     { dataIndexRole: `xref-${type}` },
     xrefs.map(({ target, template }) => {
       const [href, children] =

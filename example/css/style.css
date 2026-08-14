@@ -10,12 +10,8 @@
   break-after: page;
 }
 
-#index > [data-index-role="group-list"] > li {
-  list-style: none;
-
-  > [data-index-role="entry-list"] {
-    padding-left: 1em;
-  }
+#index > [data-index-role="group-list"] > section > [data-index-role="entry-list"] {
+  padding-left: 1em;
 }
 
 #index [data-index-role="entry-list"] > li,
@@ -39,7 +35,8 @@
     padding-left: 1em;
   }
 
-  > ol:empty {
+  > ol:empty,
+  > ul:empty {
     display: none;
   }
 

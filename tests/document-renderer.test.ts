@@ -54,7 +54,7 @@ void test("renders indexes into targets in the current document", () => {
   );
 
   assert.deepStrictEqual(
-    selectAll("#index > ol > li", root).map((group) => toText(group).slice(0, 1)),
+    selectAll("#index > div > section", root).map((group) => toText(group).slice(0, 1)),
     ["a", "z"],
   );
   assert.strictEqual(file.messages.length, 0);
@@ -82,7 +82,7 @@ void test("renders into a target whose ID requires CSS escaping", () => {
     file,
   );
 
-  assert.strictEqual(selectAll('[id="index/main"] > ol > li', root).length, 2);
+  assert.strictEqual(selectAll('[id="index/main"] > div > section', root).length, 2);
   assert.strictEqual(file.messages.length, 0);
 });
 
@@ -115,7 +115,7 @@ void test("uses a comparator configured for the target", () => {
   );
 
   assert.deepStrictEqual(
-    selectAll("#index > ol > li", root).map((group) => toText(group).slice(0, 1)),
+    selectAll("#index > div > section", root).map((group) => toText(group).slice(0, 1)),
     ["z", "a"],
   );
 });
@@ -145,11 +145,11 @@ void test("uses a heading generator configured for the target", () => {
   );
 
   assert.deepStrictEqual(
-    selectAll("#index > ol > li > h2", root).map((heading) => toText(heading)),
+    selectAll("#index > div > section > h2", root).map((heading) => toText(heading)),
     ["a", "z"],
   );
   assert.deepStrictEqual(
-    selectAll("#index > ol > li > ol > li > span", root).map((heading) => toText(heading)),
+    selectAll("#index > div > section > ul > li > span", root).map((heading) => toText(heading)),
     ["A", "Z"],
   );
   assert.strictEqual(file.messages.length, 0);
@@ -234,7 +234,7 @@ void test("refuses a target whose role lacks the doc-index token", () => {
 
   assert.strictEqual(file.messages.length, 1);
   assert.strictEqual(file.messages[0]?.ruleId, "missing-index-role");
-  assert.strictEqual(selectAll("#index > ol", root).length, 0);
+  assert.strictEqual(selectAll("#index > div", root).length, 0);
 });
 
 void test("accepts a target carrying doc-index among other role tokens", () => {
@@ -259,7 +259,7 @@ void test("accepts a target carrying doc-index among other role tokens", () => {
     file,
   );
 
-  assert.strictEqual(selectAll("#index > ol > li", root).length, 2);
+  assert.strictEqual(selectAll("#index > div > section", root).length, 2);
   assert.strictEqual(file.messages.length, 0);
 });
 
@@ -330,7 +330,7 @@ void test("reports a language the runtime cannot sort by", () => {
     ["unsupported-language"],
   );
   assert.deepStrictEqual(
-    selectAll("#index > ol > li", root).map((group) => toText(group).slice(0, 1)),
+    selectAll("#index > div > section", root).map((group) => toText(group).slice(0, 1)),
     ["a", "z"],
   );
 });
