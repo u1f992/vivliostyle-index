@@ -6,7 +6,7 @@ import { fillSlot } from "./template.ts";
 import type * as hast from "hast";
 import { h } from "hastscript";
 
-export type CreatePreamble = (createElement: typeof h) => () => hast.Element;
+export type CreatePreamble = (context: { h: typeof h }) => () => hast.ElementContent[];
 export type Preambles = readonly (readonly [Target, CreatePreamble])[];
 
 export type HeadingTier = "group" | "entry" | "subentry";
@@ -14,23 +14,24 @@ export type HeadingGenerator = (
   tier: HeadingTier,
   props: Readonly<hast.Properties>,
   children: readonly hast.ElementContent[],
-) => hast.Element;
-export type CreateHeading = (createElement: typeof h) => HeadingGenerator;
+) => hast.ElementContent[];
+export type CreateHeading = (context: { h: typeof h }) => HeadingGenerator;
 export type Headings = readonly (readonly [Target, CreateHeading])[];
 
-export const defaultHeading: CreateHeading = (createElement) => (_tier, props, children) =>
-  createElement("span", { ...props }, [...children]);
+export const defaultHeading: CreateHeading =
+  ({ h }) =>
+  (_tier, props, children) => [h("span", { ...props }, [...children])];
 
 export function renderIndex(
   index: Index,
   target: hast.Element,
   indexId: string,
   heading: HeadingGenerator,
-  preamble?: hast.Element,
+  preamble: readonly hast.ElementContent[] = [],
 ): void {
   target.properties = { ...target.properties, dataIndexResult: JSON.stringify(index) };
   target.children = [
-    ...(preamble === undefined ? [] : [preamble]),
+    ...preamble,
     ...(index.children.length === 0 ? [] : [generateGroups(index.children, indexId, heading)]),
   ];
 }
@@ -58,7 +59,7 @@ const generateGroups = (
     { dataIndexRole: "group-list" },
     groups.map((group) =>
       h("section", { dataIndexRole: "group" }, [
-        heading("group", {}, parseFragment(group.key.html)),
+        ...heading("group", {}, parseFragment(group.key.html)),
         h(
           "ul",
           { dataIndexRole: "entry-list" },
@@ -76,7 +77,7 @@ const generateEntries = (
 ): hast.Element[] =>
   entries.map((entry) =>
     h("li", { id: headingId(indexId, [groupKey, entry.key]) }, [
-      heading("entry", {}, parseFragment(entry.key.html)),
+      ...heading("entry", {}, parseFragment(entry.key.html)),
       generateLocators(entry.locators),
       generateXrefs(entry.xrefPreferred, indexId, "preferred"),
       generateXrefs(entry.xrefRelated, indexId, "related"),
@@ -95,7 +96,7 @@ const generateSubentries = (
     { dataIndexRole: "subentry-list" },
     subentries.map((subentry) =>
       h("li", { id: headingId(indexId, [...parentKeys, subentry.key]) }, [
-        heading("subentry", {}, parseFragment(subentry.key.html)),
+        ...heading("subentry", {}, parseFragment(subentry.key.html)),
         generateLocators(subentry.locators),
         generateXrefs(subentry.xrefPreferred, indexId, "preferred"),
         generateXrefs(subentry.xrefRelated, indexId, "related"),

@@ -183,9 +183,21 @@ void test("puts a configured preamble into the index it names", () => {
     entries: ["index.md", "chapter.md"],
     files,
     preambles: [
-      [{ path: "index.md", id: "subject" }, (h) => () => h("p", "事項")],
-      [{ path: "index.md", id: "person" }, (h) => () => h("p", "人名")],
-      [{ path: "index.md", id: "unnamed" }, (h) => () => h("p", "出ない")],
+      [
+        { path: "index.md", id: "subject" },
+        ({ h }) =>
+          () => [h("p", "事項")],
+      ],
+      [
+        { path: "index.md", id: "person" },
+        ({ h }) =>
+          () => [h("p", "人名")],
+      ],
+      [
+        { path: "index.md", id: "unnamed" },
+        ({ h }) =>
+          () => [h("p", "出ない")],
+      ],
     ],
   });
   const root = fromHtml(files["/publication/index.md"]);
@@ -238,8 +250,10 @@ void test("generates headings with the generator configured for the target", () 
     headings: [
       [
         { path: "index.md", id: "index" },
-        (h) => (tier, props, children) =>
-          h(tier === "group" ? "h2" : "span", { ...props }, [...children]),
+        ({ h }) =>
+          (tier, props, children) => [
+            h(tier === "group" ? "h2" : "span", { ...props }, [...children]),
+          ],
       ],
     ],
   });

@@ -92,8 +92,8 @@ export function renderDocumentIndexes(
       sort(index, comparator),
       element,
       target.id,
-      createHeading(h),
-      preambles.get(targetKey)?.(h)(),
+      createHeading({ h }),
+      preambles.get(targetKey)?.({ h })(),
     );
   }
 }

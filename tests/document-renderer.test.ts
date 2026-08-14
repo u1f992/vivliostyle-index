@@ -129,8 +129,9 @@ void test("uses a heading generator configured for the target", () => {
     index: createIndex(),
     sourcePaths: ["/publication/chapter.md"],
   };
-  const createHeading: CreateHeading = (createElement) => (tier, props, children) =>
-    createElement(tier === "group" ? "h2" : "span", { ...props }, [...children]);
+  const createHeading: CreateHeading =
+    ({ h }) =>
+    (tier, props, children) => [h(tier === "group" ? "h2" : "span", { ...props }, [...children])];
   const root = fromHtml('<nav id="index" role="doc-index"></nav>');
   const file = VFile({ path: documentPath });
 

@@ -69,7 +69,7 @@ function rootOf(target: hast.Element): hast.Root {
 void test("renders an index into the target element", () => {
   const target = createTarget();
 
-  renderIndex(index, target, "index", defaultHeading(h));
+  renderIndex(index, target, "index", defaultHeading({ h }));
 
   const entry = select(ENTRY, rootOf(target));
   assert.ok(entry);
@@ -105,7 +105,7 @@ void test("wraps every key in an element of its own", () => {
     ],
   };
 
-  renderIndex(indexWithSubentry, target, "index", defaultHeading(h));
+  renderIndex(indexWithSubentry, target, "index", defaultHeading({ h }));
 
   assert.deepStrictEqual(
     selectAll(`${GROUP} > span`, rootOf(target)).map((key) => toText(key)),
@@ -181,7 +181,7 @@ void test("gives every entry the same lists in the same order", () => {
     ],
   };
 
-  renderIndex(indexWithEveryList, target, "index", defaultHeading(h));
+  renderIndex(indexWithEveryList, target, "index", defaultHeading({ h }));
   const root = rootOf(target);
 
   const entryLists = [
@@ -249,7 +249,7 @@ void test("wraps a locator in the template of its instruction", () => {
     ],
   };
 
-  renderIndex(indexWithTemplate, target, "index", defaultHeading(h));
+  renderIndex(indexWithTemplate, target, "index", defaultHeading({ h }));
 
   assert.deepStrictEqual(
     selectAll(`${LOCATORS} > li > strong > a`, rootOf(target)).map((link) =>
@@ -303,7 +303,7 @@ void test("wraps a cross-reference in the template of its instruction", () => {
     ],
   };
 
-  renderIndex(indexWithTemplate, target, "index", defaultHeading(h));
+  renderIndex(indexWithTemplate, target, "index", defaultHeading({ h }));
   const root = rootOf(target);
 
   assert.deepStrictEqual(
@@ -323,16 +323,16 @@ function childTagNames(element: hast.Element): string[] {
 void test("puts a preamble before the list", () => {
   const target = createTarget();
 
-  renderIndex(index, target, "index", defaultHeading(h), h("p", "凡例"));
+  renderIndex(index, target, "index", defaultHeading({ h }), [h("p", "凡例"), h("hr")]);
 
-  assert.deepStrictEqual(childTagNames(target), ["p", "div"]);
+  assert.deepStrictEqual(childTagNames(target), ["p", "hr", "div"]);
   assert.strictEqual(toText(target.children[0] as hast.Element), "凡例");
 });
 
 void test("keeps a preamble on an index without groups", () => {
   const target = createTarget();
 
-  renderIndex({ children: [] }, target, "index", defaultHeading(h), h("p", "凡例"));
+  renderIndex({ children: [] }, target, "index", defaultHeading({ h }), [h("p", "凡例")]);
 
   assert.deepStrictEqual(childTagNames(target), ["p"]);
   assert.strictEqual(getAttribute(target, "data-index-result"), '{"children":[]}');
@@ -342,7 +342,7 @@ void test("exposes the rendered index as JSON on the target element", () => {
   const target = createTarget();
   const root: hast.Root = { type: "root", children: [target] };
 
-  renderIndex(index, target, "index", defaultHeading(h));
+  renderIndex(index, target, "index", defaultHeading({ h }));
 
   assert.deepStrictEqual(selectAll("[data-index-result]", root), [target]);
   assert.strictEqual(getAttribute(target, "data-index-result"), JSON.stringify(index));
@@ -380,7 +380,7 @@ void test("names the keys of the exposed index", () => {
     ],
   };
 
-  renderIndex(indexWithEveryKey, target, "index", defaultHeading(h));
+  renderIndex(indexWithEveryKey, target, "index", defaultHeading({ h }));
   const exposed = JSON.parse(getAttribute(target, "data-index-result") ?? "null");
   const entry = exposed.children[0].children[0];
 
@@ -404,7 +404,7 @@ void test("keeps an index instruction carried by the target element itself", () 
   const target = createTarget();
   target.properties = { ...target.properties, dataIndex: instruction };
 
-  renderIndex(index, target, "index", defaultHeading(h));
+  renderIndex(index, target, "index", defaultHeading({ h }));
 
   assert.strictEqual(getAttribute(target, "data-index"), instruction);
 });
@@ -412,7 +412,7 @@ void test("keeps an index instruction carried by the target element itself", () 
 void test("exposes an emptied index on the target element", () => {
   const target = createTarget();
 
-  renderIndex({ children: [] }, target, "index", defaultHeading(h));
+  renderIndex({ children: [] }, target, "index", defaultHeading({ h }));
 
   assert.deepStrictEqual(target.children, []);
   assert.strictEqual(getAttribute(target, "data-index-result"), '{"children":[]}');
@@ -423,7 +423,8 @@ void test("generates every heading through the given generator", () => {
   const tiers: HeadingTier[] = [];
   const heading: HeadingGenerator = (tier, props, children) => {
     tiers.push(tier);
-    return h(tier === "group" ? "h2" : "span", { ...props, dataTier: tier }, [...children]);
+    const key = h(tier === "group" ? "h2" : "span", { ...props, dataTier: tier }, [...children]);
+    return tier === "group" ? [key, h("hr")] : [key];
   };
   const indexWithSubentry: Index = {
     children: [
@@ -453,6 +454,7 @@ void test("generates every heading through the given generator", () => {
   const root = rootOf(target);
 
   assert.deepStrictEqual(tiers, ["group", "entry", "subentry"]);
+  assert.deepStrictEqual(selectAll(GROUP, root).map(childTagNames), [["h2", "hr", "ul"]]);
   assert.deepStrictEqual(
     selectAll(`${GROUP} > h2`, root).map((key) => toText(key)),
     ["そ"],
