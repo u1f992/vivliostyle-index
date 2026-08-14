@@ -47,10 +47,11 @@ const headingId = (indexId: string, keys: readonly Key[]): string =>
 const generateGroups = (groups: Group[], indexId: string): hast.Element =>
   h(
     "ol",
+    { dataIndexRole: "groups" },
     groups.map((group) =>
       h("li", [
         h("span", parseFragment(group.key.html)),
-        h("ol", generateEntries(group.children, indexId, group.key)),
+        h("ol", { dataIndexRole: "entries" }, generateEntries(group.children, indexId, group.key)),
       ]),
     ),
   );
@@ -73,6 +74,7 @@ const generateSubentries = (
 ): hast.Element =>
   h(
     "ol",
+    { dataIndexRole: "subentries" },
     subentries.map((subentry) =>
       h("li", { id: headingId(indexId, [...parentKeys, subentry.key]) }, [
         h("span", parseFragment(subentry.key.html)),
@@ -86,7 +88,7 @@ const generateSubentries = (
 const generateLocators = (locators: readonly Locator[]): hast.Element =>
   h(
     "ol",
-    { dataIndexList: "locators" },
+    { dataIndexRole: "locators" },
     locators.map((locator) => h("li", generateLocator(locator))),
   );
 
@@ -105,7 +107,7 @@ const generateReferences = (
 ): hast.Element =>
   h(
     "ol",
-    { dataIndexList: type },
+    { dataIndexRole: `${type}-references` },
     references.map(({ target, template }) => {
       const [href, children] =
         target.subentry === undefined

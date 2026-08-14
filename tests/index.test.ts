@@ -69,17 +69,18 @@ function createProcessor({
   return { processor, reads };
 }
 
-const listOf = (role: string) => `[data-index-list="${role}"]`;
-const entryOf = (targetId: string) => `#${targetId} > ol > li > ol > li`;
-const locatorsOf = (targetId: string) => `${entryOf(targetId)} > ${listOf("locators")}`;
+const roleOf = (role: string) => `[data-index-role="${role}"]`;
+const entryOf = (targetId: string) =>
+  `#${targetId} > ${roleOf("groups")} > li > ${roleOf("entries")} > li`;
+const locatorsOf = (targetId: string) => `${entryOf(targetId)} > ${roleOf("locators")}`;
 
-const GROUP = "#index > ol > li";
+const GROUP = `#index > ${roleOf("groups")} > li`;
 const ENTRY = entryOf("index");
 const ENTRY_KEY = `${ENTRY} > span`;
 const LOCATORS = locatorsOf("index");
-const SEE = `${ENTRY} > ${listOf("see")}`;
-const SEE_ALSO = `${ENTRY} > ${listOf("see-also")}`;
-const SUBENTRY = `${ENTRY} > ol:nth-of-type(4) > li`;
+const SEE = `${ENTRY} > ${roleOf("see-references")}`;
+const SEE_ALSO = `${ENTRY} > ${roleOf("see-also-references")}`;
+const SUBENTRY = `${ENTRY} > ${roleOf("subentries")} > li`;
 
 function locatorLinks(root: hast.Root | hast.Element, targetId = "index") {
   return selectAll(`${locatorsOf(targetId)} a`, root).map((link) => getAttribute(link, "href"));

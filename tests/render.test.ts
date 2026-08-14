@@ -39,14 +39,14 @@ const index: Index = {
   ],
 };
 
-const listOf = (role: string) => `[data-index-list="${role}"]`;
-const GROUP = "#index > ol > li";
-const ENTRY = `${GROUP} > ol > li`;
-const LOCATORS = `${ENTRY} > ${listOf("locators")}`;
-const SEE = `${ENTRY} > ${listOf("see")}`;
-const SEE_ALSO = `${ENTRY} > ${listOf("see-also")}`;
-const SUBENTRY = `${ENTRY} > ol:nth-of-type(4) > li`;
-const SUBENTRY_LOCATORS = `${SUBENTRY} > ${listOf("locators")}`;
+const roleOf = (role: string) => `[data-index-role="${role}"]`;
+const GROUP = `#index > ${roleOf("groups")} > li`;
+const ENTRY = `${GROUP} > ${roleOf("entries")} > li`;
+const LOCATORS = `${ENTRY} > ${roleOf("locators")}`;
+const SEE = `${ENTRY} > ${roleOf("see-references")}`;
+const SEE_ALSO = `${ENTRY} > ${roleOf("see-also-references")}`;
+const SUBENTRY = `${ENTRY} > ${roleOf("subentries")} > li`;
+const SUBENTRY_LOCATORS = `${SUBENTRY} > ${roleOf("locators")}`;
 
 function createTarget(): hast.Element {
   return {
@@ -116,9 +116,12 @@ void test("wraps every key in an element of its own", () => {
   );
 });
 
-function listChildren(element: hast.Element): number {
-  return element.children.filter((child) => child.type === "element" && child.tagName === "ol")
-    .length;
+function listRoles(element: hast.Element): (string | null)[] {
+  return element.children.flatMap((child) =>
+    child.type === "element" && child.tagName === "ol"
+      ? [getAttribute(child, "data-index-role")]
+      : [],
+  );
 }
 
 void test("gives every entry the same lists in the same order", () => {
@@ -176,8 +179,11 @@ void test("gives every entry the same lists in the same order", () => {
   renderIndex(indexWithEveryList, target, "index");
   const root = rootOf(target);
 
-  assert.deepStrictEqual(selectAll(ENTRY, root).map(listChildren), [4, 4]);
-  assert.deepStrictEqual(selectAll(SUBENTRY, root).map(listChildren), [3]);
+  const entryLists = ["locators", "see-references", "see-also-references", "subentries"];
+  assert.deepStrictEqual(selectAll(ENTRY, root).map(listRoles), [entryLists, entryLists]);
+  assert.deepStrictEqual(selectAll(SUBENTRY, root).map(listRoles), [
+    ["locators", "see-references", "see-also-references"],
+  ]);
   assert.deepStrictEqual(
     selectAll(`${LOCATORS} > li > a`, root).map((link) => getAttribute(link, "href")),
     ["001.html#a", "002.html#b"],
