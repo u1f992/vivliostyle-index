@@ -9,6 +9,7 @@ import VFile from "vfile";
 
 import { renderDocumentIndexes } from "../src/document-renderer.ts";
 import type { BuiltIndex } from "../src/index-builder.ts";
+import type { CreateHeading } from "../src/render.ts";
 import { defaultComparator } from "../src/sort.ts";
 import type { Index } from "../src/model.ts";
 import { createTargetKey } from "../src/target.ts";
@@ -48,6 +49,7 @@ void test("renders indexes into targets in the current document", () => {
     new Map([[targetKey, builtIndex]]),
     new Map(),
     new Map(),
+    new Map(),
     file,
   );
 
@@ -74,6 +76,7 @@ void test("renders into a target whose ID requires CSS escaping", () => {
     root,
     documentPath,
     new Map([[targetKey, builtIndex]]),
+    new Map(),
     new Map(),
     new Map(),
     file,
@@ -107,6 +110,7 @@ void test("uses a comparator configured for the target", () => {
     new Map([[targetKey, builtIndex]]),
     new Map([[targetKey, () => reverseComparator]]),
     new Map(),
+    new Map(),
     file,
   );
 
@@ -114,6 +118,41 @@ void test("uses a comparator configured for the target", () => {
     selectAll("#index > ol > li", root).map((group) => toText(group).slice(0, 1)),
     ["z", "a"],
   );
+});
+
+void test("uses a heading generator configured for the target", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, id: "index" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePaths: ["/publication/chapter.md"],
+  };
+  const createHeading: CreateHeading = (createElement) => (tier, props, children) =>
+    createElement(tier === "group" ? "h2" : "span", { ...props }, [...children]);
+  const root = fromHtml('<nav id="index"></nav>');
+  const file = VFile({ path: documentPath });
+
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map(),
+    new Map([[targetKey, createHeading]]),
+    new Map(),
+    file,
+  );
+
+  assert.deepStrictEqual(
+    selectAll("#index > ol > li > h2", root).map((heading) => toText(heading)),
+    ["a", "z"],
+  );
+  assert.deepStrictEqual(
+    selectAll("#index > ol > li > ol > li > span", root).map((heading) => toText(heading)),
+    ["A", "Z"],
+  );
+  assert.strictEqual(file.messages.length, 0);
 });
 
 void test("reports a missing target", () => {
@@ -131,6 +170,7 @@ void test("reports a missing target", () => {
     fromHtml('<nav id="index"></nav>'),
     documentPath,
     new Map([[targetKey, builtIndex]]),
+    new Map(),
     new Map(),
     new Map(),
     file,
@@ -155,6 +195,7 @@ void test("exposes the sorted index on the target element", () => {
     root,
     documentPath,
     new Map([[targetKey, builtIndex]]),
+    new Map(),
     new Map(),
     new Map(),
     VFile({ path: documentPath }),
@@ -195,6 +236,7 @@ void test("reports a language the runtime cannot sort by", () => {
         },
       ],
     ]),
+    new Map(),
     new Map(),
     file,
   );
@@ -237,6 +279,7 @@ void test("takes an empty language as no language at all", () => {
       ],
     ]),
     new Map(),
+    new Map(),
     file,
   );
 
@@ -270,6 +313,7 @@ void test("reports a language the runtime has no collation for", () => {
         },
       ],
     ]),
+    new Map(),
     new Map(),
     file,
   );
@@ -307,6 +351,7 @@ void test("keeps a language the runtime can collate", () => {
         },
       ],
     ]),
+    new Map(),
     new Map(),
     file,
   );

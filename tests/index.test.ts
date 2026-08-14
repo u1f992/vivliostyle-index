@@ -19,6 +19,7 @@ import {
   logMessages,
   type Comparators,
   type FileSystem,
+  type Headings,
   type Preambles,
 } from "../src/index.ts";
 
@@ -46,12 +47,14 @@ function createProcessor({
   entries,
   files,
   comparators,
+  headings,
   preambles,
   updates,
 }: {
   entries: readonly string[];
   files: Readonly<Record<string, string>>;
   comparators?: Comparators;
+  headings?: Headings;
   preambles?: Preambles;
   updates?: string[];
 }) {
@@ -60,6 +63,7 @@ function createProcessor({
     entry: entries,
     entryContext: "/publication",
     ...(comparators === undefined ? {} : { comparators }),
+    ...(headings === undefined ? {} : { headings }),
     ...(preambles === undefined ? {} : { preambles }),
     fileSystem,
   });
@@ -197,6 +201,36 @@ void test("puts a configured preamble into the index it names", () => {
     ["人名"],
   );
   assert.deepStrictEqual(selectAll("#unnamed > p", root), []);
+});
+
+void test("generates headings with the generator configured for the target", () => {
+  const files = {
+    "/publication/chapter.md": '<span data-index="index.md?q=a!Apple#index">Apple</span>',
+    "/publication/index.md": '<nav id="index"></nav>',
+  };
+  const { processor } = createProcessor({
+    entries: ["index.md", "chapter.md"],
+    files,
+    headings: [
+      [
+        { path: "index.md", id: "index" },
+        (h) => (tier, props, children) =>
+          h(tier === "group" ? "h2" : "span", { ...props }, [...children]),
+      ],
+    ],
+  });
+  const root = fromHtml(files["/publication/index.md"]);
+
+  processor.runSync(root, { path: "/publication/index.md" });
+
+  assert.deepStrictEqual(
+    selectAll(`${GROUP} > h2`, root).map((heading) => toText(heading)),
+    ["a"],
+  );
+  assert.deepStrictEqual(
+    selectAll(ENTRY_KEY, root).map((heading) => toText(heading)),
+    ["Apple"],
+  );
 });
 
 void test("keeps target fragments as distinct indexes", () => {

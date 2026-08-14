@@ -7,7 +7,7 @@ import type { VFile } from "vfile";
 
 import type { BuiltIndex } from "./index-builder.ts";
 import { messages } from "./messages.ts";
-import { renderIndex, type CreatePreamble } from "./render.ts";
+import { defaultHeading, renderIndex, type CreateHeading, type CreatePreamble } from "./render.ts";
 import { defaultComparator, sort, type CreateIndexComparator } from "./sort.ts";
 import type { TargetKey } from "./target.ts";
 
@@ -59,6 +59,7 @@ export function renderDocumentIndexes(
   documentPath: string,
   indexes: ReadonlyMap<TargetKey, BuiltIndex>,
   comparators: ReadonlyMap<TargetKey, CreateIndexComparator>,
+  headings: ReadonlyMap<TargetKey, CreateHeading>,
   preambles: ReadonlyMap<TargetKey, CreatePreamble>,
   file: VFile,
 ): void {
@@ -73,6 +74,13 @@ export function renderDocumentIndexes(
     }
     const createComparator = comparators.get(targetKey) ?? defaultComparator;
     const comparator = createComparator(resolveLocales(root, element, file));
-    renderIndex(sort(index, comparator), element, target.id, preambles.get(targetKey)?.(h)());
+    const createHeading = headings.get(targetKey) ?? defaultHeading;
+    renderIndex(
+      sort(index, comparator),
+      element,
+      target.id,
+      createHeading(h),
+      preambles.get(targetKey)?.(h)(),
+    );
   }
 }

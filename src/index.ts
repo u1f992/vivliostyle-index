@@ -13,7 +13,7 @@ import {
 } from "./index-state.ts";
 import { emitMessages, messages } from "./messages.ts";
 import { workingDirectory } from "./platform.ts";
-import type { Preambles } from "./render.ts";
+import type { Headings, Preambles } from "./render.ts";
 import type { Comparators } from "./sort.ts";
 import { mapByTarget } from "./target.ts";
 
@@ -33,7 +33,15 @@ export type {
   ReferenceType,
   Subentry,
 } from "./model.ts";
-export type { CreatePreamble, Preambles } from "./render.ts";
+export { defaultHeading } from "./render.ts";
+export type {
+  CreateHeading,
+  CreatePreamble,
+  HeadingGenerator,
+  HeadingTier,
+  Headings,
+  Preambles,
+} from "./render.ts";
 export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";
 export type {
   Comparators,
@@ -50,6 +58,7 @@ export type CreatePluginOptions = {
   entry: readonly string[];
   entryContext?: string;
   comparators?: Comparators;
+  headings?: Headings;
   preambles?: Preambles;
   fileSystem?: Readonly<FileSystem>;
 };
@@ -62,6 +71,7 @@ export function createIndexPlugin({
   entry: entries,
   entryContext,
   comparators = [],
+  headings = [],
   preambles = [],
   fileSystem = nodeFileSystem,
 }: Readonly<CreatePluginOptions>): unified.Plugin<[Readonly<PluginOptions>]> {
@@ -72,6 +82,7 @@ export function createIndexPlugin({
   const entryPaths = entries.map((entry) => upath.resolve(context, entry));
   let state: IndexState | undefined;
   const comparatorsByTarget = mapByTarget(comparators, context);
+  const headingsByTarget = mapByTarget(headings, context);
   const preamblesByTarget = mapByTarget(preambles, context);
 
   return ({ createEntryProcessor }) =>
@@ -103,6 +114,7 @@ export function createIndexPlugin({
         documentPath,
         state.indexes,
         comparatorsByTarget,
+        headingsByTarget,
         preamblesByTarget,
         file,
       );

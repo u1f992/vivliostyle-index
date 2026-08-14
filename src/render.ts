@@ -18,16 +18,29 @@ import { h } from "hastscript";
 export type CreatePreamble = (createElement: typeof h) => () => hast.Element;
 export type Preambles = readonly (readonly [Target, CreatePreamble])[];
 
+export type HeadingTier = "group" | "entry" | "subentry";
+export type HeadingGenerator = (
+  tier: HeadingTier,
+  props: Readonly<hast.Properties>,
+  children: readonly hast.ElementContent[],
+) => hast.Element;
+export type CreateHeading = (createElement: typeof h) => HeadingGenerator;
+export type Headings = readonly (readonly [Target, CreateHeading])[];
+
+export const defaultHeading: CreateHeading = (createElement) => (_tier, props, children) =>
+  createElement("span", { ...props }, [...children]);
+
 export function renderIndex(
   index: Index,
   target: hast.Element,
   indexId: string,
+  heading: HeadingGenerator,
   preamble?: hast.Element,
 ): void {
   target.properties = { ...target.properties, dataIndexResult: JSON.stringify(index) };
   target.children = [
     ...(preamble === undefined ? [] : [preamble]),
-    ...(index.children.length === 0 ? [] : [generateGroups(index.children, indexId)]),
+    ...(index.children.length === 0 ? [] : [generateGroups(index.children, indexId, heading)]),
   ];
 }
 
@@ -44,26 +57,39 @@ const encodeIdSegment = (value: string): string => {
 const headingId = (indexId: string, keys: readonly Key[]): string =>
   [indexId, ...keys.flatMap(({ reading, html }) => [reading, html])].map(encodeIdSegment).join(".");
 
-const generateGroups = (groups: Group[], indexId: string): hast.Element =>
+const generateGroups = (
+  groups: Group[],
+  indexId: string,
+  heading: HeadingGenerator,
+): hast.Element =>
   h(
     "ol",
     { dataIndexRole: "groups" },
     groups.map((group) =>
       h("li", [
-        h("span", parseFragment(group.key.html)),
-        h("ol", { dataIndexRole: "entries" }, generateEntries(group.children, indexId, group.key)),
+        heading("group", {}, parseFragment(group.key.html)),
+        h(
+          "ol",
+          { dataIndexRole: "entries" },
+          generateEntries(group.children, indexId, group.key, heading),
+        ),
       ]),
     ),
   );
 
-const generateEntries = (entries: Entry[], indexId: string, groupKey: Key): hast.Element[] =>
+const generateEntries = (
+  entries: Entry[],
+  indexId: string,
+  groupKey: Key,
+  heading: HeadingGenerator,
+): hast.Element[] =>
   entries.map((entry) =>
     h("li", { id: headingId(indexId, [groupKey, entry.key]) }, [
-      h("span", parseFragment(entry.key.html)),
+      heading("entry", {}, parseFragment(entry.key.html)),
       generateLocators(entry.locators),
       generateReferences(entry.see, indexId, "see"),
       generateReferences(entry.seeAlso, indexId, "see-also"),
-      generateSubentries(entry.children, indexId, [groupKey, entry.key]),
+      generateSubentries(entry.children, indexId, [groupKey, entry.key], heading),
     ]),
   );
 
@@ -71,13 +97,14 @@ const generateSubentries = (
   subentries: Subentry[],
   indexId: string,
   parentKeys: readonly [Key, Key],
+  heading: HeadingGenerator,
 ): hast.Element =>
   h(
     "ol",
     { dataIndexRole: "subentries" },
     subentries.map((subentry) =>
       h("li", { id: headingId(indexId, [...parentKeys, subentry.key]) }, [
-        h("span", parseFragment(subentry.key.html)),
+        heading("subentry", {}, parseFragment(subentry.key.html)),
         generateLocators(subentry.locators),
         generateReferences(subentry.see, indexId, "see"),
         generateReferences(subentry.seeAlso, indexId, "see-also"),
