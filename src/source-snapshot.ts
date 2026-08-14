@@ -39,13 +39,6 @@ export type SourceSnapshot = Readonly<{
   ids: readonly string[];
 }>;
 
-function consumeInstruction(element: hast.Element): void {
-  if (element.properties) {
-    delete element.properties["dataIndex"];
-    delete element.properties["data-index"];
-  }
-}
-
 function ensureId(tree: Readonly<hast.Root>, element: hast.Element): string {
   let id = getAttribute(element, "id");
   if (id !== null) {
@@ -127,7 +120,6 @@ export function collectSourceSnapshot(root: hast.Root, sourcePath: string): Sour
     } else {
       attachments.push({ ...base, instruction });
     }
-    consumeInstruction(element);
   }
 
   const ids = selectAll("[id]", root).flatMap((element) => {

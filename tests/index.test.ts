@@ -203,28 +203,6 @@ void test("puts a configured preamble into the index it names", () => {
   assert.deepStrictEqual(selectAll("#unnamed > p", root), []);
 });
 
-void test("consumes the data-index attribute of an accepted instruction", () => {
-  const files = {
-    "/publication/chapter.md": [
-      '<span data-index="index.md?q=a!Apple#index">Apple</span>',
-      '<span data-index="index.md?q=%5B#index">broken</span>',
-    ].join(""),
-    "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
-  };
-  const { processor } = createProcessor({
-    entries: ["chapter.md", "index.md"],
-    files,
-  });
-  const root = fromHtml(files["/publication/chapter.md"]);
-
-  processor.runSync(root, { path: "/publication/chapter.md" });
-
-  assert.deepStrictEqual(
-    selectAll("[data-index]", root).map((element) => toText(element)),
-    ["broken"],
-  );
-});
-
 void test("keeps a target without the doc-index role and warns", () => {
   const files = {
     "/publication/chapter.md": '<span data-index="index.md?q=a!Apple#index">Apple</span>',
@@ -1239,7 +1217,7 @@ void test("uses the same generated locator ID during discovery and transformatio
   const chapterRoot = fromHtml(files["/publication/chapter.md"]);
   processor.runSync(indexRoot, { path: "/publication/index.md" });
   processor.runSync(chapterRoot, { path: "/publication/chapter.md" });
-  const sourceElement = select("span", chapterRoot);
+  const sourceElement = select("[data-index]", chapterRoot);
   assert.ok(sourceElement);
   const sourceId = getAttribute(sourceElement, "id");
   assert.ok(sourceId);
