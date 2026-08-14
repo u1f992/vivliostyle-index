@@ -13,8 +13,7 @@ import {
 } from "./index-state.ts";
 import { emitMessages, messages } from "./messages.ts";
 import { workingDirectory } from "./platform.ts";
-import type { Headings, Preambles } from "./render.ts";
-import type { Comparators } from "./sort.ts";
+import type { Settings } from "./settings.ts";
 import { mapByTarget } from "./target.ts";
 
 export { nodeFileSystem } from "./file-system.ts";
@@ -34,17 +33,10 @@ export type {
   XrefType,
 } from "./model.ts";
 export { defaultHeading } from "./render.ts";
-export type {
-  CreateHeading,
-  CreatePreamble,
-  HeadingGenerator,
-  HeadingTier,
-  Headings,
-  Preambles,
-} from "./render.ts";
+export type { CreateHeading, CreatePreamble, HeadingGenerator, HeadingTier } from "./render.ts";
+export type { Settings, TargetSettings } from "./settings.ts";
 export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";
 export type {
-  Comparators,
   CreateIndexComparator,
   CreateKeyComparator,
   EntryComparator,
@@ -57,9 +49,7 @@ export type { Target } from "./target.ts";
 export type CreatePluginOptions = {
   entry: readonly string[];
   entryContext?: string;
-  comparators?: Comparators;
-  headings?: Headings;
-  preambles?: Preambles;
+  settings?: Settings;
   fileSystem?: Readonly<FileSystem>;
 };
 
@@ -70,9 +60,7 @@ export type PluginOptions = {
 export function createIndexPlugin({
   entry: entries,
   entryContext,
-  comparators = [],
-  headings = [],
-  preambles = [],
+  settings = [],
   fileSystem = nodeFileSystem,
 }: Readonly<CreatePluginOptions>): unified.Plugin<[Readonly<PluginOptions>]> {
   const cwd = workingDirectory();
@@ -81,9 +69,7 @@ export function createIndexPlugin({
   const context = upath.resolve(cwd, entryContext ?? ".");
   const entryPaths = entries.map((entry) => upath.resolve(context, entry));
   let state: IndexState | undefined;
-  const comparatorsByTarget = mapByTarget(comparators, context);
-  const headingsByTarget = mapByTarget(headings, context);
-  const preamblesByTarget = mapByTarget(preambles, context);
+  const settingsByTarget = mapByTarget(settings, context);
 
   return ({ createEntryProcessor }) =>
     (tree, file) => {
@@ -109,15 +95,7 @@ export function createIndexPlugin({
         file.message(...messages.entryProcessorMismatch(documentPath));
       }
       emitMessages(file, messagesFor(state, documentPath));
-      renderDocumentIndexes(
-        root,
-        documentPath,
-        state.indexes,
-        comparatorsByTarget,
-        headingsByTarget,
-        preamblesByTarget,
-        file,
-      );
+      renderDocumentIndexes(root, documentPath, state.indexes, settingsByTarget, file);
     };
 }
 

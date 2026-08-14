@@ -17,10 +17,8 @@ import {
   createIndexPlugin,
   defaultComparator,
   logMessages,
-  type Comparators,
   type FileSystem,
-  type Headings,
-  type Preambles,
+  type Settings,
 } from "../src/index.ts";
 
 const entryProcessor = {
@@ -46,25 +44,19 @@ function createFileSystem(files: Readonly<Record<string, string>>, updates: stri
 function createProcessor({
   entries,
   files,
-  comparators,
-  headings,
-  preambles,
+  settings,
   updates,
 }: {
   entries: readonly string[];
   files: Readonly<Record<string, string>>;
-  comparators?: Comparators;
-  headings?: Headings;
-  preambles?: Preambles;
+  settings?: Settings;
   updates?: string[];
 }) {
   const { fileSystem, reads } = createFileSystem(files, updates);
   const plugin = createIndexPlugin({
     entry: entries,
     entryContext: "/publication",
-    ...(comparators === undefined ? {} : { comparators }),
-    ...(headings === undefined ? {} : { headings }),
-    ...(preambles === undefined ? {} : { preambles }),
+    ...(settings === undefined ? {} : { settings }),
     fileSystem,
   });
   const processor = unified().use(plugin, {
@@ -182,21 +174,30 @@ void test("puts a configured preamble into the index it names", () => {
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    preambles: [
+    settings: [
       [
         { path: "index.md", id: "subject" },
-        ({ h }) =>
-          () => [h("p", "事項")],
+        {
+          preamble:
+            ({ h }) =>
+            () => [h("p", "事項")],
+        },
       ],
       [
         { path: "index.md", id: "person" },
-        ({ h }) =>
-          () => [h("p", "人名")],
+        {
+          preamble:
+            ({ h }) =>
+            () => [h("p", "人名")],
+        },
       ],
       [
         { path: "index.md", id: "unnamed" },
-        ({ h }) =>
-          () => [h("p", "出ない")],
+        {
+          preamble:
+            ({ h }) =>
+            () => [h("p", "出ない")],
+        },
       ],
     ],
   });
@@ -247,13 +248,16 @@ void test("generates headings with the generator configured for the target", () 
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    headings: [
+    settings: [
       [
         { path: "index.md", id: "index" },
-        ({ h }) =>
-          (tier, props, children) => [
-            h(tier === "group" ? "h2" : "span", { ...props }, [...children]),
-          ],
+        {
+          heading:
+            ({ h }) =>
+            (tier, props, children) => [
+              h(tier === "group" ? "h2" : "span", { ...props }, [...children]),
+            ],
+        },
       ],
     ],
   });
@@ -309,7 +313,7 @@ void test("uses a comparator selected by path and element ID", () => {
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    comparators: [[{ path: "index.md", id: "index" }, () => defaultComparator("en")]],
+    settings: [[{ path: "index.md", id: "index" }, { comparator: () => defaultComparator("en") }]],
   });
   const root = fromHtml(files["/publication/index.md"]);
 
@@ -329,9 +333,9 @@ void test("uses the last comparator configured for an index target", () => {
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    comparators: [
-      [{ path: "index.md", id: "index" }, () => defaultComparator("en")],
-      [{ path: "index.md", id: "index" }, () => defaultComparator("sv")],
+    settings: [
+      [{ path: "index.md", id: "index" }, { comparator: () => defaultComparator("en") }],
+      [{ path: "index.md", id: "index" }, { comparator: () => defaultComparator("sv") }],
     ],
   });
   const root = fromHtml(files["/publication/index.md"]);
@@ -1314,12 +1318,14 @@ void test("resolves a configured comparator with the closest language", () => {
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    comparators: [
+    settings: [
       [
         { path: "index.md", id: "index" },
-        (locales) => {
-          requestedLocales.push(locales);
-          return defaultComparator(locales);
+        {
+          comparator: (locales) => {
+            requestedLocales.push(locales);
+            return defaultComparator(locales);
+          },
         },
       ],
     ],

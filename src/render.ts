@@ -1,13 +1,11 @@
 import { parseFragment } from "./html.ts";
 import type { Entry, Group, Index, Key, Locator, Subentry, Xref, XrefType } from "./model.ts";
-import type { Target } from "./target.ts";
 import { fillSlot } from "./template.ts";
 
 import type * as hast from "hast";
 import { h } from "hastscript";
 
 export type CreatePreamble = (context: { h: typeof h }) => () => hast.ElementContent[];
-export type Preambles = readonly (readonly [Target, CreatePreamble])[];
 
 export type HeadingTier = "group" | "entry" | "subentry";
 export type HeadingGenerator = (
@@ -16,7 +14,6 @@ export type HeadingGenerator = (
   children: readonly hast.ElementContent[],
 ) => hast.ElementContent[];
 export type CreateHeading = (context: { h: typeof h }) => HeadingGenerator;
-export type Headings = readonly (readonly [Target, CreateHeading])[];
 
 export const defaultHeading: CreateHeading =
   ({ h }) =>

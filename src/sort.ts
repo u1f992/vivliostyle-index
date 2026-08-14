@@ -1,6 +1,5 @@
 import { fragmentToText } from "./html.ts";
 import type { Entry, Group, HasKey, Index, Key, Subentry, Xref } from "./model.ts";
-import type { Target } from "./target.ts";
 
 type Comparator<T> = NonNullable<Parameters<Array<T>["sort"]>[0]>;
 export type IndexComparator = {
@@ -17,8 +16,6 @@ export type KeyComparator = Comparator<Key>;
 export type CreateKeyComparator = (locales: Intl.LocalesArgument) => KeyComparator;
 export type EntryComparator = Comparator<HasKey> & Comparator<Xref>;
 export type CreateIndexComparator = (locales: Intl.LocalesArgument) => IndexComparator;
-
-export type Comparators = readonly (readonly [Target, CreateIndexComparator])[];
 
 function keysOf(value: HasKey | Xref): readonly Key[] {
   if (!("target" in value)) {

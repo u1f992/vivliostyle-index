@@ -43,15 +43,7 @@ void test("renders indexes into targets in the current document", () => {
   const root = fromHtml('<nav id="index" role="doc-index"></nav>');
   const file = VFile({ path: documentPath });
 
-  renderDocumentIndexes(
-    root,
-    documentPath,
-    new Map([[targetKey, builtIndex]]),
-    new Map(),
-    new Map(),
-    new Map(),
-    file,
-  );
+  renderDocumentIndexes(root, documentPath, new Map([[targetKey, builtIndex]]), new Map(), file);
 
   assert.deepStrictEqual(
     selectAll("#index > div > section", root).map((group) => toText(group).slice(0, 1)),
@@ -72,15 +64,7 @@ void test("renders into a target whose ID requires CSS escaping", () => {
   const root = fromHtml('<nav id="index/main" role="doc-index"></nav>');
   const file = VFile({ path: documentPath });
 
-  renderDocumentIndexes(
-    root,
-    documentPath,
-    new Map([[targetKey, builtIndex]]),
-    new Map(),
-    new Map(),
-    new Map(),
-    file,
-  );
+  renderDocumentIndexes(root, documentPath, new Map([[targetKey, builtIndex]]), new Map(), file);
 
   assert.strictEqual(selectAll('[id="index/main"] > div > section', root).length, 2);
   assert.strictEqual(file.messages.length, 0);
@@ -108,9 +92,7 @@ void test("uses a comparator configured for the target", () => {
     root,
     documentPath,
     new Map([[targetKey, builtIndex]]),
-    new Map([[targetKey, () => reverseComparator]]),
-    new Map(),
-    new Map(),
+    new Map([[targetKey, { comparator: () => reverseComparator }]]),
     file,
   );
 
@@ -139,9 +121,7 @@ void test("uses a heading generator configured for the target", () => {
     root,
     documentPath,
     new Map([[targetKey, builtIndex]]),
-    new Map(),
-    new Map([[targetKey, createHeading]]),
-    new Map(),
+    new Map([[targetKey, { heading: createHeading }]]),
     file,
   );
 
@@ -172,8 +152,6 @@ void test("reports a missing target", () => {
     documentPath,
     new Map([[targetKey, builtIndex]]),
     new Map(),
-    new Map(),
-    new Map(),
     file,
   );
 
@@ -193,15 +171,7 @@ void test("refuses a target without a role attribute", () => {
   const root = fromHtml('<nav id="index">placeholder</nav>');
   const file = VFile({ path: documentPath });
 
-  renderDocumentIndexes(
-    root,
-    documentPath,
-    new Map([[targetKey, builtIndex]]),
-    new Map(),
-    new Map(),
-    new Map(),
-    file,
-  );
+  renderDocumentIndexes(root, documentPath, new Map([[targetKey, builtIndex]]), new Map(), file);
 
   assert.strictEqual(file.messages.length, 1);
   assert.strictEqual(file.messages[0]?.ruleId, "missing-index-role");
@@ -223,15 +193,7 @@ void test("refuses a target whose role lacks the doc-index token", () => {
   const root = fromHtml('<nav id="index" role="navigation doc-pagelist"></nav>');
   const file = VFile({ path: documentPath });
 
-  renderDocumentIndexes(
-    root,
-    documentPath,
-    new Map([[targetKey, builtIndex]]),
-    new Map(),
-    new Map(),
-    new Map(),
-    file,
-  );
+  renderDocumentIndexes(root, documentPath, new Map([[targetKey, builtIndex]]), new Map(), file);
 
   assert.strictEqual(file.messages.length, 1);
   assert.strictEqual(file.messages[0]?.ruleId, "missing-index-role");
@@ -250,15 +212,7 @@ void test("accepts a target carrying doc-index among other role tokens", () => {
   const root = fromHtml('<nav id="index" role="navigation  doc-index"></nav>');
   const file = VFile({ path: documentPath });
 
-  renderDocumentIndexes(
-    root,
-    documentPath,
-    new Map([[targetKey, builtIndex]]),
-    new Map(),
-    new Map(),
-    new Map(),
-    file,
-  );
+  renderDocumentIndexes(root, documentPath, new Map([[targetKey, builtIndex]]), new Map(), file);
 
   assert.strictEqual(selectAll("#index > div > section", root).length, 2);
   assert.strictEqual(file.messages.length, 0);
@@ -279,8 +233,6 @@ void test("exposes the sorted index on the target element", () => {
     root,
     documentPath,
     new Map([[targetKey, builtIndex]]),
-    new Map(),
-    new Map(),
     new Map(),
     VFile({ path: documentPath }),
   );
@@ -314,14 +266,14 @@ void test("reports a language the runtime cannot sort by", () => {
     new Map([
       [
         targetKey,
-        (locales: Intl.LocalesArgument) => {
-          requestedLocales.push(locales);
-          return defaultComparator(locales);
+        {
+          comparator: (locales: Intl.LocalesArgument) => {
+            requestedLocales.push(locales);
+            return defaultComparator(locales);
+          },
         },
       ],
     ]),
-    new Map(),
-    new Map(),
     file,
   );
 
@@ -356,14 +308,14 @@ void test("takes an empty language as no language at all", () => {
     new Map([
       [
         targetKey,
-        (locales: Intl.LocalesArgument) => {
-          requestedLocales.push(locales);
-          return defaultComparator(locales);
+        {
+          comparator: (locales: Intl.LocalesArgument) => {
+            requestedLocales.push(locales);
+            return defaultComparator(locales);
+          },
         },
       ],
     ]),
-    new Map(),
-    new Map(),
     file,
   );
 
@@ -391,14 +343,14 @@ void test("reports a language the runtime has no collation for", () => {
     new Map([
       [
         targetKey,
-        (locales: Intl.LocalesArgument) => {
-          requestedLocales.push(locales);
-          return defaultComparator(locales);
+        {
+          comparator: (locales: Intl.LocalesArgument) => {
+            requestedLocales.push(locales);
+            return defaultComparator(locales);
+          },
         },
       ],
     ]),
-    new Map(),
-    new Map(),
     file,
   );
 
@@ -429,14 +381,14 @@ void test("keeps a language the runtime can collate", () => {
     new Map([
       [
         targetKey,
-        (locales: Intl.LocalesArgument) => {
-          requestedLocales.push(locales);
-          return defaultComparator(locales);
+        {
+          comparator: (locales: Intl.LocalesArgument) => {
+            requestedLocales.push(locales);
+            return defaultComparator(locales);
+          },
         },
       ],
     ]),
-    new Map(),
-    new Map(),
     file,
   );
 
