@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   applyPageInstruction,
   applyRangeInstruction,
-  applyReferenceInstruction,
+  applyXrefInstruction,
   InstructionSyntaxError,
   parseInstruction,
 } from "../src/instruction.ts";
@@ -58,7 +58,7 @@ void test("parses range instructions", () => {
   });
 });
 
-void test("parses see and see-also instructions", () => {
+void test("parses preferred and related cross-reference instructions", () => {
   const target = {
     group: { html: "別グループ", reading: "べつぐるーぷ" },
     entry: { html: "見出し語", reading: "みだしご" },
@@ -67,18 +67,18 @@ void test("parses see and see-also instructions", () => {
     parseInstruction(
       "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|->べつぐるーぷ@別グループ!みだしご@見出し語",
     ),
-    { type: "see", address, target },
+    { type: "preferred", address, target },
   );
   assert.deepStrictEqual(
     parseInstruction(
       "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|=>べつぐるーぷ@別グループ!みだしご@見出し語",
     ),
-    { type: "see-also", address, target },
+    { type: "related", address, target },
   );
   assert.deepStrictEqual(
     parseInstruction("group!main|->target-group!target-main!target-subentry"),
     {
-      type: "see",
+      type: "preferred",
       address: {
         group: { html: "group", reading: "group" },
         entry: { html: "main", reading: "main" },
@@ -146,7 +146,7 @@ void test("preserves HTML fragments at every entry position", () => {
       "g@<\\!-- group --><b>G</b>!m@M&amp;M!s@<i>S</i>|->tg@<b>TG</b>!tm@<i>TM</i>!ts@<u>TS</u>",
     ),
     {
-      type: "see",
+      type: "preferred",
       address: {
         group: { html: "<!-- group --><b>G</b>", reading: "g" },
         entry: { html: "M&amp;M", reading: "m" },
@@ -285,9 +285,9 @@ void test("reads a range end reference up to the template", () => {
   );
 });
 
-void test("reads a reference target up to the template", () => {
+void test("reads a cross-reference target up to the template", () => {
   assert.deepStrictEqual(parseInstruction("group!main|->tg!tm|<em><slot></slot></em>"), {
-    type: "see",
+    type: "preferred",
     address: {
       group: { html: "group", reading: "group" },
       entry: { html: "main", reading: "main" },
@@ -299,7 +299,7 @@ void test("reads a reference target up to the template", () => {
     template: "<em><slot></slot></em>",
   });
   assert.deepStrictEqual(parseInstruction("group!main|=>tg!tm\\|x"), {
-    type: "see-also",
+    type: "related",
     address: {
       group: { html: "group", reading: "group" },
       entry: { html: "main", reading: "main" },
@@ -404,8 +404,8 @@ void test("applies page instructions", () => {
                 template: "<strong><slot></slot></strong>",
               },
             ],
-            see: [],
-            seeAlso: [],
+            xrefPreferred: [],
+            xrefRelated: [],
           },
         ],
       },
@@ -433,8 +433,8 @@ void test("applies range instructions", () => {
                 location: { type: "range", start: "chapter.html#start", end: "chapter.html#end" },
               },
             ],
-            see: [],
-            seeAlso: [],
+            xrefPreferred: [],
+            xrefRelated: [],
           },
         ],
       },
@@ -457,12 +457,12 @@ void test("applies the template of a range instruction", () => {
   ]);
 });
 
-void test("applies reference instructions", () => {
+void test("applies cross-reference instructions", () => {
   const index: Index = { children: [] };
   const instruction = parseInstruction("ち!ちょさくけん@著作権|=>ち!ちてきざいさんけん@知的財産権");
-  assert.ok(instruction.type === "see" || instruction.type === "see-also");
+  assert.ok(instruction.type === "preferred" || instruction.type === "related");
 
-  applyReferenceInstruction(index, instruction);
+  applyXrefInstruction(index, instruction);
 
   assert.deepStrictEqual(index, {
     children: [
@@ -473,8 +473,8 @@ void test("applies reference instructions", () => {
             key: { html: "著作権", reading: "ちょさくけん" },
             children: [],
             locators: [],
-            see: [],
-            seeAlso: [
+            xrefPreferred: [],
+            xrefRelated: [
               {
                 target: {
                   group: { html: "ち", reading: "ち" },
@@ -489,16 +489,16 @@ void test("applies reference instructions", () => {
   });
 });
 
-void test("applies the template of a reference instruction", () => {
+void test("applies the template of a cross-reference instruction", () => {
   const index: Index = { children: [] };
   const instruction = parseInstruction(
     "ち!ちょさくけん@著作権|->ち!ちてきざいさんけん@知的財産権|<em><slot></slot></em>",
   );
-  assert.ok(instruction.type === "see" || instruction.type === "see-also");
+  assert.ok(instruction.type === "preferred" || instruction.type === "related");
 
-  applyReferenceInstruction(index, instruction);
+  applyXrefInstruction(index, instruction);
 
-  assert.deepStrictEqual(index.children[0]?.children[0]?.see, [
+  assert.deepStrictEqual(index.children[0]?.children[0]?.xrefPreferred, [
     {
       target: {
         group: { html: "ち", reading: "ち" },

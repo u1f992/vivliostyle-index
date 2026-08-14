@@ -1,14 +1,5 @@
 import { parseFragment } from "./html.ts";
-import type {
-  Entry,
-  Group,
-  Index,
-  Key,
-  Locator,
-  Reference,
-  ReferenceType,
-  Subentry,
-} from "./model.ts";
+import type { Entry, Group, Index, Key, Locator, Subentry, Xref, XrefType } from "./model.ts";
 import type { Target } from "./target.ts";
 import { fillSlot } from "./template.ts";
 
@@ -64,13 +55,13 @@ const generateGroups = (
 ): hast.Element =>
   h(
     "ol",
-    { dataIndexRole: "groups" },
+    { dataIndexRole: "group-list" },
     groups.map((group) =>
       h("li", [
         heading("group", {}, parseFragment(group.key.html)),
         h(
           "ol",
-          { dataIndexRole: "entries" },
+          { dataIndexRole: "entry-list" },
           generateEntries(group.children, indexId, group.key, heading),
         ),
       ]),
@@ -87,8 +78,8 @@ const generateEntries = (
     h("li", { id: headingId(indexId, [groupKey, entry.key]) }, [
       heading("entry", {}, parseFragment(entry.key.html)),
       generateLocators(entry.locators),
-      generateReferences(entry.see, indexId, "see"),
-      generateReferences(entry.seeAlso, indexId, "see-also"),
+      generateXrefs(entry.xrefPreferred, indexId, "preferred"),
+      generateXrefs(entry.xrefRelated, indexId, "related"),
       generateSubentries(entry.children, indexId, [groupKey, entry.key], heading),
     ]),
   );
@@ -101,13 +92,13 @@ const generateSubentries = (
 ): hast.Element =>
   h(
     "ol",
-    { dataIndexRole: "subentries" },
+    { dataIndexRole: "subentry-list" },
     subentries.map((subentry) =>
       h("li", { id: headingId(indexId, [...parentKeys, subentry.key]) }, [
         heading("subentry", {}, parseFragment(subentry.key.html)),
         generateLocators(subentry.locators),
-        generateReferences(subentry.see, indexId, "see"),
-        generateReferences(subentry.seeAlso, indexId, "see-also"),
+        generateXrefs(subentry.xrefPreferred, indexId, "preferred"),
+        generateXrefs(subentry.xrefRelated, indexId, "related"),
       ]),
     ),
   );
@@ -115,7 +106,7 @@ const generateSubentries = (
 const generateLocators = (locators: readonly Locator[]): hast.Element =>
   h(
     "ol",
-    { dataIndexRole: "locators" },
+    { dataIndexRole: "locator-list" },
     locators.map((locator) => h("li", generateLocator(locator))),
   );
 
@@ -127,15 +118,11 @@ const generateLocator = ({ location, template }: Locator): hast.ElementContent[]
   return template === undefined ? anchors : fillSlot(template, anchors);
 };
 
-const generateReferences = (
-  references: readonly Reference[],
-  indexId: string,
-  type: ReferenceType,
-): hast.Element =>
+const generateXrefs = (xrefs: readonly Xref[], indexId: string, type: XrefType): hast.Element =>
   h(
     "ol",
-    { dataIndexRole: `${type}-references` },
-    references.map(({ target, template }) => {
+    { dataIndexRole: `xref-${type}` },
+    xrefs.map(({ target, template }) => {
       const [href, children] =
         target.subentry === undefined
           ? [

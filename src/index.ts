@@ -29,9 +29,9 @@ export type {
   Index,
   Key,
   Locator,
-  Reference,
-  ReferenceType,
   Subentry,
+  Xref,
+  XrefType,
 } from "./model.ts";
 export { defaultHeading } from "./render.ts";
 export type {

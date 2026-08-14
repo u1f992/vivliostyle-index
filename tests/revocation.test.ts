@@ -4,9 +4,9 @@ import test from "node:test";
 import { messages, type MessageArguments } from "../src/messages.ts";
 import {
   ensureEntry,
-  findUnresolvedReference,
+  findUnresolvedXref,
   insertLocator,
-  insertReference,
+  insertXref,
   type Index,
   type Key,
 } from "../src/model.ts";
@@ -18,17 +18,15 @@ const banana = { html: "Banana", reading: "Banana" };
 const cherry = { html: "Cherry", reading: "Cherry" };
 const reportingPath = "/publication/index.md";
 
-function createReferenceRevocable(index: Index, from: Key, to: Key): Revocable {
+function createXrefRevocable(index: Index, from: Key, to: Key): Revocable {
   const target = { group, entry: to };
-  const revoke = insertReference(ensureEntry(index, { group, entry: from }), "see", target);
+  const revoke = insertXref(ensureEntry(index, { group, entry: from }), "preferred", target);
   return {
     reportingPath,
     revoke,
     findViolation: () => {
-      const unresolvedReference = findUnresolvedReference(index, target);
-      return unresolvedReference === undefined
-        ? undefined
-        : messages.invalidReference(unresolvedReference);
+      const unresolvedXref = findUnresolvedXref(index, target);
+      return unresolvedXref === undefined ? undefined : messages.invalidXref(unresolvedXref);
     },
   };
 }
@@ -46,23 +44,23 @@ function ruleIdsOf(messagesByDocument: Map<string, MessageArguments[]>): (string
   return (messagesByDocument.get(reportingPath) ?? []).map((message) => message[2]);
 }
 
-void test("revokes an unresolved reference and the heading it empties", () => {
+void test("revokes an unresolved cross-reference and the heading it empties", () => {
   const messagesByDocument = new Map<string, MessageArguments[]>();
   const index: Index = { children: [] };
 
   revokeViolations(
-    createScope(index, [createReferenceRevocable(index, apple, banana)]),
+    createScope(index, [createXrefRevocable(index, apple, banana)]),
     messagesByDocument,
   );
 
   assert.deepStrictEqual(index.children, []);
   assert.deepStrictEqual(ruleIdsOf(messagesByDocument), [
-    "vivliostyle-index:invalid-reference",
+    "vivliostyle-index:invalid-xref",
     "vivliostyle-index:vacant-entry",
   ]);
 });
 
-void test("keeps a heading while one of its references resolves", () => {
+void test("keeps a heading while one of its cross-references resolves", () => {
   const messagesByDocument = new Map<string, MessageArguments[]>();
   const index: Index = { children: [] };
   insertLocator(ensureEntry(index, { group, entry: banana }), {
@@ -71,18 +69,18 @@ void test("keeps a heading while one of its references resolves", () => {
 
   revokeViolations(
     createScope(index, [
-      createReferenceRevocable(index, apple, banana),
-      createReferenceRevocable(index, apple, cherry),
+      createXrefRevocable(index, apple, banana),
+      createXrefRevocable(index, apple, cherry),
     ]),
     messagesByDocument,
   );
 
   assert.deepStrictEqual(
-    index.children[0]?.children.map(({ key, see }) => [key.html, see.length]),
+    index.children[0]?.children.map(({ key, xrefPreferred }) => [key.html, xrefPreferred.length]),
     [
       ["Banana", 0],
       ["Apple", 1],
     ],
   );
-  assert.deepStrictEqual(ruleIdsOf(messagesByDocument), ["vivliostyle-index:invalid-reference"]);
+  assert.deepStrictEqual(ruleIdsOf(messagesByDocument), ["vivliostyle-index:invalid-xref"]);
 });

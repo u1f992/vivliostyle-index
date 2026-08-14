@@ -20,7 +20,7 @@ export type EntryAddress = Readonly<{
   subentry?: Key;
 }>;
 
-export type UnresolvedReference = Readonly<{
+export type UnresolvedXref = Readonly<{
   target: EntryAddress;
   missing: keyof EntryAddress;
 }>;
@@ -46,33 +46,33 @@ export function insertLocator(entry: HasLocators, locator: Locator): Revocation 
   return insert(entry.locators, { ...locator });
 }
 
-export type Reference = Readonly<{
+export type Xref = Readonly<{
   target: EntryAddress;
   template?: string;
 }>;
-export type ReferenceType = "see" | "see-also";
-type HasReferences = {
-  see: Reference[];
-  seeAlso: Reference[];
+export type XrefType = "preferred" | "related";
+type HasXrefs = {
+  xrefPreferred: Xref[];
+  xrefRelated: Xref[];
 };
-const referenceListKey = {
-  see: "see",
-  "see-also": "seeAlso",
-} as const satisfies Record<ReferenceType, keyof HasReferences>;
+const xrefListKey = {
+  preferred: "xrefPreferred",
+  related: "xrefRelated",
+} as const satisfies Record<XrefType, keyof HasXrefs>;
 
-export function insertReference(
-  entry: HasReferences,
-  type: ReferenceType,
+export function insertXref(
+  entry: HasXrefs,
+  type: XrefType,
   target: EntryAddress,
   template?: string,
 ): Revocation {
-  return insert(entry[referenceListKey[type]], {
+  return insert(entry[xrefListKey[type]], {
     target,
     ...(template === undefined ? {} : { template }),
   });
 }
 
-export type EntryBase = HasLocators & HasReferences;
+export type EntryBase = HasLocators & HasXrefs;
 export type Subentry = HasKey & EntryBase;
 export type ParentOf<T> = { children: T[] };
 export type Entry = HasKey & EntryBase & ParentOf<Subentry>;
@@ -107,22 +107,19 @@ export function ensureEntry(index: Index, address: EntryAddress): EntryBase {
   const entry = ensureChild(group, address.entry, {
     children: [],
     locators: [],
-    see: [],
-    seeAlso: [],
+    xrefPreferred: [],
+    xrefRelated: [],
   });
   return address.subentry === undefined
     ? entry
     : ensureChild(entry, address.subentry, {
         locators: [],
-        see: [],
-        seeAlso: [],
+        xrefPreferred: [],
+        xrefRelated: [],
       });
 }
 
-export function findUnresolvedReference(
-  index: Index,
-  target: EntryAddress,
-): UnresolvedReference | undefined {
+export function findUnresolvedXref(index: Index, target: EntryAddress): UnresolvedXref | undefined {
   const group = getChild(index, target.group);
   if (!group) {
     return { target, missing: "group" };
@@ -138,7 +135,11 @@ export function findUnresolvedReference(
 }
 
 function isVacant(entry: EntryBase): boolean {
-  return entry.locators.length === 0 && entry.see.length === 0 && entry.seeAlso.length === 0;
+  return (
+    entry.locators.length === 0 &&
+    entry.xrefPreferred.length === 0 &&
+    entry.xrefRelated.length === 0
+  );
 }
 
 export function revokeVacantEntries(index: Index): EntryAddress[] {

@@ -10,32 +10,32 @@
   break-after: page;
 }
 
-#index > [data-index-role="groups"] > li {
+#index > [data-index-role="group-list"] > li {
   list-style: none;
 
-  > [data-index-role="entries"] {
+  > [data-index-role="entry-list"] {
     padding-left: 1em;
   }
 }
 
-#index [data-index-role="entries"] > li,
-#index [data-index-role="subentries"] > li {
+#index [data-index-role="entry-list"] > li,
+#index [data-index-role="subentry-list"] > li {
   list-style: none;
 
-  > [data-index-role="locators"],
-  > [data-index-role="see-references"] {
+  > [data-index-role="locator-list"],
+  > [data-index-role="xref-preferred"] {
     display: inline;
     padding: 0;
     margin-left: 1em;
     list-style: none;
   }
 
-  > [data-index-role="see-also-references"] {
+  > [data-index-role="xref-related"] {
     padding-left: 1em;
     list-style: none;
   }
 
-  > [data-index-role="subentries"] {
+  > [data-index-role="subentry-list"] {
     padding-left: 1em;
   }
 
@@ -43,13 +43,13 @@
     display: none;
   }
 
-  > [data-index-role="locators"] > li,
-  > [data-index-role="see-references"] > li,
-  > [data-index-role="see-also-references"] > li {
+  > [data-index-role="locator-list"] > li,
+  > [data-index-role="xref-preferred"] > li,
+  > [data-index-role="xref-related"] > li {
     display: inline;
   }
 
-  > [data-index-role="locators"] > li {
+  > [data-index-role="locator-list"] > li {
     &::after {
       content: ", ";
     }
@@ -67,16 +67,16 @@
     }
   }
 
-  > [data-index-role="see-references"] > li:first-child::before {
+  > [data-index-role="xref-preferred"] > li:first-child::before {
     content: "→";
   }
 
-  > [data-index-role="see-also-references"] > li:first-child::before {
+  > [data-index-role="xref-related"] > li:first-child::before {
     content: "⇒";
   }
 
-  > [data-index-role="see-references"] > li,
-  > [data-index-role="see-also-references"] > li {
+  > [data-index-role="xref-preferred"] > li,
+  > [data-index-role="xref-related"] > li {
     &::after {
       content: "；";
     }

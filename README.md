@@ -14,16 +14,16 @@ The instruction syntax is MakeIndex/upmendex-inspired. Put an instruction in the
 | `<entry>\|\|<template>` | Adds a page locator wrapped in `<template>`. |
 | `<entry>\|(<endReference>` | Adds a range locator that ends at `<endReference>`. |
 | `<entry>\|(<endReference>\|<template>` | Adds a range locator wrapped in `<template>`. |
-| `<entry>\|-><target>` | Adds a "see" reference. Creates `<entry>` but not `<target>`. |
-| `<entry>\|=><target>` | Adds a "see also" reference. Creates `<entry>` but not `<target>`. |
+| `<entry>\|-><target>` | Adds a preferred cross-reference ("see"). Creates `<entry>` but not `<target>`. |
+| `<entry>\|=><target>` | Adds a related cross-reference ("see also"). Creates `<entry>` but not `<target>`. |
 
-`<entry>` and `<target>` contain two or three keys: `<key>!<key>` or `<key>!<key>!<key>`. The keys specify the group heading, main heading, and optional subheading in that order. A `<key>` has the form `<reading>@<innerHTML>`. If `@<innerHTML>` is omitted, the reading is also used as the inner HTML. `\@`, `\!`, `\|`, and `\\` represent literal `@`, `!`, `|`, and `\`. Keys match only if they have the same reading and original `<innerHTML>` string.
+`<entry>` and `<target>` contain two or three keys: `<key>!<key>` or `<key>!<key>!<key>`. The keys specify the group heading, the entry heading, and an optional subentry heading in that order. A `<key>` has the form `<reading>@<innerHTML>`. If `@<innerHTML>` is omitted, the reading is also used as the inner HTML. `\@`, `\!`, `\|`, and `\\` represent literal `@`, `!`, `|`, and `\`. Keys match only if they have the same reading and original `<innerHTML>` string.
 
 `<endReference>` has the form `[<documentPath>]#<elementId>` and is resolved relative to the document containing the range instruction. Omit `<documentPath>` when the end element is in the same document. Because the reference is inside the `q` value, encode its `#` as `%23`. It ends at the first unescaped `|`, so write a literal `|` as `\|`. Any query in `<endReference>` is discarded after URL resolution. The end element must exist and come after the start element in both entry order and document order.
 
 `<template>` is an HTML fragment containing exactly one `<slot>` element. The generated locator takes the place of that element, and the rest of the fragment surrounds it. A range locator replaces the slot with its start anchor, its separator, and its end anchor together. Use a template where the locator needs markup a stylesheet cannot supply, such as `<strong><slot></slot></strong>` for an important page. A template runs to the end of the instruction, so an unescaped `|` inside it is a literal `|`. Write a literal `\` as `\\` there and inside `<endReference>`; `@` and `!` carry no meaning outside a key and need no escape. The fragment is parsed on its own rather than in the context of the list item that will hold it, so markup a list item would not otherwise accept, such as a `<td>`, is kept. A `<slot>` the parser cannot keep where it is written, such as one inside a `<table>`, is moved out of that element, and the locator lands beside the element instead of inside it. Slots inside a `<template>`, `<script>`, or `<style>` element, or inside an attribute value, do not count toward the one the fragment must contain.
 
-An instruction the plugin cannot read is rejected with a warning and contributes nothing: one whose syntax is invalid, and one whose `<endReference>` does not resolve to a document and an element. An accepted instruction is consumed, removing the `data-index` attribute from the built document; a rejected instruction keeps it. An accepted instruction can still be revoked later, again with a warning; revocation does not restore the consumed attribute. A range is revoked when its end element is missing or does not follow its start; a "see" or "see also" reference is revoked when its target is absent from the index. An entry left with no locator, reference, or subentry is revoked as well, and that in turn can revoke references that pointed at it.
+An instruction the plugin cannot read is rejected with a warning and contributes nothing: one whose syntax is invalid, and one whose `<endReference>` does not resolve to a document and an element. An accepted instruction is consumed, removing the `data-index` attribute from the built document; a rejected instruction keeps it. An accepted instruction can still be revoked later, again with a warning; revocation does not restore the consumed attribute. A range is revoked when its end element is missing or does not follow its start; a cross-reference is revoked when its target is absent from the index. An entry left with no locator, cross-reference, or subentry is revoked as well, and that in turn can revoke cross-references that pointed at it.
 
 An index exists once an instruction naming its target is accepted, and its target element is replaced even when every entry is later revoked. A target element whose `role` attribute lacks the `doc-index` token is reported with a warning and keeps its original contents. A target named only by rejected instructions, or by no instruction at all, keeps its original contents without a role check.
 
@@ -34,21 +34,23 @@ An index replaces the contents of its target element with a list, preceded by a 
 ```
 target
 ├── preamble               the element its factory returns
-└── ol                     groups
+└── ol                     group-list
     └── li                 group
         ├── span           group heading
-        └── ol             main headings
-            └── li         main heading, carrying the ID its references link to
-                ├── span   heading
-                ├── ol     locators
-                ├── ol     "see" references
-                ├── ol     "see also" references
-                └── ol     subheadings
-                    └── li subheading, carrying the ID its references link to
-                        ├── span   heading
-                        ├── ol     locators
-                        ├── ol     "see" references
-                        └── ol     "see also" references
+        └── ol             entry-list
+            └── li         entry, carrying the ID its cross-references link to
+                ├── span   entry heading
+                ├── ol     locator-list
+                ├── ol     xref-preferred ("see")
+                ├── ol     xref-related ("see also")
+                └── ol     subentry-list
+                    └── li subentry, carrying the ID its cross-references link to
+                        ├── span   subentry heading
+                        ├── ol     locator-list
+                        ├── ol     xref-preferred ("see")
+                        └── ol     xref-related ("see also")
 ```
 
-A preamble is rendered whenever its target is replaced, including when the index holds no group; without one, the list is the target's only child. A heading is a `span` by default; a heading factory configured for the target creates the element instead, from the tier (`group`, `entry`, or `subentry`), the properties the element must carry, and the heading contents. The lists under a heading are always present and always in this order; an empty one holds no items. A locator item holds one link, or a start link, an empty `<span>`, and an end link for a range; a template wraps those nodes without reordering them. A locator link points at the built document, so the source extension becomes `.html` unless it already is `.html`, `.htm`, or `.xhtml`. A reference item holds one link whose contents are the target heading, or the target main heading, an empty `<span>`, and the target subheading when the reference points at a subheading.
+Each generated list names its part in a `data-index-role` attribute: `group-list`, `entry-list`, `locator-list`, `xref-preferred`, `xref-related`, and `subentry-list`. The names follow the terms of the EPUB Structural Semantics Vocabulary with the `index-` prefix dropped. `group-list` and `subentry-list` extend that vocabulary: it has no term for an element holding every group, and it labels the list of subentries `index-entry-list` without distinguishing it from the list of main entries, so `subentry-list` is the finer term.
+
+A preamble is rendered whenever its target is replaced, including when the index holds no group; without one, the list is the target's only child. A heading is a `span` by default; a heading factory configured for the target creates the element instead, from the tier (`group`, `entry`, or `subentry`), the properties the element must carry, and the heading contents. The lists under a heading are always present and always in this order; an empty one holds no items. A locator item holds one link, or a start link, an empty `<span>`, and an end link for a range; a template wraps those nodes without reordering them. A locator link points at the built document, so the source extension becomes `.html` unless it already is `.html`, `.htm`, or `.xhtml`. A cross-reference item holds one link whose contents are the target heading, or the target entry heading, an empty `<span>`, and the target subentry heading when the cross-reference points at a subentry.

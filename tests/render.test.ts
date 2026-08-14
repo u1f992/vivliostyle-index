@@ -24,8 +24,8 @@ const index: Index = {
           key: { html: "著作権", reading: "ちょさくけん" },
           children: [],
           locators: [{ location: { type: "page", href: "003.html#a" } }],
-          see: [],
-          seeAlso: [],
+          xrefPreferred: [],
+          xrefRelated: [],
         },
       ],
     },
@@ -36,8 +36,8 @@ const index: Index = {
           key: { html: "相続", reading: "そうぞく" },
           children: [],
           locators: [{ location: { type: "page", href: "088.html#b" } }],
-          see: [],
-          seeAlso: [],
+          xrefPreferred: [],
+          xrefRelated: [],
         },
       ],
     },
@@ -45,13 +45,13 @@ const index: Index = {
 };
 
 const roleOf = (role: string) => `[data-index-role="${role}"]`;
-const GROUP = `#index > ${roleOf("groups")} > li`;
-const ENTRY = `${GROUP} > ${roleOf("entries")} > li`;
-const LOCATORS = `${ENTRY} > ${roleOf("locators")}`;
-const SEE = `${ENTRY} > ${roleOf("see-references")}`;
-const SEE_ALSO = `${ENTRY} > ${roleOf("see-also-references")}`;
-const SUBENTRY = `${ENTRY} > ${roleOf("subentries")} > li`;
-const SUBENTRY_LOCATORS = `${SUBENTRY} > ${roleOf("locators")}`;
+const GROUP = `#index > ${roleOf("group-list")} > li`;
+const ENTRY = `${GROUP} > ${roleOf("entry-list")} > li`;
+const LOCATORS = `${ENTRY} > ${roleOf("locator-list")}`;
+const XREF_PREFERRED = `${ENTRY} > ${roleOf("xref-preferred")}`;
+const XREF_RELATED = `${ENTRY} > ${roleOf("xref-related")}`;
+const SUBENTRY = `${ENTRY} > ${roleOf("subentry-list")} > li`;
+const SUBENTRY_LOCATORS = `${SUBENTRY} > ${roleOf("locator-list")}`;
 
 function createTarget(): hast.Element {
   return {
@@ -92,13 +92,13 @@ void test("wraps every key in an element of its own", () => {
               {
                 key: { html: "一身専属", reading: "いっしんせんぞく" },
                 locators: [{ location: { type: "page", href: "076.html#c" } }],
-                see: [],
-                seeAlso: [],
+                xrefPreferred: [],
+                xrefRelated: [],
               },
             ],
             locators: [{ location: { type: "page", href: "088.html#b" } }],
-            see: [],
-            seeAlso: [],
+            xrefPreferred: [],
+            xrefRelated: [],
           },
         ],
       },
@@ -139,7 +139,7 @@ void test("gives every entry the same lists in the same order", () => {
           {
             key: { html: "A", reading: "あ" },
             locators: [{ location: { type: "page", href: "001.html#a" } }],
-            see: [
+            xrefPreferred: [
               {
                 target: {
                   group: { html: "い", reading: "い" },
@@ -147,7 +147,7 @@ void test("gives every entry the same lists in the same order", () => {
                 },
               },
             ],
-            seeAlso: [
+            xrefRelated: [
               {
                 target: {
                   group: { html: "う", reading: "う" },
@@ -159,8 +159,8 @@ void test("gives every entry the same lists in the same order", () => {
               {
                 key: { html: "D", reading: "でぃ" },
                 locators: [],
-                see: [],
-                seeAlso: [],
+                xrefPreferred: [],
+                xrefRelated: [],
               },
             ],
           },
@@ -172,8 +172,8 @@ void test("gives every entry the same lists in the same order", () => {
           {
             key: { html: "E", reading: "い" },
             locators: [{ location: { type: "page", href: "002.html#b" } }],
-            see: [],
-            seeAlso: [],
+            xrefPreferred: [],
+            xrefRelated: [],
             children: [],
           },
         ],
@@ -184,21 +184,21 @@ void test("gives every entry the same lists in the same order", () => {
   renderIndex(indexWithEveryList, target, "index", defaultHeading(h));
   const root = rootOf(target);
 
-  const entryLists = ["locators", "see-references", "see-also-references", "subentries"];
+  const entryLists = ["locator-list", "xref-preferred", "xref-related", "subentry-list"];
   assert.deepStrictEqual(selectAll(ENTRY, root).map(listRoles), [entryLists, entryLists]);
   assert.deepStrictEqual(selectAll(SUBENTRY, root).map(listRoles), [
-    ["locators", "see-references", "see-also-references"],
+    ["locator-list", "xref-preferred", "xref-related"],
   ]);
   assert.deepStrictEqual(
     selectAll(`${LOCATORS} > li > a`, root).map((link) => getAttribute(link, "href")),
     ["001.html#a", "002.html#b"],
   );
   assert.deepStrictEqual(
-    selectAll(`${SEE} > li > a`, root).map((link) => toText(link)),
+    selectAll(`${XREF_PREFERRED} > li > a`, root).map((link) => toText(link)),
     ["B"],
   );
   assert.deepStrictEqual(
-    selectAll(`${SEE_ALSO} > li > a`, root).map((link) => toText(link)),
+    selectAll(`${XREF_RELATED} > li > a`, root).map((link) => toText(link)),
     ["C"],
   );
   assert.deepStrictEqual(
@@ -223,8 +223,8 @@ void test("wraps a locator in the template of its instruction", () => {
               },
               { location: { type: "page", href: "112.html#b" } },
             ],
-            see: [],
-            seeAlso: [],
+            xrefPreferred: [],
+            xrefRelated: [],
             children: [
               {
                 key: { html: "私的複製", reading: "してきふくせい" },
@@ -234,8 +234,8 @@ void test("wraps a locator in the template of its instruction", () => {
                     template: "<em><slot></slot></em>",
                   },
                 ],
-                see: [],
-                seeAlso: [],
+                xrefPreferred: [],
+                xrefRelated: [],
               },
             ],
           },
@@ -264,7 +264,7 @@ void test("wraps a locator in the template of its instruction", () => {
   );
 });
 
-void test("wraps a reference in the template of its instruction", () => {
+void test("wraps a cross-reference in the template of its instruction", () => {
   const target = createTarget();
   const indexWithTemplate: Index = {
     children: [
@@ -274,7 +274,7 @@ void test("wraps a reference in the template of its instruction", () => {
           {
             key: { html: "著作権", reading: "ちょさくけん" },
             locators: [],
-            see: [
+            xrefPreferred: [
               {
                 target: {
                   group: { html: "ち", reading: "ち" },
@@ -283,7 +283,7 @@ void test("wraps a reference in the template of its instruction", () => {
                 template: "<strong>→<slot></slot></strong>",
               },
             ],
-            seeAlso: [
+            xrefRelated: [
               {
                 target: {
                   group: { html: "は", reading: "は" },
@@ -302,11 +302,11 @@ void test("wraps a reference in the template of its instruction", () => {
   const root = rootOf(target);
 
   assert.deepStrictEqual(
-    selectAll(`${SEE} > li > strong > a`, root).map((link) => toText(link)),
+    selectAll(`${XREF_PREFERRED} > li > strong > a`, root).map((link) => toText(link)),
     ["知的財産権"],
   );
   assert.deepStrictEqual(
-    selectAll(`${SEE_ALSO} > li > a`, root).map((link) => toText(link)),
+    selectAll(`${XREF_RELATED} > li > a`, root).map((link) => toText(link)),
     ["パブリックドメイン"],
   );
 });
@@ -358,7 +358,7 @@ void test("names the keys of the exposed index", () => {
                 template: "<em><slot></slot></em>",
               },
             ],
-            see: [
+            xrefPreferred: [
               {
                 target: {
                   group: { html: "い", reading: "い" },
@@ -367,7 +367,7 @@ void test("names the keys of the exposed index", () => {
                 },
               },
             ],
-            seeAlso: [],
+            xrefRelated: [],
             children: [],
           },
         ],
@@ -379,9 +379,19 @@ void test("names the keys of the exposed index", () => {
   const exposed = JSON.parse(getAttribute(target, "data-index-result") ?? "null");
   const entry = exposed.children[0].children[0];
 
-  assert.deepStrictEqual(Object.keys(entry), ["key", "locators", "see", "seeAlso", "children"]);
+  assert.deepStrictEqual(Object.keys(entry), [
+    "key",
+    "locators",
+    "xrefPreferred",
+    "xrefRelated",
+    "children",
+  ]);
   assert.deepStrictEqual(Object.keys(entry.locators[0]), ["location", "template"]);
-  assert.deepStrictEqual(Object.keys(entry.see[0].target), ["group", "entry", "subentry"]);
+  assert.deepStrictEqual(Object.keys(entry.xrefPreferred[0].target), [
+    "group",
+    "entry",
+    "subentry",
+  ]);
 });
 
 void test("keeps an index instruction carried by the target element itself", () => {
@@ -421,13 +431,13 @@ void test("generates every heading through the given generator", () => {
               {
                 key: { html: "一身専属", reading: "いっしんせんぞく" },
                 locators: [{ location: { type: "page", href: "076.html#c" } }],
-                see: [],
-                seeAlso: [],
+                xrefPreferred: [],
+                xrefRelated: [],
               },
             ],
             locators: [{ location: { type: "page", href: "088.html#b" } }],
-            see: [],
-            seeAlso: [],
+            xrefPreferred: [],
+            xrefRelated: [],
           },
         ],
       },

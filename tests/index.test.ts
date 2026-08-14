@@ -75,16 +75,16 @@ function createProcessor({
 
 const roleOf = (role: string) => `[data-index-role="${role}"]`;
 const entryOf = (targetId: string) =>
-  `#${targetId} > ${roleOf("groups")} > li > ${roleOf("entries")} > li`;
-const locatorsOf = (targetId: string) => `${entryOf(targetId)} > ${roleOf("locators")}`;
+  `#${targetId} > ${roleOf("group-list")} > li > ${roleOf("entry-list")} > li`;
+const locatorsOf = (targetId: string) => `${entryOf(targetId)} > ${roleOf("locator-list")}`;
 
-const GROUP = `#index > ${roleOf("groups")} > li`;
+const GROUP = `#index > ${roleOf("group-list")} > li`;
 const ENTRY = entryOf("index");
 const ENTRY_KEY = `${ENTRY} > span`;
 const LOCATORS = locatorsOf("index");
-const SEE = `${ENTRY} > ${roleOf("see-references")}`;
-const SEE_ALSO = `${ENTRY} > ${roleOf("see-also-references")}`;
-const SUBENTRY = `${ENTRY} > ${roleOf("subentries")} > li`;
+const XREF_PREFERRED = `${ENTRY} > ${roleOf("xref-preferred")}`;
+const XREF_RELATED = `${ENTRY} > ${roleOf("xref-related")}`;
+const SUBENTRY = `${ENTRY} > ${roleOf("subentry-list")} > li`;
 
 function locatorLinks(root: hast.Root | hast.Element, targetId = "index") {
   return selectAll(`${locatorsOf(targetId)} a`, root).map((link) => getAttribute(link, "href"));
@@ -481,7 +481,7 @@ void test("renders a slotless template without a locator link", () => {
   );
 });
 
-void test("links a reference to a later entry", () => {
+void test("links a cross-reference to a later entry", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=た!だいがく@大学|->き!きょうとだいがく@%3Cem%3E京都大学%3C%2Fem%3E#index">大学</span>',
@@ -497,16 +497,14 @@ void test("links a reference to a later entry", () => {
 
   processor.runSync(root, { path: "/publication/index.md" });
 
-  const reference = selectAll("a", root).find((link) =>
-    getAttribute(link, "href")?.startsWith("#"),
-  );
+  const xref = selectAll("a", root).find((link) => getAttribute(link, "href")?.startsWith("#"));
   const target = selectAll(ENTRY, root).find((entry) => select("em", entry) !== null);
-  assert.ok(reference);
+  assert.ok(xref);
   assert.ok(target);
-  assert.strictEqual(getAttribute(reference, "href"), `#${getAttribute(target, "id")}`);
+  assert.strictEqual(getAttribute(xref, "href"), `#${getAttribute(target, "id")}`);
 });
 
-void test("links a reference to a later subentry", () => {
+void test("links a cross-reference to a later subentry", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=a!Alpha|->b!Beta!Gamma#index">Alpha</span>',
@@ -522,18 +520,18 @@ void test("links a reference to a later subentry", () => {
 
   processor.runSync(root, { path: "/publication/index.md" });
 
-  const reference = select(`${SEE} a`, root);
+  const xref = select(`${XREF_PREFERRED} a`, root);
   const target = select(SUBENTRY, root);
-  assert.ok(reference);
+  assert.ok(xref);
   assert.ok(target);
-  assert.strictEqual(getAttribute(reference, "href"), `#${getAttribute(target, "id")}`);
+  assert.strictEqual(getAttribute(xref, "href"), `#${getAttribute(target, "id")}`);
   assert.deepStrictEqual(
-    selectAll("span", reference).map((part) => toText(part)),
+    selectAll("span", xref).map((part) => toText(part)),
     ["Beta", "", "Gamma"],
   );
 });
 
-void test("revokes a heading left without content by an unresolved reference", () => {
+void test("revokes a heading left without content by an unresolved cross-reference", () => {
   const files = {
     "/publication/chapter.md":
       '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
@@ -586,11 +584,11 @@ void test("reports a missing target of an index whose entries are all revoked", 
 
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
-    ["invalid-reference", "vacant-entry", "missing-index-target"],
+    ["invalid-xref", "vacant-entry", "missing-index-target"],
   );
 });
 
-void test("revokes a reference whose target was revoked for being vacant", () => {
+void test("revokes a cross-reference whose target was revoked for being vacant", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
@@ -610,11 +608,11 @@ void test("revokes a reference whose target was revoked for being vacant", () =>
   assert.deepStrictEqual(selectAll(ENTRY, root), []);
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
-    ["invalid-reference", "vacant-entry", "invalid-reference", "vacant-entry"],
+    ["invalid-xref", "vacant-entry", "invalid-xref", "vacant-entry"],
   );
 });
 
-void test("keeps a heading whose locator outlives a revoked reference", () => {
+void test("keeps a heading whose locator outlives a revoked cross-reference", () => {
   const files = {
     "/publication/chapter.md": [
       '<span id="apple" data-index="index.md?q=a!Apple#index">Apple</span>',
@@ -631,7 +629,7 @@ void test("keeps a heading whose locator outlives a revoked reference", () => {
   processor.runSync(root, { path: "/publication/index.md" });
 
   assert.deepStrictEqual(locatorLinks(root), ["chapter.html#apple"]);
-  assert.strictEqual(select(SEE, root)?.children.length, 0);
+  assert.strictEqual(select(XREF_PREFERRED, root)?.children.length, 0);
 });
 
 void test("revokes a heading left without content by an invalid range", () => {
@@ -654,7 +652,7 @@ void test("revokes a heading left without content by an invalid range", () => {
   assert.deepStrictEqual(locatorLinks(root), ["chapter.html#banana"]);
 });
 
-void test("revokes a reference to a heading revoked by an invalid range", () => {
+void test("revokes a cross-reference to a heading revoked by an invalid range", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=a!Apple|(%23missing#index">Apple</span>',
@@ -676,7 +674,7 @@ void test("revokes a reference to a heading revoked by an invalid range", () => 
   assert.deepStrictEqual(groupHeadings(root), []);
   assert.deepStrictEqual(
     indexFile.messages.map((message) => message.ruleId),
-    ["vacant-entry", "invalid-reference", "vacant-entry"],
+    ["vacant-entry", "invalid-xref", "vacant-entry"],
   );
   assert.deepStrictEqual(
     chapterFile.messages.map((message) => message.ruleId),
@@ -684,7 +682,7 @@ void test("revokes a reference to a heading revoked by an invalid range", () => 
   );
 });
 
-void test("revokes an unresolved see also reference while keeping a resolved one", () => {
+void test("revokes an unresolved related cross-reference while keeping a resolved one", () => {
   const files = {
     "/publication/chapter.md": [
       '<span id="banana" data-index="index.md?q=b!Banana#index">Banana</span>',
@@ -703,12 +701,12 @@ void test("revokes an unresolved see also reference while keeping a resolved one
 
   assert.deepStrictEqual(groupHeadings(root), ["a", "b"]);
   assert.deepStrictEqual(
-    selectAll(`${SEE_ALSO} a`, root).map((link) => toText(link)),
+    selectAll(`${XREF_RELATED} a`, root).map((link) => toText(link)),
     ["Banana"],
   );
 });
 
-void test("revokes a reference chain across several rounds", () => {
+void test("revokes a cross-reference chain across several rounds", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
@@ -730,11 +728,11 @@ void test("revokes a reference chain across several rounds", () => {
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
     [
-      "invalid-reference",
+      "invalid-xref",
       "vacant-entry",
-      "invalid-reference",
+      "invalid-xref",
       "vacant-entry",
-      "invalid-reference",
+      "invalid-xref",
       "vacant-entry",
     ],
   );
@@ -766,7 +764,7 @@ void test("revokes a heading emptied by revoking its subentry", () => {
   assert.deepStrictEqual(groupHeadings(root), []);
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
-    ["invalid-reference", "vacant-entry", "vacant-entry"],
+    ["invalid-xref", "vacant-entry", "vacant-entry"],
   );
   assert.deepStrictEqual(
     file.messages
@@ -776,7 +774,7 @@ void test("revokes a heading emptied by revoking its subentry", () => {
   );
 });
 
-void test("keeps mutually referencing headings that hold no locator", () => {
+void test("keeps mutually cross-referencing headings that hold no locator", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
@@ -1184,7 +1182,7 @@ void test("reports an index target outside entries on its source file", () => {
   assert.strictEqual(file.messages[0]?.ruleId, "target-not-in-entries");
 });
 
-void test("reports an invalid entry reference on its index file", () => {
+void test("reports an invalid cross-reference on its index file", () => {
   const files = {
     "/publication/chapter.md":
       '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
@@ -1200,7 +1198,7 @@ void test("reports an invalid entry reference on its index file", () => {
 
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
-    ["invalid-reference", "vacant-entry"],
+    ["invalid-xref", "vacant-entry"],
   );
 });
 

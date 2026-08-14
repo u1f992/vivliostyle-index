@@ -1,26 +1,26 @@
 import { fragmentToText } from "./html.ts";
-import type { Entry, Group, HasKey, Index, Key, Reference, Subentry } from "./model.ts";
+import type { Entry, Group, HasKey, Index, Key, Subentry, Xref } from "./model.ts";
 import type { Target } from "./target.ts";
 
 type Comparator<T> = NonNullable<Parameters<Array<T>["sort"]>[0]>;
 export type IndexComparator = {
   group: Comparator<Group>;
   entry: Comparator<Entry>;
-  entrySee: Comparator<Reference>;
-  entrySeeAlso: Comparator<Reference>;
+  entryXrefPreferred: Comparator<Xref>;
+  entryXrefRelated: Comparator<Xref>;
   subentry: Comparator<Subentry>;
-  subentrySee: Comparator<Reference>;
-  subentrySeeAlso: Comparator<Reference>;
+  subentryXrefPreferred: Comparator<Xref>;
+  subentryXrefRelated: Comparator<Xref>;
 };
 
 export type KeyComparator = Comparator<Key>;
 export type CreateKeyComparator = (locales: Intl.LocalesArgument) => KeyComparator;
-export type EntryComparator = Comparator<HasKey> & Comparator<Reference>;
+export type EntryComparator = Comparator<HasKey> & Comparator<Xref>;
 export type CreateIndexComparator = (locales: Intl.LocalesArgument) => IndexComparator;
 
 export type Comparators = readonly (readonly [Target, CreateIndexComparator])[];
 
-function keysOf(value: HasKey | Reference): readonly Key[] {
+function keysOf(value: HasKey | Xref): readonly Key[] {
   if (!("target" in value)) {
     return [value.key];
   }
@@ -29,7 +29,7 @@ function keysOf(value: HasKey | Reference): readonly Key[] {
 }
 
 export function byKeys(compareKeys: KeyComparator): EntryComparator {
-  return (a: HasKey | Reference, b: HasKey | Reference) => {
+  return (a: HasKey | Xref, b: HasKey | Xref) => {
     const aKeys = keysOf(a);
     const bKeys = keysOf(b);
     for (let depth = 0; depth < Math.min(aKeys.length, bKeys.length); depth++) {
@@ -104,12 +104,12 @@ export function sort(index: Index, comparator: IndexComparator) {
   for (const group of sorted.children) {
     group.children.sort(comparator.entry);
     for (const entry of group.children) {
-      entry.see.sort(comparator.entrySee);
-      entry.seeAlso.sort(comparator.entrySeeAlso);
+      entry.xrefPreferred.sort(comparator.entryXrefPreferred);
+      entry.xrefRelated.sort(comparator.entryXrefRelated);
       entry.children.sort(comparator.subentry);
       for (const subentry of entry.children) {
-        subentry.see.sort(comparator.subentrySee);
-        subentry.seeAlso.sort(comparator.subentrySeeAlso);
+        subentry.xrefPreferred.sort(comparator.subentryXrefPreferred);
+        subentry.xrefRelated.sort(comparator.subentryXrefRelated);
       }
     }
   }
@@ -121,10 +121,10 @@ export function defaultComparator(locales: Intl.LocalesArgument): IndexComparato
   return {
     group: compare,
     entry: compare,
-    entrySee: compare,
-    entrySeeAlso: compare,
+    entryXrefPreferred: compare,
+    entryXrefRelated: compare,
     subentry: compare,
-    subentrySee: compare,
-    subentrySeeAlso: compare,
+    subentryXrefPreferred: compare,
+    subentryXrefRelated: compare,
   };
 }

@@ -44,8 +44,8 @@ void test("builds range locators from ordered source snapshots", () => {
                 },
               },
             ],
-            see: [],
-            seeAlso: [],
+            xrefPreferred: [],
+            xrefRelated: [],
           },
         ],
       },
@@ -81,7 +81,7 @@ void test("revokes reversed ranges while preserving source messages", () => {
   );
 });
 
-void test("reports unresolved references and targets outside the entry list", () => {
+void test("reports unresolved cross-references and targets outside the entry list", () => {
   const chapterPath = "/publication/chapter.md";
   const sources = new Map([
     [
@@ -97,7 +97,7 @@ void test("reports unresolved references and targets outside the entry list", ()
 
   assert.deepStrictEqual(
     messages.get(chapterPath)?.map((message) => message[2]?.split(":")[1]),
-    ["invalid-reference", "vacant-entry", "target-not-in-entries"],
+    ["invalid-xref", "vacant-entry", "target-not-in-entries"],
   );
 });
 
@@ -208,11 +208,11 @@ void test("reports index-wide diagnostics to every document naming a target outs
   );
   assert.deepStrictEqual(
     messages.get(brokenPath)?.map((message) => message[2]?.split(":")[1]),
-    ["invalid-reference", "vacant-entry", "target-not-in-entries"],
+    ["invalid-xref", "vacant-entry", "target-not-in-entries"],
   );
 });
 
-void test("builds locators and references in the order the sources list them", () => {
+void test("builds locators and cross-references in the order the sources list them", () => {
   const chapterPath = "/publication/chapter.md";
   const indexPath = "/publication/index.md";
   const sources = new Map([
@@ -247,7 +247,7 @@ void test("builds locators and references in the order the sources list them", (
     ],
   );
   assert.deepStrictEqual(
-    apple?.seeAlso.map(({ target }) => target.entry.html),
+    apple?.xrefRelated.map(({ target }) => target.entry.html),
     ["Zebra", "Banana"],
   );
 });

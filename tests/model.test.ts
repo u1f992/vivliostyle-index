@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   ensureEntry,
-  findUnresolvedReference,
+  findUnresolvedXref,
   getChild,
   insertLocator,
   revokeVacantEntries,
@@ -23,10 +23,10 @@ function createIndexWithSubentry(locators: Subentry["locators"]): Index {
         children: [
           {
             key: intellectualProperty,
-            children: [{ key: patent, locators, see: [], seeAlso: [] }],
+            children: [{ key: patent, locators, xrefPreferred: [], xrefRelated: [] }],
             locators: [],
-            see: [],
-            seeAlso: [],
+            xrefPreferred: [],
+            xrefRelated: [],
           },
         ],
       },
@@ -44,15 +44,15 @@ function createIndex(): Index {
             key: intellectualProperty,
             children: [],
             locators: [],
-            see: [],
-            seeAlso: [],
+            xrefPreferred: [],
+            xrefRelated: [],
           },
           {
             key: { html: "著作権", reading: "ちょさくけん" },
             children: [],
             locators: [],
-            see: [],
-            seeAlso: [
+            xrefPreferred: [],
+            xrefRelated: [
               {
                 target: { group, entry: intellectualProperty },
               },
@@ -64,31 +64,31 @@ function createIndex(): Index {
   };
 }
 
-void test("accepts references to registered entries", () => {
+void test("accepts cross-references to registered entries", () => {
   assert.strictEqual(
-    findUnresolvedReference(createIndex(), { group, entry: intellectualProperty }),
+    findUnresolvedXref(createIndex(), { group, entry: intellectualProperty }),
     undefined,
   );
 });
 
-void test("reports references to unregistered entries", () => {
+void test("reports cross-references to unregistered entries", () => {
   const entry = { html: "工業所有権", reading: "こうぎょうしょゆうけん" };
 
-  assert.deepStrictEqual(findUnresolvedReference(createIndex(), { group, entry }), {
+  assert.deepStrictEqual(findUnresolvedXref(createIndex(), { group, entry }), {
     target: { group, entry },
     missing: "entry",
   });
 });
 
-void test("reports a reference that uses different inner HTML", () => {
+void test("reports a cross-reference that uses different inner HTML", () => {
   const entry = { html: "<em>知的財産権</em>", reading: "ちてきざいさんけん" };
 
-  assert.strictEqual(findUnresolvedReference(createIndex(), { group, entry })?.missing, "entry");
+  assert.strictEqual(findUnresolvedXref(createIndex(), { group, entry })?.missing, "entry");
 });
 
 void test("reports a missing group before a missing heading", () => {
   assert.strictEqual(
-    findUnresolvedReference(createIndex(), {
+    findUnresolvedXref(createIndex(), {
       group: { html: "こ", reading: "こ" },
       entry: intellectualProperty,
     })?.missing,
@@ -98,7 +98,7 @@ void test("reports a missing group before a missing heading", () => {
 
 void test("reports a missing subentry of a registered heading", () => {
   assert.strictEqual(
-    findUnresolvedReference(createIndex(), {
+    findUnresolvedXref(createIndex(), {
       group,
       entry: intellectualProperty,
       subentry: { html: "特許権", reading: "とっきょけん" },
@@ -107,7 +107,7 @@ void test("reports a missing subentry of a registered heading", () => {
   );
 });
 
-void test("revokes headings that hold no locator or reference", () => {
+void test("revokes headings that hold no locator or cross-reference", () => {
   const index = createIndex();
 
   const revoked = revokeVacantEntries(index);

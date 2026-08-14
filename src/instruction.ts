@@ -1,12 +1,12 @@
 import {
   ensureEntry,
   insertLocator,
-  insertReference,
+  insertXref,
   type EntryAddress,
   type Index,
   type Key,
-  type ReferenceType,
   type Revocation,
+  type XrefType,
 } from "./model.ts";
 
 export type ParsedInstruction =
@@ -22,7 +22,7 @@ export type ParsedInstruction =
       template?: string;
     }>
   | Readonly<{
-      type: ReferenceType;
+      type: XrefType;
       address: EntryAddress;
       target: EntryAddress;
       template?: string;
@@ -252,11 +252,11 @@ function parseRange(input: ParserInput, address: EntryAddress, start: number): P
     : { type: "range", address, endReference, template: parseTemplate(input, offset + 1) };
 }
 
-function parseReference(
+function parseXref(
   input: ParserInput,
   address: EntryAddress,
   targetOffset: number,
-  type: ReferenceType,
+  type: XrefType,
 ): ParsedInstruction {
   const { address: target, offset } = parseHierarchy(input, targetOffset);
   return offset === input.graphemes.length
@@ -283,17 +283,17 @@ export function parseInstruction(source: string): ParsedInstruction {
     return parseRange(input, address, operatorOffset + 1);
   }
   if (startsWith(input, operatorOffset, ["-", ">"])) {
-    return parseReference(input, address, operatorOffset + 2, "see");
+    return parseXref(input, address, operatorOffset + 2, "preferred");
   }
   if (startsWith(input, operatorOffset, ["=", ">"])) {
-    return parseReference(input, address, operatorOffset + 2, "see-also");
+    return parseXref(input, address, operatorOffset + 2, "related");
   }
   return syntaxError(input, operatorOffset, "unknown index instruction operator");
 }
 
 type PageInstruction = Extract<ParsedInstruction, { type: "page" }>;
 type RangeInstruction = Extract<ParsedInstruction, { type: "range" }>;
-type ReferenceInstruction = Extract<ParsedInstruction, { type: ReferenceType }>;
+type XrefInstruction = Extract<ParsedInstruction, { type: XrefType }>;
 
 export function applyPageInstruction(
   index: Index,
@@ -318,11 +318,8 @@ export function applyRangeInstruction(
   });
 }
 
-export function applyReferenceInstruction(
-  index: Index,
-  instruction: ReferenceInstruction,
-): Revocation {
-  return insertReference(
+export function applyXrefInstruction(index: Index, instruction: XrefInstruction): Revocation {
+  return insertXref(
     ensureEntry(index, instruction.address),
     instruction.type,
     instruction.target,

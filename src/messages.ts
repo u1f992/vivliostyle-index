@@ -1,7 +1,7 @@
 import type { VFile } from "vfile";
 
 import { InstructionSyntaxError } from "./instruction.ts";
-import type { EntryAddress, UnresolvedReference } from "./model.ts";
+import type { EntryAddress, UnresolvedXref } from "./model.ts";
 import type { Target } from "./target.ts";
 
 export type MessageArguments = Parameters<VFile["message"]>;
@@ -15,7 +15,7 @@ const formatEntryAddress = ({ group, entry, subentry }: EntryAddress): string =>
   }
   return parts.join(",");
 };
-const formatUnresolvedReference = ({ target, missing }: UnresolvedReference): string => {
+const formatUnresolvedXref = ({ target, missing }: UnresolvedXref): string => {
   const parts = [`group=${JSON.stringify(target.group)}`];
   if (missing !== "group") {
     parts.push(`entry=${JSON.stringify(target.entry)}`);
@@ -79,13 +79,13 @@ export const messages = {
     undefined,
     rule("range-end-order"),
   ],
-  invalidReference: (reference: UnresolvedReference): MessageArguments => [
-    `index does not contain ${formatUnresolvedReference(reference)}. the reference is revoked.`,
+  invalidXref: (xref: UnresolvedXref): MessageArguments => [
+    `index does not contain ${formatUnresolvedXref(xref)}. the cross-reference is revoked.`,
     undefined,
-    rule("invalid-reference"),
+    rule("invalid-xref"),
   ],
   vacantEntry: (target: Target, address: EntryAddress): MessageArguments => [
-    `entry ${formatEntryAddress(address)} of index target ${formatTarget(target)} holds no locator, reference, or subentry. the entry is revoked.`,
+    `entry ${formatEntryAddress(address)} of index target ${formatTarget(target)} holds no locator, cross-reference, or subentry. the entry is revoked.`,
     undefined,
     rule("vacant-entry"),
   ],

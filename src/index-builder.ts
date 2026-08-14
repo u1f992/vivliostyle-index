@@ -1,11 +1,11 @@
 import {
   applyPageInstruction,
   applyRangeInstruction,
-  applyReferenceInstruction,
+  applyXrefInstruction,
 } from "./instruction.ts";
 import { createLocationHref } from "./location.ts";
 import { addMessage, messages, type MessageArguments } from "./messages.ts";
-import { findUnresolvedReference, type Index } from "./model.ts";
+import { findUnresolvedXref, type Index } from "./model.ts";
 import { revokeViolations, type Revocable } from "./revocation.ts";
 import type { Attachment, RangeAttachment, SourceSnapshot } from "./source-snapshot.ts";
 import type { Target, TargetKey } from "./target.ts";
@@ -110,15 +110,13 @@ function applyAttachment(
     return undefined;
   }
 
-  const revoke = applyReferenceInstruction(index, instruction);
+  const revoke = applyXrefInstruction(index, instruction);
   return {
     reportingPath: resolveReportingPath(entryPathSet, attachment),
     revoke,
     findViolation: () => {
-      const unresolvedReference = findUnresolvedReference(index, instruction.target);
-      return unresolvedReference === undefined
-        ? undefined
-        : messages.invalidReference(unresolvedReference);
+      const unresolvedXref = findUnresolvedXref(index, instruction.target);
+      return unresolvedXref === undefined ? undefined : messages.invalidXref(unresolvedXref);
     },
   };
 }
