@@ -28,12 +28,25 @@ export type {
   Index,
   Key,
   Locator,
+  ReadonlyEntry,
+  ReadonlyGroup,
+  ReadonlyIndex,
+  ReadonlySubentry,
   Subentry,
   Xref,
   XrefType,
 } from "./model.ts";
-export { defaultHeading } from "./render.ts";
-export type { CreateHeading, CreatePreamble, HeadingGenerator, HeadingTier } from "./render.ts";
+export { indexRenderer } from "./render.ts";
+export type {
+  CreateRenderer,
+  EntryRenderer,
+  EntryRendererBase,
+  GroupRenderer,
+  HeadingRenderer,
+  IndexRenderer,
+  SubentryRenderer,
+  TaggedElement,
+} from "./render.ts";
 export type { Settings, TargetSettings } from "./settings.ts";
 export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";
 export type {

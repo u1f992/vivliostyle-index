@@ -7,7 +7,7 @@ import type { VFile } from "vfile";
 
 import type { BuiltIndex } from "./index-builder.ts";
 import { messages } from "./messages.ts";
-import { defaultHeading, renderIndex } from "./render.ts";
+import { renderIndex } from "./render.ts";
 import type { TargetSettings } from "./settings.ts";
 import { defaultComparator, sort } from "./sort.ts";
 import type { TargetKey } from "./target.ts";
@@ -87,13 +87,8 @@ export function renderDocumentIndexes(
     const targetSettings = settings.get(targetKey);
     const createComparator = targetSettings?.comparator ?? defaultComparator;
     const comparator = createComparator(resolveLocales(root, element, file));
-    const createHeading = targetSettings?.heading ?? defaultHeading;
-    renderIndex(
-      sort(index, comparator),
-      element,
-      target.id,
-      createHeading({ h }),
-      targetSettings?.preamble?.({ h })(),
-    );
+    const sorted = sort(index, comparator);
+    const renderer = targetSettings?.renderer?.({ h, index: sorted }) ?? {};
+    renderIndex(sorted, element, target.id, renderer);
   }
 }

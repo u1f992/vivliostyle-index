@@ -9,7 +9,7 @@ import VFile from "vfile";
 
 import { renderDocumentIndexes } from "../src/document-renderer.ts";
 import type { BuiltIndex } from "../src/index-builder.ts";
-import type { CreateHeading } from "../src/render.ts";
+import type { CreateRenderer } from "../src/render.ts";
 import { defaultComparator } from "../src/sort.ts";
 import type { Index } from "../src/model.ts";
 import { createTargetKey } from "../src/target.ts";
@@ -102,7 +102,7 @@ void test("uses a comparator configured for the target", () => {
   );
 });
 
-void test("uses a heading generator configured for the target", () => {
+void test("uses a renderer configured for the target", () => {
   const documentPath = "/publication/index.md";
   const target = { path: documentPath, id: "index" };
   const targetKey = createTargetKey(target);
@@ -111,9 +111,9 @@ void test("uses a heading generator configured for the target", () => {
     index: createIndex(),
     sourcePaths: ["/publication/chapter.md"],
   };
-  const createHeading: CreateHeading =
-    ({ h }) =>
-    (tier, props, children) => [h(tier === "group" ? "h2" : "span", { ...props }, [...children])];
+  const createRenderer: CreateRenderer = ({ h }) => ({
+    group: () => ({ heading: (contents) => [h("h2", contents)] }),
+  });
   const root = fromHtml('<nav id="index" role="doc-index"></nav>');
   const file = VFile({ path: documentPath });
 
@@ -121,7 +121,7 @@ void test("uses a heading generator configured for the target", () => {
     root,
     documentPath,
     new Map([[targetKey, builtIndex]]),
-    new Map([[targetKey, { heading: createHeading }]]),
+    new Map([[targetKey, { renderer: createRenderer }]]),
     file,
   );
 

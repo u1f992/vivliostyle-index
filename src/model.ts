@@ -80,6 +80,16 @@ export type Group = HasKey & ParentOf<Entry>;
 
 export type Index = ParentOf<Group>;
 
+export type ReadonlySubentry = Readonly<{
+  key: Key;
+  locators: readonly Locator[];
+  xrefPreferred: readonly Xref[];
+  xrefRelated: readonly Xref[];
+}>;
+export type ReadonlyEntry = ReadonlySubentry & Readonly<{ children: readonly ReadonlySubentry[] }>;
+export type ReadonlyGroup = Readonly<{ key: Key; children: readonly ReadonlyEntry[] }>;
+export type ReadonlyIndex = Readonly<{ children: readonly ReadonlyGroup[] }>;
+
 export function getChild<TChild extends HasKey>(parent: ParentOf<TChild>, key: Key) {
   return parent.children.find(
     (child) => child.key.html === key.html && child.key.reading === key.reading,

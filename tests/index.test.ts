@@ -16,6 +16,7 @@ import VFile from "vfile";
 import {
   createIndexPlugin,
   defaultComparator,
+  indexRenderer,
   logMessages,
   type FileSystem,
   type Settings,
@@ -177,27 +178,15 @@ void test("puts a configured preamble into the index it names", () => {
     settings: [
       [
         { path: "index.md", id: "subject" },
-        {
-          preamble:
-            ({ h }) =>
-            () => [h("p", "事項")],
-        },
+        { renderer: ({ h }) => ({ preamble: () => [h("p", "事項")] }) },
       ],
       [
         { path: "index.md", id: "person" },
-        {
-          preamble:
-            ({ h }) =>
-            () => [h("p", "人名")],
-        },
+        { renderer: ({ h }) => ({ preamble: () => [h("p", "人名")] }) },
       ],
       [
         { path: "index.md", id: "unnamed" },
-        {
-          preamble:
-            ({ h }) =>
-            () => [h("p", "出ない")],
-        },
+        { renderer: ({ h }) => ({ preamble: () => [h("p", "出ない")] }) },
       ],
     ],
   });
@@ -240,9 +229,12 @@ void test("keeps a target without the doc-index role and warns", () => {
   assert.strictEqual(getAttribute(target, "data-index-result"), null);
 });
 
-void test("generates headings with the generator configured for the target", () => {
+void test("renders the preamble and headings through one renderer factory", () => {
   const files = {
-    "/publication/chapter.md": '<span data-index="index.md?q=a!Apple#index">Apple</span>',
+    "/publication/chapter.md": [
+      '<span data-index="index.md?q=z!Zebra#index">Zebra</span>',
+      '<span data-index="index.md?q=a!Apple#index">Apple</span>',
+    ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
   const { processor } = createProcessor({
@@ -252,11 +244,11 @@ void test("generates headings with the generator configured for the target", () 
       [
         { path: "index.md", id: "index" },
         {
-          heading:
-            ({ h }) =>
-            (tier, props, children) => [
-              h(tier === "group" ? "h2" : "span", { ...props }, [...children]),
-            ],
+          renderer: ({ h, index }) =>
+            indexRenderer({
+              preamble: () => [h("p", index.children.map(({ key }) => key.reading).join(","))],
+              group: () => ({ heading: (contents) => [h("h2", contents)] }),
+            }),
         },
       ],
     ],
@@ -266,12 +258,16 @@ void test("generates headings with the generator configured for the target", () 
   processor.runSync(root, { path: "/publication/index.md" });
 
   assert.deepStrictEqual(
+    selectAll("#index > p", root).map((preamble) => toText(preamble)),
+    ["a,z"],
+  );
+  assert.deepStrictEqual(
     selectAll(`${GROUP} > h2`, root).map((heading) => toText(heading)),
-    ["a"],
+    ["a", "z"],
   );
   assert.deepStrictEqual(
     selectAll(ENTRY_KEY, root).map((heading) => toText(heading)),
-    ["Apple"],
+    ["Apple", "Zebra"],
   );
 });
 
