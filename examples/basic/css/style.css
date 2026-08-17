@@ -55,11 +55,7 @@
       content: "";
     }
 
-    a:not([data-index-role="range"])::before {
-      content: target-counter(attr(href), page);
-    }
-
-    [data-index-range-start]::before {
+    [data-index-role="page-number"]::before {
       /*
        * target-counter() accepts <string> | <url>, but an attr()-tainted value
        * cannot be used as <url>. Leaving attr() untyped supplies <string>.
@@ -68,15 +64,11 @@
        * https://drafts.csswg.org/css-content-3/#funcdef-target-counter
        * https://drafts.csswg.org/css-values-5/#attr-security
        */
-      content: target-counter(attr(data-index-range-start), page);
+      content: target-counter(attr(data-index-page-target), page);
     }
 
     [data-index-role="range-separator"]::before {
       content: "–";
-    }
-
-    [data-index-range-end]::before {
-      content: target-counter(attr(data-index-range-end), page);
     }
   }
 

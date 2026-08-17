@@ -390,7 +390,26 @@ void test("exposes an emptied index on the target element", () => {
   assert.strictEqual(getAttribute(target, "data-index-result"), '{"children":[]}');
 });
 
-void test("renders a range locator as one start link containing its three parts", () => {
+void test("renders a page locator as a page link containing one page number", () => {
+  const target = createTarget();
+
+  renderIndex(index, target, "index", {});
+  const root = rootOf(target);
+
+  const page = select(`${LOCATORS} > li > a[data-index-role="page"]`, root);
+  assert.ok(page);
+  assert.strictEqual(getAttribute(page, "href"), "003.html#a");
+  assert.deepStrictEqual(
+    page.children.flatMap((child) => (child.type === "element" ? [child.tagName] : [])),
+    ["span"],
+  );
+  const pageNumber = select('[data-index-role="page-number"]', page);
+  assert.ok(pageNumber);
+  assert.strictEqual(getAttribute(pageNumber, "data-index-page-target"), "003.html#a");
+  assert.strictEqual(toText(page), "");
+});
+
+void test("renders a range locator as one start link containing two page numbers", () => {
   const target = createTarget();
   const indexWithRange: Index = {
     children: [
@@ -425,14 +444,11 @@ void test("renders a range locator as one start link containing its three parts"
     range.children.flatMap((child) => (child.type === "element" ? [child.tagName] : [])),
     ["span", "span", "span"],
   );
-  assert.strictEqual(
-    getAttribute(select("[data-index-range-start]", range)!, "data-index-range-start"),
-    "104.html#a",
+  const pageNumbers = selectAll('[data-index-role="page-number"]', range);
+  assert.deepStrictEqual(
+    pageNumbers.map((pageNumber) => getAttribute(pageNumber, "data-index-page-target")),
+    ["104.html#a", "110.html#b"],
   );
   assert.ok(select('[data-index-role="range-separator"]', range));
-  assert.strictEqual(
-    getAttribute(select("[data-index-range-end]", range)!, "data-index-range-end"),
-    "110.html#b",
-  );
   assert.strictEqual(toText(range), "");
 });

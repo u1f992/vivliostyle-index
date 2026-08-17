@@ -327,14 +327,17 @@ const renderLocatorList = (
   );
 };
 
+const defaultPageNumber = (target: string): hast.Element =>
+  h("span", { dataIndexRole: "page-number", dataIndexPageTarget: target });
+
 const defaultLocatorAnchor = ({ location }: Locator): Content =>
   location.type === "page"
-    ? [h("a", { href: location.href })]
+    ? [h("a", { dataIndexRole: "page", href: location.href }, [defaultPageNumber(location.href)])]
     : [
         h("a", { dataIndexRole: "range", href: location.start }, [
-          h("span", { dataIndexRangeStart: location.start }),
+          defaultPageNumber(location.start),
           h("span", { dataIndexRole: "range-separator" }),
-          h("span", { dataIndexRangeEnd: location.end }),
+          defaultPageNumber(location.end),
         ]),
       ];
 

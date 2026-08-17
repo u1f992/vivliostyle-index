@@ -83,9 +83,10 @@ function locatorLinks(root: hast.Root | hast.Element, targetId = "index") {
 }
 
 function rangeEnds(root: hast.Root | hast.Element, targetId = "index") {
-  return selectAll(`${locatorsOf(targetId)} [data-index-range-end]`, root).map((end) =>
-    getAttribute(end, "data-index-range-end"),
-  );
+  return selectAll(
+    `${locatorsOf(targetId)} [data-index-role="range"] > [data-index-role="page-number"]:last-child`,
+    root,
+  ).map((end) => getAttribute(end, "data-index-page-target"));
 }
 
 function groupHeadings(root: hast.Root | hast.Element) {
