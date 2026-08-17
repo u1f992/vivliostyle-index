@@ -20,27 +20,28 @@ void test("keeps a template without slots as it is", () => {
   assert.strictEqual(toText(root), "x");
 });
 
-void test("uses the original nodes for the first slot and copies for the rest", () => {
+void test("shares the original nodes between slots", () => {
   const content = [h("a", { href: "#a" })];
   const filled = fillSlot("<b><slot></slot></b><i><slot></slot></i>", content);
-  const root = asRoot(filled);
-  const links = selectAll("a", root);
+  const [bold, italic] = filled;
 
-  assert.deepStrictEqual(
-    links.map((link) => getAttribute(link, "href")),
-    ["#a", "#a"],
-  );
-  assert.strictEqual(links[0], content[0]);
-  assert.notStrictEqual(links[0], links[1]);
+  assert.ok(bold?.type === "element" && italic?.type === "element");
+  // The nodes are intentionally shared between slots.
+  // A later transformer can turn shared nodes into clones, but cloned nodes cannot be restored to a unique shared structure.
+  // Defining the general cloning requirements this plugin should satisfy is also difficult.
+  assert.strictEqual(bold.children[0], content[0]);
+  assert.strictEqual(italic.children[0], content[0]);
+  assert.strictEqual(getAttribute(bold.children[0] as hast.Element, "href"), "#a");
+  assert.strictEqual(getAttribute(italic.children[0] as hast.Element, "href"), "#a");
 });
 
-void test("uses depth-first order to select the original insertion", () => {
+void test("shares the original nodes across nesting levels", () => {
   const content = [h("a", { href: "#a" })];
-  const root = asRoot(fillSlot("<span><slot></slot></span><slot></slot>", content));
-  const links = selectAll("a", root);
+  const [span, direct] = fillSlot("<span><slot></slot></span><slot></slot>", content);
 
-  assert.strictEqual(select("span > a", root), content[0]);
-  assert.notStrictEqual(links[1], content[0]);
+  assert.ok(span?.type === "element");
+  assert.strictEqual(span.children[0], content[0]);
+  assert.strictEqual(direct, content[0]);
 });
 
 void test("ignores slots nested inside a slot", () => {
@@ -67,7 +68,7 @@ void test("passes uncloneable data through the identity template", () => {
   );
 });
 
-void test("copies nodes with uncloneable data into explicit templates", () => {
+void test("shares nodes with uncloneable data between explicit slots", () => {
   const callback = () => {};
   const metadata = { callback };
   const content = [h("a", { href: "#a" })];
@@ -78,14 +79,14 @@ void test("copies nodes with uncloneable data into explicit templates", () => {
 
   assert.ok(first?.type === "element" && second?.type === "element");
   assert.strictEqual(first, content[0]);
-  assert.notStrictEqual(first, second);
+  assert.strictEqual(first, second);
   assert.strictEqual(first.data, content[0]?.data);
-  assert.notStrictEqual(first.data, second.data);
+  assert.strictEqual(first.data, second.data);
   assert.strictEqual(first.data?.metadata, metadata);
   assert.strictEqual(second.data?.metadata, metadata);
 });
 
-void test("copies template contents independently between slots", () => {
+void test("shares template contents between slots", () => {
   const content = [h("template", [h("span", "x")])];
 
   const filled = fillSlot("<slot></slot><slot></slot>", content);
@@ -93,8 +94,9 @@ void test("copies template contents independently between slots", () => {
 
   assert.ok(first?.type === "element" && second?.type === "element");
   assert.strictEqual(first, content[0]);
-  assert.notStrictEqual(first.content, second.content);
-  assert.notStrictEqual(first.content?.children[0], second.content?.children[0]);
+  assert.strictEqual(first, second);
+  assert.strictEqual(first.content, second.content);
+  assert.strictEqual(first.content?.children[0], second.content?.children[0]);
 });
 
 void test("leaves a slot inside a template element unfilled", () => {
