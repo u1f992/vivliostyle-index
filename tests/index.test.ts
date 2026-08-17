@@ -16,7 +16,6 @@ import VFile from "vfile";
 import {
   createIndexPlugin,
   defaultComparator,
-  indexRenderer,
   logMessages,
   type FileSystem,
   type Settings,
@@ -244,11 +243,10 @@ void test("renders the preamble and headings through one renderer factory", () =
       [
         { path: "index.md", id: "index" },
         {
-          renderer: ({ h, index }) =>
-            indexRenderer({
-              preamble: () => [h("p", index.children.map(({ key }) => key.reading).join(","))],
-              group: () => ({ heading: (contents) => [h("h2", contents)] }),
-            }),
+          renderer: ({ h, index }) => ({
+            preamble: () => [h("p", index.children.map(({ key }) => key.reading).join(","))],
+            group: () => ({ heading: (contents) => [h("h2", contents)] }),
+          }),
         },
       ],
     ],

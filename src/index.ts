@@ -36,7 +36,6 @@ export type {
   Xref,
   XrefType,
 } from "./model.ts";
-export { indexRenderer } from "./render.ts";
 export type {
   CreateRenderer,
   EntryRenderer,
@@ -45,7 +44,6 @@ export type {
   HeadingRenderer,
   IndexRenderer,
   SubentryRenderer,
-  TaggedElement,
 } from "./render.ts";
 export type { Settings, TargetSettings } from "./settings.ts";
 export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";

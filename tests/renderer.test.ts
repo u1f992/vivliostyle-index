@@ -8,7 +8,7 @@ import { toText } from "hast-util-to-text";
 import { h } from "hastscript";
 
 import type { Index } from "../src/model.ts";
-import { indexRenderer, renderIndex, type IndexRenderer } from "../src/render.ts";
+import { renderIndex, type IndexRenderer } from "../src/render.ts";
 
 const index: Index = {
   children: [
@@ -558,16 +558,30 @@ void test("calls the group list renderer on an index without groups", () => {
   assert.strictEqual(toText(target.children[0] as hast.Element), "該当なし");
 });
 
-void test("links every level through one renderer factory call", () => {
+void test("accepts arbitrary content and empty sequences from renderers", () => {
   const target = createTarget();
-  const renderer = indexRenderer({
+  const renderer: IndexRenderer = {
+    group: ({ group }) => ({
+      self: () => (group.key.reading === "ち" ? [] : [{ type: "text", value: group.key.html }]),
+    }),
+    groupList: ({ groups }) => groups.flatMap(({ children }) => children),
+  };
+
+  renderIndex(index, target, "index", renderer);
+
+  assert.deepStrictEqual(target.children, [{ type: "text", value: "そ" }]);
+});
+
+void test("passes rendered entries and groups to their list renderers", () => {
+  const target = createTarget();
+  const renderer: IndexRenderer = {
     group: () => ({
       entry: () => ({
         heading: (contents) => [h("b", contents)],
       }),
       entryList: ({ entries }) => {
-        const tags: "li"[] = entries.flatMap(({ children }) =>
-          children.map(({ tagName }) => tagName),
+        const tags = entries.flatMap(({ children }) =>
+          children.flatMap((child) => (child.type === "element" ? [child.tagName] : [])),
         );
         return [
           h(
@@ -579,8 +593,8 @@ void test("links every level through one renderer factory call", () => {
       },
     }),
     groupList: ({ groups }) => {
-      const tags: "section"[] = groups.flatMap(({ children }) =>
-        children.map(({ tagName }) => tagName),
+      const tags = groups.flatMap(({ children }) =>
+        children.flatMap((child) => (child.type === "element" ? [child.tagName] : [])),
       );
       return [
         h(
@@ -590,14 +604,7 @@ void test("links every level through one renderer factory call", () => {
         ),
       ];
     },
-  });
-
-  const retained: Parameters<
-    NonNullable<(typeof renderer)["groupList"]>
-  >[0]["groups"][number]["children"][number]["tagName"] = "section";
-  assert.strictEqual(retained, "section");
-  // @ts-expect-error
-  void (retained satisfies "ul");
+  };
 
   renderIndex(index, target, "index", renderer);
   const root = rootOf(target);
@@ -616,9 +623,9 @@ void test("links every level through one renderer factory call", () => {
   );
 });
 
-void test("links the subentry level and hands its list to the entry self", () => {
+void test("passes rendered subentries to the entry renderer", () => {
   const target = createTarget();
-  const renderer = indexRenderer({
+  const renderer: IndexRenderer = {
     group: () => ({
       entry: () => ({
         subentry: () => ({
@@ -631,11 +638,9 @@ void test("links the subentry level and hands its list to the entry self", () =>
           ],
         }),
         subentryList: ({ subentries }) => {
-          const tags: "li"[] = subentries.flatMap(({ children }) =>
-            children.map(({ tagName }) => tagName),
+          const tags = subentries.flatMap(({ children }) =>
+            children.flatMap((child) => (child.type === "element" ? [child.tagName] : [])),
           );
-          // @ts-expect-error
-          void (tags satisfies "ol"[]);
           return [
             h(
               "ul",
@@ -649,7 +654,7 @@ void test("links the subentry level and hands its list to the entry self", () =>
         ],
       }),
     }),
-  });
+  };
 
   renderIndex(createIndexWithSubentry(), target, "index", renderer);
   const root = rootOf(target);
