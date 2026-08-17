@@ -5,5 +5,6 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["."]
+  "include": ["."],
+  "exclude": ["vivliostyle"]
 }

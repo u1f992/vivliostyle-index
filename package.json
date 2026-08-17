@@ -7,7 +7,8 @@
     "lint": "tsc --noEmit --ignoreConfig oxlint.config.ts && oxlint --fix src tests examples/*/vivliostyle.config.ts",
     "format": "tsc --noEmit --ignoreConfig oxfmt.config.ts && oxfmt src tests examples/*/vivliostyle.config.ts",
     "build": "tsc",
-    "test": "tsc --project tests && node --test \"tests/**/*.test.ts\""
+    "test": "tsc --project tests && node --test \"tests/**/*.test.ts\"",
+    "test:vivliostyle": "npm run build && npm test --workspace vivliostyle-e2e"
   },
   "keywords": [],
   "author": "Koutaro Mukai",
@@ -18,7 +19,8 @@
   },
   "type": "module",
   "workspaces": [
-    "examples/*"
+    "examples/*",
+    "tests/vivliostyle"
   ],
   "devDependencies": {
     "@types/deep-equal": "^1.0.4",
