@@ -17,100 +17,124 @@ import { h } from "hastscript";
 
 type Elem = hast.Element;
 type ElemContent = hast.ElementContent;
-type RoleProperties<Role extends string> = Readonly<{ dataIndexRole: Role }>;
-type IdProperties = Readonly<{ id: string }>;
+type Content = ElemContent[];
+type ElementProperties = Readonly<hast.Properties>;
+type RoleProperties<Role extends string> = Readonly<hast.Properties & { dataIndexRole: Role }>;
+type IdProperties = Readonly<hast.Properties & { id: string }>;
 type IndexProperties = Readonly<hast.Properties & { dataIndexResult: string }>;
 
-export type HeadingRenderer = (contents: ElemContent[]) => ElemContent[];
+export type FillTemplate = (content: Content) => Content;
 
-export type EntryRendererBase = Readonly<{
-  heading?: HeadingRenderer;
-  locatorAnchors?: (context: { locator: Locator }) => ElemContent[];
-  locator?(context: {
-    locator: Locator;
-    anchors: ElemContent[];
-    children: ElemContent[];
-  }): ElemContent[];
-  locatorList?(parts: {
-    properties: RoleProperties<"locator-list">;
-    locators: { locator: Locator; children: ElemContent[] }[];
-  }): ElemContent[];
-  xrefAnchor?: (context: {
-    xref: Xref;
-    type: XrefType;
-    href: string;
-    contents: ElemContent[];
-  }) => ElemContent[];
-  xref?(context: {
-    xref: Xref;
-    type: XrefType;
-    anchors: ElemContent[];
-    children: ElemContent[];
-  }): ElemContent[];
-  xrefPreferredList?(parts: {
-    properties: RoleProperties<"xref-preferred">;
-    xrefs: { xref: Xref; children: ElemContent[] }[];
-  }): ElemContent[];
-  xrefRelatedList?(parts: {
-    properties: RoleProperties<"xref-related">;
-    xrefs: { xref: Xref; children: ElemContent[] }[];
-  }): ElemContent[];
+export type RenderedGroup = Readonly<{ group: Key; content: Content }>;
+export type RenderedEntry = Readonly<{ entry: Key; content: Content }>;
+export type RenderedSubentry = Readonly<{ subentry: Key; content: Content }>;
+export type RenderedLocator = Readonly<{ locator: Locator; content: Content }>;
+export type RenderedXref = Readonly<{ xref: Xref; content: Content }>;
+
+export type PreambleRenderer = () => Content;
+
+export type HeadingRenderer = (parts: {
+  properties: ElementProperties;
+  contents: Content;
+}) => Content;
+
+export type LocatorRenderer = (parts: {
+  locator: Locator;
+  properties: ElementProperties;
+  anchor: Content;
+  children: Content;
+  fillTemplate: FillTemplate;
+}) => Content;
+
+export type XrefRenderer = (parts: {
+  xref: Xref;
+  type: XrefType;
+  href: string;
+  properties: ElementProperties;
+  contents: Content;
+  anchor: Content;
+  children: Content;
+  fillTemplate: FillTemplate;
+}) => Content;
+
+export type LocatorListRenderer = Readonly<{
+  locator?: LocatorRenderer;
+  self?(parts: { locators: readonly RenderedLocator[] }): Content;
 }>;
 
-export type SubentryRenderer = EntryRendererBase &
-  Readonly<{
-    self?(parts: {
-      properties: IdProperties;
-      heading: ElemContent[];
-      locatorList: ElemContent[];
-      xrefPreferredList: ElemContent[];
-      xrefRelatedList: ElemContent[];
-    }): ElemContent[];
-  }>;
+export type XrefListRenderer = Readonly<{
+  xref?: XrefRenderer;
+  self?(parts: { xrefs: readonly RenderedXref[] }): Content;
+}>;
 
-export type EntryRenderer = EntryRendererBase &
-  Readonly<{
-    subentry?: (context: { subentry: ReadonlySubentry; id: string }) => SubentryRenderer;
-    subentryList?(parts: {
-      properties: RoleProperties<"subentry-list">;
-      subentries: { subentry: ReadonlySubentry; children: ElemContent[] }[];
-    }): ElemContent[];
-    self?(parts: {
-      properties: IdProperties;
-      heading: ElemContent[];
-      locatorList: ElemContent[];
-      xrefPreferredList: ElemContent[];
-      xrefRelatedList: ElemContent[];
-      subentryList: ElemContent[];
-    }): ElemContent[];
-  }>;
+export type SubentryRenderer = Readonly<{
+  heading?: HeadingRenderer;
+  locatorList?(context: { properties: RoleProperties<"locator-list"> }): LocatorListRenderer;
+  xrefPreferredList?(context: {
+    type: "preferred";
+    properties: RoleProperties<"xref-preferred">;
+  }): XrefListRenderer;
+  xrefRelatedList?(context: {
+    type: "related";
+    properties: RoleProperties<"xref-related">;
+  }): XrefListRenderer;
+  self?(parts: {
+    heading: Content;
+    locatorList: Content;
+    xrefPreferredList: Content;
+    xrefRelatedList: Content;
+  }): Content;
+}>;
+
+export type SubentryListRenderer = Readonly<{
+  subentry?(context: { subentry: Key; properties: IdProperties }): SubentryRenderer;
+  self?(parts: { subentries: readonly RenderedSubentry[] }): Content;
+}>;
+
+export type EntryRenderer = Readonly<{
+  heading?: HeadingRenderer;
+  locatorList?(context: { properties: RoleProperties<"locator-list"> }): LocatorListRenderer;
+  xrefPreferredList?(context: {
+    type: "preferred";
+    properties: RoleProperties<"xref-preferred">;
+  }): XrefListRenderer;
+  xrefRelatedList?(context: {
+    type: "related";
+    properties: RoleProperties<"xref-related">;
+  }): XrefListRenderer;
+  subentryList?(context: { properties: RoleProperties<"subentry-list"> }): SubentryListRenderer;
+  self?(parts: {
+    heading: Content;
+    locatorList: Content;
+    xrefPreferredList: Content;
+    xrefRelatedList: Content;
+    subentryList: Content;
+  }): Content;
+}>;
+
+export type EntryListRenderer = Readonly<{
+  entry?(context: { entry: Key; properties: IdProperties }): EntryRenderer;
+  self?(parts: { entries: readonly RenderedEntry[] }): Content;
+}>;
 
 export type GroupRenderer = Readonly<{
   heading?: HeadingRenderer;
-  entry?: (context: { entry: ReadonlyEntry; id: string }) => EntryRenderer;
-  entryList?(parts: {
-    properties: RoleProperties<"entry-list">;
-    entries: { entry: ReadonlyEntry; children: ElemContent[] }[];
-  }): ElemContent[];
-  self?(parts: {
-    properties: RoleProperties<"group">;
-    heading: ElemContent[];
-    entryList: ElemContent[];
-  }): ElemContent[];
+  entryList?(context: { properties: RoleProperties<"entry-list"> }): EntryListRenderer;
+  self?(parts: { heading: Content; entryList: Content }): Content;
+}>;
+
+export type GroupListRenderer = Readonly<{
+  group?(context: { group: Key; properties: RoleProperties<"group"> }): GroupRenderer;
+  self?(parts: { groups: readonly RenderedGroup[] }): Content;
 }>;
 
 export type IndexRenderer = Readonly<{
-  preamble?: () => ElemContent[];
-  group?: (context: { group: ReadonlyGroup }) => GroupRenderer;
-  groupList?(parts: {
-    properties: RoleProperties<"group-list">;
-    groups: { group: ReadonlyGroup; children: ElemContent[] }[];
-  }): ElemContent[];
-  self?(parts: {
-    properties: IndexProperties;
-    preamble: ElemContent[];
-    groupList: ElemContent[];
-  }): { properties: hast.Properties; children: ElemContent[] };
+  preamble?: PreambleRenderer;
+  groupList?(context: { properties: RoleProperties<"group-list"> }): GroupListRenderer;
+  self?(parts: { properties: IndexProperties; preamble: Content; groupList: Content }): {
+    properties: hast.Properties;
+    children: Content;
+  };
 }>;
 
 export type CreateRenderer = (context: { h: typeof h; index: ReadonlyIndex }) => IndexRenderer;
@@ -122,20 +146,25 @@ export function renderIndex(
   renderer: IndexRenderer,
 ): void {
   const preamble = renderer.preamble?.() ?? [];
-  const groups = index.children.map((group) => ({
-    group,
-    children: renderGroup(group, indexId, renderer.group?.({ group }) ?? {}),
-  }));
   const groupListProperties = { dataIndexRole: "group-list" } as const;
+  const groupListRenderer = renderer.groupList?.({ properties: groupListProperties }) ?? {};
+  const groups = index.children.map((group) => {
+    const properties = { dataIndexRole: "group" } as const;
+    const groupRenderer = groupListRenderer.group?.({ group: group.key, properties }) ?? {};
+    return {
+      group: group.key,
+      content: renderGroup(group, properties, indexId, groupRenderer),
+    };
+  });
   const groupList =
-    renderer.groupList?.({ properties: groupListProperties, groups }) ??
+    groupListRenderer.self?.({ groups }) ??
     (groups.length === 0
       ? []
       : [
           h(
             "div",
             groupListProperties,
-            groups.flatMap(({ children }) => children),
+            groups.flatMap(({ content }) => content),
           ),
         ]);
   const indexProperties = { ...target.properties, dataIndexResult: JSON.stringify(index) };
@@ -164,35 +193,41 @@ const encodeIdSegment = (value: string): string => {
 const headingId = (indexId: string, keys: readonly Key[]): string =>
   [indexId, ...keys.flatMap(({ reading, html }) => [reading, html])].map(encodeIdSegment).join(".");
 
-const renderHeading = (key: Key, heading: HeadingRenderer | undefined): ElemContent[] => {
+type HeadingOwner = Readonly<{ heading?: HeadingRenderer }>;
+
+const renderHeading = (key: Key, renderer: HeadingOwner): Content => {
+  const properties = {};
   const contents = parseFragment(key.html);
-  return heading?.(contents) ?? [h("span", contents)];
+  return renderer.heading?.({ properties, contents }) ?? [h("span", properties, contents)];
 };
 
 const renderGroup = (
   group: ReadonlyGroup,
+  properties: RoleProperties<"group">,
   indexId: string,
   renderer: GroupRenderer,
-): ElemContent[] => {
-  const heading = renderHeading(group.key, renderer.heading);
+): Content => {
+  const heading = renderHeading(group.key, renderer);
+  const entryListProperties = { dataIndexRole: "entry-list" } as const;
+  const entryListRenderer = renderer.entryList?.({ properties: entryListProperties }) ?? {};
   const entries = group.children.map((entry) => {
-    const id = headingId(indexId, [group.key, entry.key]);
+    const entryProperties = { id: headingId(indexId, [group.key, entry.key]) };
+    const entryRenderer =
+      entryListRenderer.entry?.({ entry: entry.key, properties: entryProperties }) ?? {};
     return {
-      entry,
-      children: renderEntry(entry, id, indexId, group.key, renderer.entry?.({ entry, id }) ?? {}),
+      entry: entry.key,
+      content: renderEntry(entry, entryProperties, indexId, group.key, entryRenderer),
     };
   });
-  const entryListProperties = { dataIndexRole: "entry-list" } as const;
-  const entryList = renderer.entryList?.({ properties: entryListProperties, entries }) ?? [
+  const entryList = entryListRenderer.self?.({ entries }) ?? [
     h(
       "ul",
       entryListProperties,
-      entries.flatMap(({ children }) => children),
+      entries.flatMap(({ content }) => content),
     ),
   ];
-  const properties = { dataIndexRole: "group" } as const;
   return (
-    renderer.self?.({ properties, heading, entryList }) ?? [
+    renderer.self?.({ heading, entryList }) ?? [
       h("section", properties, [...heading, ...entryList]),
     ]
   );
@@ -200,42 +235,41 @@ const renderGroup = (
 
 const renderEntry = (
   entry: ReadonlyEntry,
-  id: string,
+  properties: IdProperties,
   indexId: string,
   groupKey: Key,
   renderer: EntryRenderer,
-): ElemContent[] => {
-  const heading = renderHeading(entry.key, renderer.heading);
+): Content => {
+  const heading = renderHeading(entry.key, renderer);
   const locatorList = renderLocatorList(entry.locators, renderer);
-  const xrefPreferredList = renderXrefList(entry.xrefPreferred, "preferred", indexId, renderer);
-  const xrefRelatedList = renderXrefList(entry.xrefRelated, "related", indexId, renderer);
+  const xrefPreferredList = renderPreferredXrefList(entry.xrefPreferred, indexId, renderer);
+  const xrefRelatedList = renderRelatedXrefList(entry.xrefRelated, indexId, renderer);
+  const subentryListProperties = { dataIndexRole: "subentry-list" } as const;
+  const subentryListRenderer =
+    renderer.subentryList?.({ properties: subentryListProperties }) ?? {};
   const subentries = entry.children.map((subentry) => {
-    const subentryId = headingId(indexId, [groupKey, entry.key, subentry.key]);
+    const subentryProperties = {
+      id: headingId(indexId, [groupKey, entry.key, subentry.key]),
+    };
+    const subentryRenderer =
+      subentryListRenderer.subentry?.({
+        subentry: subentry.key,
+        properties: subentryProperties,
+      }) ?? {};
     return {
-      subentry,
-      children: renderSubentry(
-        subentry,
-        subentryId,
-        indexId,
-        renderer.subentry?.({ subentry, id: subentryId }) ?? {},
-      ),
+      subentry: subentry.key,
+      content: renderSubentry(subentry, subentryProperties, indexId, subentryRenderer),
     };
   });
-  const subentryListProperties = { dataIndexRole: "subentry-list" } as const;
-  const subentryList = renderer.subentryList?.({
-    properties: subentryListProperties,
-    subentries,
-  }) ?? [
+  const subentryList = subentryListRenderer.self?.({ subentries }) ?? [
     h(
       "ul",
       subentryListProperties,
-      subentries.flatMap(({ children }) => children),
+      subentries.flatMap(({ content }) => content),
     ),
   ];
-  const properties = { id };
   return (
     renderer.self?.({
-      properties,
       heading,
       locatorList,
       xrefPreferredList,
@@ -255,43 +289,45 @@ const renderEntry = (
 
 const renderSubentry = (
   subentry: ReadonlySubentry,
-  id: string,
+  properties: IdProperties,
   indexId: string,
   renderer: SubentryRenderer,
-): ElemContent[] => {
-  const heading = renderHeading(subentry.key, renderer.heading);
+): Content => {
+  const heading = renderHeading(subentry.key, renderer);
   const locatorList = renderLocatorList(subentry.locators, renderer);
-  const xrefPreferredList = renderXrefList(subentry.xrefPreferred, "preferred", indexId, renderer);
-  const xrefRelatedList = renderXrefList(subentry.xrefRelated, "related", indexId, renderer);
-  const properties = { id };
+  const xrefPreferredList = renderPreferredXrefList(subentry.xrefPreferred, indexId, renderer);
+  const xrefRelatedList = renderRelatedXrefList(subentry.xrefRelated, indexId, renderer);
   return (
-    renderer.self?.({ properties, heading, locatorList, xrefPreferredList, xrefRelatedList }) ?? [
+    renderer.self?.({ heading, locatorList, xrefPreferredList, xrefRelatedList }) ?? [
       h("li", properties, [...heading, ...locatorList, ...xrefPreferredList, ...xrefRelatedList]),
     ]
   );
 };
 
+type EntryContentRenderer = EntryRenderer | SubentryRenderer;
+
 const renderLocatorList = (
   locators: readonly Locator[],
-  renderer: EntryRendererBase,
-): ElemContent[] => {
+  renderer: EntryContentRenderer,
+): Content => {
+  const properties = { dataIndexRole: "locator-list" } as const;
+  const listRenderer = renderer.locatorList?.({ properties }) ?? {};
   const rendered = locators.map((locator) => ({
     locator,
-    children: renderLocatorItem(locator, renderer),
+    content: renderLocator(locator, listRenderer),
   }));
-  const properties = { dataIndexRole: "locator-list" } as const;
   return (
-    renderer.locatorList?.({ properties, locators: rendered }) ?? [
+    listRenderer.self?.({ locators: rendered }) ?? [
       h(
         "ol",
         properties,
-        rendered.flatMap(({ children }) => children),
+        rendered.flatMap(({ content }) => content),
       ),
     ]
   );
 };
 
-const defaultLocatorAnchors = ({ location }: Locator): ElemContent[] =>
+const defaultLocatorAnchor = ({ location }: Locator): Content =>
   location.type === "page"
     ? [h("a", { href: location.href })]
     : [
@@ -302,10 +338,19 @@ const defaultLocatorAnchors = ({ location }: Locator): ElemContent[] =>
         ]),
       ];
 
-const renderLocatorItem = (locator: Locator, renderer: EntryRendererBase): ElemContent[] => {
-  const anchors = renderer.locatorAnchors?.({ locator }) ?? defaultLocatorAnchors(locator);
-  const children = locator.template === undefined ? anchors : fillSlot(locator.template, anchors);
-  return renderer.locator?.({ locator, anchors, children }) ?? [h("li", children)];
+const createFillTemplate = (template: string | undefined): FillTemplate =>
+  template === undefined ? (content) => content : (content) => fillSlot(template, content);
+
+const renderLocator = (locator: Locator, renderer: LocatorListRenderer): Content => {
+  const properties = {};
+  const anchor = defaultLocatorAnchor(locator);
+  const fillTemplate = createFillTemplate(locator.template);
+  const children = fillTemplate(anchor);
+  return (
+    renderer.locator?.({ locator, properties, anchor, children, fillTemplate }) ?? [
+      h("li", properties, children),
+    ]
+  );
 };
 
 const xrefId = (indexId: string, { group, entry, subentry }: EntryAddress): string =>
@@ -313,50 +358,57 @@ const xrefId = (indexId: string, { group, entry, subentry }: EntryAddress): stri
     ? headingId(indexId, [group, entry])
     : headingId(indexId, [group, entry, subentry]);
 
-const renderXrefList = (
+const renderPreferredXrefList = (
+  xrefs: readonly Xref[],
+  indexId: string,
+  renderer: EntryContentRenderer,
+): Content => {
+  const type = "preferred";
+  const properties = { dataIndexRole: "xref-preferred" } as const;
+  const listRenderer = renderer.xrefPreferredList?.({ type, properties }) ?? {};
+  return renderXrefs(xrefs, type, indexId, properties, listRenderer);
+};
+
+const renderRelatedXrefList = (
+  xrefs: readonly Xref[],
+  indexId: string,
+  renderer: EntryContentRenderer,
+): Content => {
+  const type = "related";
+  const properties = { dataIndexRole: "xref-related" } as const;
+  const listRenderer = renderer.xrefRelatedList?.({ type, properties }) ?? {};
+  return renderXrefs(xrefs, type, indexId, properties, listRenderer);
+};
+
+const renderXrefs = (
   xrefs: readonly Xref[],
   type: XrefType,
   indexId: string,
-  renderer: EntryRendererBase,
-): ElemContent[] => {
+  properties: RoleProperties<"xref-preferred"> | RoleProperties<"xref-related">,
+  renderer: XrefListRenderer,
+): Content => {
   const rendered = xrefs.map((xref) => ({
     xref,
-    children: renderXrefItem(xref, type, indexId, renderer),
+    content: renderXref(xref, type, indexId, renderer),
   }));
-  if (type === "preferred") {
-    const properties = { dataIndexRole: "xref-preferred" } as const;
-    return (
-      renderer.xrefPreferredList?.({ properties, xrefs: rendered }) ?? [
-        h(
-          "ul",
-          properties,
-          rendered.flatMap(({ children }) => children),
-        ),
-      ]
-    );
-  }
-  const properties = { dataIndexRole: "xref-related" } as const;
   return (
-    renderer.xrefRelatedList?.({ properties, xrefs: rendered }) ?? [
+    renderer.self?.({ xrefs: rendered }) ?? [
       h(
         "ul",
         properties,
-        rendered.flatMap(({ children }) => children),
+        rendered.flatMap(({ content }) => content),
       ),
     ]
   );
 };
 
-const defaultXrefAnchor = (href: string, contents: ElemContent[]): ElemContent[] => [
-  h("a", { href }, contents),
-];
-
-const renderXrefItem = (
+const renderXref = (
   xref: Xref,
   type: XrefType,
   indexId: string,
-  renderer: EntryRendererBase,
-): ElemContent[] => {
+  renderer: XrefListRenderer,
+): Content => {
+  const properties = {};
   const { target, template } = xref;
   const href = `#${xrefId(indexId, target)}`;
   const contents =
@@ -367,8 +419,19 @@ const renderXrefItem = (
           h("span"),
           h("span", parseFragment(target.subentry.html)),
         ];
-  const anchors =
-    renderer.xrefAnchor?.({ xref, type, href, contents }) ?? defaultXrefAnchor(href, contents);
-  const children = template === undefined ? anchors : fillSlot(template, anchors);
-  return renderer.xref?.({ xref, type, anchors, children }) ?? [h("li", children)];
+  const anchor = [h("a", { href }, contents)];
+  const fillTemplate = createFillTemplate(template);
+  const children = fillTemplate(anchor);
+  return (
+    renderer.xref?.({
+      xref,
+      type,
+      href,
+      properties,
+      contents,
+      anchor,
+      children,
+      fillTemplate,
+    }) ?? [h("li", properties, children)]
+  );
 };

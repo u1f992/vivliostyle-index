@@ -38,12 +38,25 @@ export type {
 } from "./model.ts";
 export type {
   CreateRenderer,
+  EntryListRenderer,
   EntryRenderer,
-  EntryRendererBase,
+  FillTemplate,
+  GroupListRenderer,
   GroupRenderer,
   HeadingRenderer,
   IndexRenderer,
+  LocatorListRenderer,
+  LocatorRenderer,
+  PreambleRenderer,
+  RenderedEntry,
+  RenderedGroup,
+  RenderedLocator,
+  RenderedSubentry,
+  RenderedXref,
+  SubentryListRenderer,
   SubentryRenderer,
+  XrefListRenderer,
+  XrefRenderer,
 } from "./render.ts";
 export type { Settings, TargetSettings } from "./settings.ts";
 export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";

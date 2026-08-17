@@ -112,7 +112,9 @@ void test("uses a renderer configured for the target", () => {
     sourcePaths: ["/publication/chapter.md"],
   };
   const createRenderer: CreateRenderer = ({ h }) => ({
-    group: () => ({ heading: (contents) => [h("h2", contents)] }),
+    groupList: () => ({
+      group: () => ({ heading: ({ contents }) => [h("h2", contents)] }),
+    }),
   });
   const root = fromHtml('<nav id="index" role="doc-index"></nav>');
   const file = VFile({ path: documentPath });

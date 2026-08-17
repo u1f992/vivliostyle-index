@@ -8,7 +8,16 @@ import { toText } from "hast-util-to-text";
 import { h } from "hastscript";
 
 import type { Index } from "../src/model.ts";
-import { renderIndex, type IndexRenderer } from "../src/render.ts";
+import {
+  renderIndex,
+  type EntryRenderer,
+  type GroupRenderer,
+  type HeadingRenderer,
+  type IndexRenderer,
+  type LocatorListRenderer,
+  type SubentryRenderer,
+  type XrefListRenderer,
+} from "../src/render.ts";
 
 const index: Index = {
   children: [
@@ -30,6 +39,37 @@ const index: Index = {
         {
           key: { html: "相続", reading: "そうぞく" },
           children: [],
+          locators: [{ location: { type: "page", href: "088.html#b" } }],
+          xrefPreferred: [],
+          xrefRelated: [],
+        },
+      ],
+    },
+  ],
+};
+
+const indexWithSubentry: Index = {
+  children: [
+    {
+      key: { html: "そ", reading: "そ" },
+      children: [
+        {
+          key: { html: "相続", reading: "そうぞく" },
+          children: [
+            {
+              key: { html: "一身専属", reading: "いっしんせんぞく" },
+              locators: [{ location: { type: "page", href: "076.html#c" } }],
+              xrefPreferred: [
+                {
+                  target: {
+                    group: { html: "そ", reading: "そ" },
+                    entry: { html: "相続", reading: "そうぞく" },
+                  },
+                },
+              ],
+              xrefRelated: [],
+            },
+          ],
           locators: [{ location: { type: "page", href: "088.html#b" } }],
           xrefPreferred: [],
           xrefRelated: [],
@@ -63,163 +103,664 @@ function childTagNames(element: hast.Element): string[] {
   return element.children.flatMap((child) => (child.type === "element" ? [child.tagName] : []));
 }
 
-function createIndexWithSubentry(): Index {
-  return {
-    children: [
-      {
-        key: { html: "そ", reading: "そ" },
-        children: [
-          {
-            key: { html: "相続", reading: "そうぞく" },
-            children: [
-              {
-                key: { html: "一身専属", reading: "いっしんせんぞく" },
-                locators: [{ location: { type: "page", href: "076.html#c" } }],
-                xrefPreferred: [],
-                xrefRelated: [],
-              },
-            ],
-            locators: [{ location: { type: "page", href: "088.html#b" } }],
-            xrefPreferred: [],
-            xrefRelated: [],
-          },
-        ],
-      },
-    ],
-  };
-}
+void test("renders a preamble with and without groups", () => {
+  const populated = createTarget();
+  const empty = createTarget();
+  const renderer: IndexRenderer = { preamble: () => [h("p", "凡例"), h("hr")] };
 
-void test("puts a preamble before the list", () => {
-  const target = createTarget();
+  renderIndex(index, populated, "index", renderer);
+  renderIndex({ children: [] }, empty, "index", renderer);
 
-  renderIndex(index, target, "index", { preamble: () => [h("p", "凡例"), h("hr")] });
-
-  assert.deepStrictEqual(childTagNames(target), ["p", "hr", "div"]);
-  assert.strictEqual(toText(target.children[0] as hast.Element), "凡例");
+  assert.deepStrictEqual(childTagNames(populated), ["p", "hr", "div"]);
+  assert.deepStrictEqual(childTagNames(empty), ["p", "hr"]);
 });
 
-void test("keeps a preamble on an index without groups", () => {
+void test("calls group list self for an index without groups", () => {
   const target = createTarget();
+  const renderer: IndexRenderer = {
+    groupList: ({ properties }) => ({
+      self: ({ groups }) => (groups.length === 0 ? [h("p", "該当なし")] : [h("div", properties)]),
+    }),
+  };
 
-  renderIndex({ children: [] }, target, "index", { preamble: () => [h("p", "凡例")] });
+  renderIndex({ children: [] }, target, "index", renderer);
 
   assert.deepStrictEqual(childTagNames(target), ["p"]);
-  assert.strictEqual(getAttribute(target, "data-index-result"), '{"children":[]}');
+  assert.strictEqual(toText(target.children[0]!), "該当なし");
 });
 
-void test("renders every heading through the renderer of its level", () => {
+void test("renders headings through the leaf functions at every level", () => {
   const target = createTarget();
   const levels: string[] = [];
   const heading =
-    (level: string) =>
-    (contents: hast.ElementContent[]): hast.ElementContent[] => {
+    (level: string): HeadingRenderer =>
+    ({ properties, contents }) => {
       levels.push(level);
-      const key = h(level === "group" ? "h2" : "span", { dataLevel: level }, contents);
-      return level === "group" ? [key, h("hr")] : [key];
+      return [h(level === "group" ? "h2" : "span", { ...properties, dataLevel: level }, contents)];
     };
   const renderer: IndexRenderer = {
-    group: () => ({
-      heading: heading("group"),
-      entry: () => ({
-        heading: heading("entry"),
-        subentry: () => ({ heading: heading("subentry") }),
+    groupList: () => ({
+      group: () => ({
+        heading: heading("group"),
+        entryList: () => ({
+          entry: () => ({
+            heading: heading("entry"),
+            subentryList: () => ({
+              subentry: () => ({ heading: heading("subentry") }),
+            }),
+          }),
+        }),
       }),
     }),
   };
 
-  renderIndex(createIndexWithSubentry(), target, "index", renderer);
+  renderIndex(indexWithSubentry, target, "index", renderer);
   const root = rootOf(target);
 
   assert.deepStrictEqual(levels, ["group", "entry", "subentry"]);
-  assert.deepStrictEqual(selectAll(GROUP, root).map(childTagNames), [["h2", "hr", "ul"]]);
   assert.deepStrictEqual(
-    selectAll(`${GROUP} > h2`, root).map((key) => toText(key)),
+    selectAll(`${GROUP} > h2`, root).map((element) => toText(element)),
     ["そ"],
   );
   assert.deepStrictEqual(
-    selectAll(`${ENTRY} > span[data-level="entry"]`, root).map((key) => toText(key)),
+    selectAll(`${ENTRY} > span[data-level="entry"]`, root).map((element) => toText(element)),
     ["相続"],
   );
   assert.deepStrictEqual(
-    selectAll(`${SUBENTRY} > span[data-level="subentry"]`, root).map((key) => toText(key)),
+    selectAll(`${SUBENTRY} > span[data-level="subentry"]`, root).map((element) => toText(element)),
     ["一身専属"],
   );
 });
 
-void test("renders each element through its self renderer", () => {
+void test("passes composed properties when each structural renderer is created", () => {
+  const target = createTarget();
+  const roles = new Set<string>();
+  const ids = new Set<string>();
+  const keys: string[] = [];
+  let dataIndexResult = "";
+  const renderer: IndexRenderer = {
+    self: ({ properties }) => {
+      dataIndexResult = properties.dataIndexResult;
+      return { properties, children: [] };
+    },
+    groupList: ({ properties }) => {
+      roles.add(properties.dataIndexRole);
+      return {
+        group: ({ group, properties }) => {
+          keys.push(group.reading);
+          roles.add(properties.dataIndexRole);
+          return {
+            entryList: ({ properties }) => {
+              roles.add(properties.dataIndexRole);
+              return {
+                entry: ({ entry, properties }) => {
+                  keys.push(entry.reading);
+                  ids.add(properties.id);
+                  return {
+                    locatorList: ({ properties }) => {
+                      roles.add(properties.dataIndexRole);
+                      return {};
+                    },
+                    xrefPreferredList: ({ type, properties }) => {
+                      assert.strictEqual(type, "preferred");
+                      roles.add(properties.dataIndexRole);
+                      return {};
+                    },
+                    xrefRelatedList: ({ type, properties }) => {
+                      assert.strictEqual(type, "related");
+                      roles.add(properties.dataIndexRole);
+                      return {};
+                    },
+                    subentryList: ({ properties }) => {
+                      roles.add(properties.dataIndexRole);
+                      return {
+                        subentry: ({ subentry, properties }) => {
+                          keys.push(subentry.reading);
+                          ids.add(properties.id);
+                          return {
+                            locatorList: ({ properties }) => {
+                              roles.add(properties.dataIndexRole);
+                              return {};
+                            },
+                            xrefPreferredList: ({ properties }) => {
+                              roles.add(properties.dataIndexRole);
+                              return {};
+                            },
+                            xrefRelatedList: ({ properties }) => {
+                              roles.add(properties.dataIndexRole);
+                              return {};
+                            },
+                          };
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+
+  renderIndex(indexWithSubentry, target, "index", renderer);
+
+  assert.strictEqual(dataIndexResult, JSON.stringify(indexWithSubentry));
+  assert.deepStrictEqual(keys, ["そ", "そうぞく", "いっしんせんぞく"]);
+  assert.deepStrictEqual(
+    roles,
+    new Set([
+      "group-list",
+      "group",
+      "entry-list",
+      "locator-list",
+      "xref-preferred",
+      "xref-related",
+      "subentry-list",
+    ]),
+  );
+  assert.strictEqual(ids.size, 2);
+  assert.ok([...ids].every((id) => id.length > 0));
+});
+
+void test("keeps the receiver of entry and subentry list factory methods", () => {
+  const target = createTarget();
+  let entryCalls = 0;
+  let subentryCalls = 0;
+  const subentryRenderer: SubentryRenderer = {
+    locatorList() {
+      assert.strictEqual(this, subentryRenderer);
+      subentryCalls += 1;
+      return {};
+    },
+    xrefPreferredList() {
+      assert.strictEqual(this, subentryRenderer);
+      subentryCalls += 1;
+      return {};
+    },
+    xrefRelatedList() {
+      assert.strictEqual(this, subentryRenderer);
+      subentryCalls += 1;
+      return {};
+    },
+  };
+  const entryRenderer: EntryRenderer = {
+    locatorList() {
+      assert.strictEqual(this, entryRenderer);
+      entryCalls += 1;
+      return {};
+    },
+    xrefPreferredList() {
+      assert.strictEqual(this, entryRenderer);
+      entryCalls += 1;
+      return {};
+    },
+    xrefRelatedList() {
+      assert.strictEqual(this, entryRenderer);
+      entryCalls += 1;
+      return {};
+    },
+    subentryList: () => ({ subentry: () => subentryRenderer }),
+  };
+  const renderer: IndexRenderer = {
+    groupList: () => ({
+      group: () => ({
+        entryList: () => ({ entry: () => entryRenderer }),
+      }),
+    }),
+  };
+
+  renderIndex(indexWithSubentry, target, "index", renderer);
+
+  assert.strictEqual(entryCalls, 3);
+  assert.strictEqual(subentryCalls, 3);
+});
+
+void test("keeps the receiver of every leaf renderer", () => {
+  const target = createTarget();
+  const leafCalls: string[] = [];
+  const locatorListRenderer: LocatorListRenderer = {
+    locator({ children }) {
+      assert.strictEqual(this, locatorListRenderer);
+      leafCalls.push("locator");
+      return [h("li", children)];
+    },
+  };
+  const xrefListRenderer: XrefListRenderer = {
+    xref({ children }) {
+      assert.strictEqual(this, xrefListRenderer);
+      leafCalls.push("xref");
+      return [h("li", children)];
+    },
+  };
+  const subentryRenderer: SubentryRenderer = {
+    heading({ contents }) {
+      assert.strictEqual(this, subentryRenderer);
+      leafCalls.push("subentry-heading");
+      return [h("span", contents)];
+    },
+    locatorList: () => locatorListRenderer,
+    xrefPreferredList: () => xrefListRenderer,
+  };
+  const entryRenderer: EntryRenderer = {
+    heading({ contents }) {
+      assert.strictEqual(this, entryRenderer);
+      leafCalls.push("entry-heading");
+      return [h("span", contents)];
+    },
+    locatorList: () => locatorListRenderer,
+    subentryList: () => ({ subentry: () => subentryRenderer }),
+  };
+  const groupRenderer: GroupRenderer = {
+    heading({ contents }) {
+      assert.strictEqual(this, groupRenderer);
+      leafCalls.push("group-heading");
+      return [h("span", contents)];
+    },
+    entryList: () => ({ entry: () => entryRenderer }),
+  };
+  const renderer: IndexRenderer = {
+    groupList: () => ({ group: () => groupRenderer }),
+  };
+
+  renderIndex(indexWithSubentry, target, "index", renderer);
+
+  assert.deepStrictEqual(leafCalls, [
+    "group-heading",
+    "entry-heading",
+    "locator",
+    "subentry-heading",
+    "locator",
+    "xref",
+  ]);
+});
+
+void test("renders every branch through its self function", () => {
   const target = createTarget();
   const renderer: IndexRenderer = {
-    group: ({ group }) => ({
-      entry: () => ({
-        self: ({ properties, heading, locatorList }) => [
-          h("li", { id: properties.id, dataSelf: "entry" }, [...heading, ...locatorList]),
+    groupList: ({ properties: groupListProperties }) => ({
+      group: ({ group, properties: groupProperties }) => ({
+        entryList: ({ properties: entryListProperties }) => ({
+          entry: ({ properties: entryProperties }) => ({
+            self: ({ heading, locatorList }) => [
+              h("li", { ...entryProperties, dataSelf: "entry" }, [...heading, ...locatorList]),
+            ],
+          }),
+          self: ({ entries }) => [
+            h(
+              "ol",
+              entryListProperties,
+              entries.flatMap(({ content }) => content),
+            ),
+          ],
+        }),
+        self: ({ heading, entryList }) => [
+          h("article", { ...groupProperties, dataReading: group.reading }, [
+            ...heading,
+            ...entryList,
+          ]),
         ],
       }),
-      self: ({ properties, heading, entryList }) => [
-        h("section", { ...properties, dataReading: group.key.reading }, [...heading, ...entryList]),
+      self: ({ groups }) => [
+        h(
+          "main",
+          { ...groupListProperties, dataGroups: String(groups.length) },
+          groups.flatMap(({ content }) => content),
+        ),
       ],
     }),
-    groupList: ({ properties, groups }) => [
-      h(
-        "div",
-        { ...properties, dataGroups: String(groups.length) },
-        groups.flatMap(({ children }) => children),
-      ),
-    ],
   };
 
   renderIndex(index, target, "index", renderer);
   const root = rootOf(target);
 
   assert.deepStrictEqual(
-    selectAll("#index > div[data-groups='2'] > section", root).map((group) =>
-      getAttribute(group, "data-reading"),
-    ),
+    selectAll("#index > main > article", root).map((group) => getAttribute(group, "data-reading")),
     ["ち", "そ"],
   );
-  const entries = selectAll("li[data-self='entry']", root);
-  assert.strictEqual(entries.length, 2);
-  assert.deepStrictEqual(entries.map(childTagNames), [
-    ["span", "ol"],
-    ["span", "ol"],
-  ]);
-  assert.ok(entries.every((entry) => getAttribute(entry, "id") !== null));
+  assert.strictEqual(
+    selectAll("#index > main[data-groups='2'] > article > ol > li", root).length,
+    2,
+  );
+  assert.ok(
+    selectAll("li[data-self='entry']", root).every((entry) => getAttribute(entry, "id") !== null),
+  );
 });
 
-void test("renders a subentry through its self renderer", () => {
+void test("passes model keys and rendered content to list self functions", () => {
   const target = createTarget();
   const renderer: IndexRenderer = {
-    group: () => ({
-      entry: () => ({
-        subentry: () => ({
-          locatorAnchors: ({ locator }) =>
-            locator.location.type === "page"
-              ? [h("a", { href: locator.location.href, dataSub: "" })]
-              : [],
-          self: ({ properties, heading, locatorList }) => [
-            h("li", { ...properties, dataSelf: "subentry" }, [...heading, ...locatorList]),
+    groupList: ({ properties: groupListProperties }) => ({
+      group: ({ group, properties: groupProperties }) => ({
+        entryList: ({ properties: entryListProperties }) => ({
+          entry: () => ({
+            heading: ({ contents }) => [h("b", contents)],
+          }),
+          self: ({ entries }) => [
+            h(
+              "ul",
+              {
+                ...entryListProperties,
+                dataEntries: entries.map(({ entry }) => entry.reading).join(","),
+              },
+              entries.flatMap(({ content }) => content),
+            ),
           ],
+        }),
+        self: ({ heading, entryList }) => [
+          h("section", { ...groupProperties, id: group.reading }, [...heading, ...entryList]),
+        ],
+      }),
+      self: ({ groups }) => [
+        h(
+          "nav",
+          groups.map(({ group }) => h("a", { href: `#${group.reading}` })),
+        ),
+        h(
+          "div",
+          groupListProperties,
+          groups.flatMap(({ content }) => content),
+        ),
+      ],
+    }),
+  };
+
+  renderIndex(index, target, "index", renderer);
+  const root = rootOf(target);
+
+  assert.deepStrictEqual(
+    selectAll("#index > nav > a", root).map((link) => getAttribute(link, "href")),
+    ["#ち", "#そ"],
+  );
+  assert.deepStrictEqual(
+    selectAll("#index > div > section > ul", root).map((list) =>
+      getAttribute(list, "data-entries"),
+    ),
+    ["ちょさくけん", "そうぞく"],
+  );
+  assert.deepStrictEqual(
+    selectAll("#index > div > section > ul > li > b", root).map((element) => toText(element)),
+    ["著作権", "相続"],
+  );
+});
+
+void test("calls every nested list self function for an empty list", () => {
+  const target = createTarget();
+  const renderer: IndexRenderer = {
+    groupList: () => ({
+      group: () => ({
+        entryList: () => ({
+          entry: () => ({
+            locatorList: () => ({
+              self: ({ locators }) => [h("p", `locators:${locators.length}`)],
+            }),
+            xrefPreferredList: () => ({
+              self: ({ xrefs }) => [h("p", `preferred:${xrefs.length}`)],
+            }),
+            xrefRelatedList: () => ({
+              self: ({ xrefs }) => [h("p", `related:${xrefs.length}`)],
+            }),
+            subentryList: () => ({
+              self: ({ subentries }) => [h("p", `subentries:${subentries.length}`)],
+            }),
+          }),
+        }),
+      }),
+    }),
+  };
+  const emptyLists: Index = {
+    children: [
+      {
+        key: { html: "あ", reading: "あ" },
+        children: [
+          {
+            key: { html: "A", reading: "あ" },
+            locators: [],
+            xrefPreferred: [],
+            xrefRelated: [],
+            children: [],
+          },
+        ],
+      },
+    ],
+  };
+
+  renderIndex(emptyLists, target, "index", renderer);
+
+  assert.deepStrictEqual(
+    selectAll(`${ENTRY} > p`, rootOf(target)).map((element) => toText(element)),
+    ["locators:0", "preferred:0", "related:0", "subentries:0"],
+  );
+});
+
+void test("exposes default and template-applied locator content to a locator leaf", () => {
+  const target = createTarget();
+  const rangeIndex: Index = {
+    children: [
+      {
+        key: { html: "し", reading: "し" },
+        children: [
+          {
+            key: { html: "自由利用", reading: "じゆうりよう" },
+            locators: [
+              {
+                location: { type: "range", start: "104.html#a", end: "110.html#b" },
+                template: "<strong><slot></slot></strong>",
+              },
+            ],
+            xrefPreferred: [],
+            xrefRelated: [],
+            children: [],
+          },
+        ],
+      },
+    ],
+  };
+  const renderer: IndexRenderer = {
+    groupList: () => ({
+      group: () => ({
+        entryList: () => ({
+          entry: () => ({
+            locatorList: ({ properties: listProperties }) => ({
+              locator: ({ locator, properties, anchor, children, fillTemplate }) => {
+                assert.strictEqual(anchor.length, 1);
+                assert.strictEqual(children[0]?.type, "element");
+                const content =
+                  locator.location.type === "page"
+                    ? anchor
+                    : [
+                        h("a", { href: locator.location.start }),
+                        h("span", "から"),
+                        h("a", { href: locator.location.end }),
+                      ];
+                return [h("li", { ...properties, dataLegacy: "" }, fillTemplate(content))];
+              },
+              self: ({ locators }) => [
+                h(
+                  "ol",
+                  listProperties,
+                  locators.flatMap(({ content }) => content),
+                ),
+              ],
+            }),
+          }),
         }),
       }),
     }),
   };
 
-  renderIndex(createIndexWithSubentry(), target, "index", renderer);
+  renderIndex(rangeIndex, target, "index", renderer);
   const root = rootOf(target);
 
-  const subentries = selectAll("li[data-self='subentry']", root);
-  assert.strictEqual(subentries.length, 1);
-  assert.deepStrictEqual(subentries.map(childTagNames), [["span", "ol"]]);
-  assert.ok(getAttribute(subentries[0]!, "id") !== null);
   assert.deepStrictEqual(
-    selectAll("li[data-self='subentry'] > ol > li > a[data-sub]", root).map((link) =>
+    selectAll(`${LOCATORS} > li[data-legacy] > strong > *`, root).map((element) => element.tagName),
+    ["a", "span", "a"],
+  );
+  assert.deepStrictEqual(
+    selectAll(`${LOCATORS} > li[data-legacy] > strong > a`, root).map((link) =>
+      getAttribute(link, "href"),
+    ),
+    ["104.html#a", "110.html#b"],
+  );
+});
+
+void test("exposes cross-reference metadata and template application to an xref leaf", () => {
+  const target = createTarget();
+  const xrefIndex: Index = {
+    children: [
+      {
+        key: { html: "し", reading: "し" },
+        children: [
+          {
+            key: { html: "自由利用", reading: "じゆうりよう" },
+            locators: [],
+            xrefPreferred: [
+              {
+                target: {
+                  group: { html: "そ", reading: "そ" },
+                  entry: { html: "相続", reading: "そうぞく" },
+                  subentry: { html: "一身専属", reading: "いっしんせんぞく" },
+                },
+                template: "<em><slot></slot></em>",
+              },
+            ],
+            xrefRelated: [],
+            children: [],
+          },
+        ],
+      },
+    ],
+  };
+  const renderer: IndexRenderer = {
+    groupList: () => ({
+      group: () => ({
+        entryList: () => ({
+          entry: () => ({
+            xrefPreferredList: ({ type: listType, properties: listProperties }) => ({
+              xref: ({
+                xref,
+                type,
+                href,
+                properties,
+                contents,
+                anchor,
+                children,
+                fillTemplate,
+              }) => {
+                assert.strictEqual(listType, "preferred");
+                assert.strictEqual(type, "preferred");
+                assert.strictEqual(xref.target.subentry?.reading, "いっしんせんぞく");
+                assert.ok(href.startsWith("#"));
+                assert.strictEqual(contents.length, 3);
+                assert.strictEqual(anchor.length, 1);
+                assert.strictEqual(children[0]?.type, "element");
+                return [
+                  h(
+                    "li",
+                    { ...properties, dataXref: type },
+                    fillTemplate([h("a", { href, dataCustom: "" }, contents)]),
+                  ),
+                ];
+              },
+              self: ({ xrefs }) => [
+                h(
+                  "ul",
+                  listProperties,
+                  xrefs.flatMap(({ content }) => content),
+                ),
+              ],
+            }),
+          }),
+        }),
+      }),
+    }),
+  };
+
+  renderIndex(xrefIndex, target, "index", renderer);
+  const root = rootOf(target);
+
+  assert.strictEqual(
+    selectAll(`${XREF_PREFERRED} > li[data-xref="preferred"] > em > a[data-custom]`, root).length,
+    1,
+  );
+  assert.strictEqual(
+    toText(selectAll(`${XREF_PREFERRED} > li > em > a`, root)[0]!),
+    "相続一身専属",
+  );
+});
+
+void test("uses the same leaf and list contracts for subentries", () => {
+  const target = createTarget();
+  const renderer: IndexRenderer = {
+    groupList: () => ({
+      group: () => ({
+        entryList: () => ({
+          entry: () => ({
+            subentryList: ({ properties: subentryListProperties }) => ({
+              subentry: ({ subentry, properties: subentryProperties }) => ({
+                locatorList: ({ properties: locatorListProperties }) => ({
+                  locator: ({ children, properties }) => [
+                    h("li", { ...properties, dataItem: subentry.reading }, children),
+                  ],
+                  self: ({ locators }) => [
+                    h(
+                      "ol",
+                      locatorListProperties,
+                      locators.flatMap(({ content }) => content),
+                    ),
+                  ],
+                }),
+                xrefPreferredList: ({ properties: xrefListProperties }) => ({
+                  xref: ({ href, contents, properties }) => [
+                    h("li", properties, [h("a", { href, dataSubXref: "" }, contents)]),
+                  ],
+                  self: ({ xrefs }) => [
+                    h(
+                      "ul",
+                      xrefListProperties,
+                      xrefs.flatMap(({ content }) => content),
+                    ),
+                  ],
+                }),
+                self: ({ heading, locatorList, xrefPreferredList }) => [
+                  h("li", { ...subentryProperties, dataSelf: "subentry" }, [
+                    ...heading,
+                    ...locatorList,
+                    ...xrefPreferredList,
+                  ]),
+                ],
+              }),
+              self: ({ subentries }) => [
+                h(
+                  "ul",
+                  subentryListProperties,
+                  subentries.flatMap(({ content }) => content),
+                ),
+              ],
+            }),
+          }),
+        }),
+      }),
+    }),
+  };
+
+  renderIndex(indexWithSubentry, target, "index", renderer);
+  const root = rootOf(target);
+
+  assert.deepStrictEqual(
+    selectAll(`${SUBENTRY} > ol > li[data-item] > a`, root).map((link) =>
       getAttribute(link, "href"),
     ),
     ["076.html#c"],
   );
+  assert.deepStrictEqual(
+    selectAll(`${SUBENTRY} > ul > li > a[data-sub-xref]`, root).map((element) => toText(element)),
+    ["相続"],
+  );
 });
 
-void test("takes the target properties from the index self renderer", () => {
+void test("lets index self replace target properties and children", () => {
   const target = createTarget();
   target.properties = { ...target.properties, dataIndex: "kept?" };
   const renderer: IndexRenderer = {
@@ -240,425 +781,17 @@ void test("takes the target properties from the index self renderer", () => {
     getAttribute(target, "data-result-length"),
     String(JSON.stringify(index).length),
   );
-  assert.deepStrictEqual(childTagNames(target), ["div"]);
 });
 
-void test("passes composed properties to structural renderers", () => {
+void test("accepts arbitrary content and empty output at every branch", () => {
   const target = createTarget();
-  const roles = new Set<string>();
-  const ids = new Set<string>();
-  let dataIndexResult = "";
   const renderer: IndexRenderer = {
-    self: ({ properties }) => {
-      dataIndexResult = properties.dataIndexResult;
-      return { properties, children: [] };
-    },
-    groupList: ({ properties }) => {
-      roles.add(properties.dataIndexRole);
-      return [];
-    },
-    group: () => ({
-      self: ({ properties }) => {
-        roles.add(properties.dataIndexRole);
-        return [];
-      },
-      entryList: ({ properties }) => {
-        roles.add(properties.dataIndexRole);
-        return [];
-      },
-      entry: () => ({
-        self: ({ properties }) => {
-          ids.add(properties.id);
-          return [];
-        },
-        locatorList: ({ properties }) => {
-          roles.add(properties.dataIndexRole);
-          return [];
-        },
-        xrefPreferredList: ({ properties }) => {
-          roles.add(properties.dataIndexRole);
-          return [];
-        },
-        xrefRelatedList: ({ properties }) => {
-          roles.add(properties.dataIndexRole);
-          return [];
-        },
-        subentryList: ({ properties }) => {
-          roles.add(properties.dataIndexRole);
-          return [];
-        },
-        subentry: () => ({
-          self: ({ properties }) => {
-            ids.add(properties.id);
-            return [];
-          },
-          locatorList: ({ properties }) => {
-            roles.add(properties.dataIndexRole);
-            return [];
-          },
-          xrefPreferredList: ({ properties }) => {
-            roles.add(properties.dataIndexRole);
-            return [];
-          },
-          xrefRelatedList: ({ properties }) => {
-            roles.add(properties.dataIndexRole);
-            return [];
-          },
-        }),
+    groupList: () => ({
+      group: ({ group }) => ({
+        self: () => (group.reading === "ち" ? [] : [{ type: "text", value: group.html }]),
       }),
+      self: ({ groups }) => groups.flatMap(({ content }) => content),
     }),
-  };
-
-  const renderedIndex = createIndexWithSubentry();
-  renderIndex(renderedIndex, target, "index", renderer);
-
-  assert.strictEqual(dataIndexResult, JSON.stringify(renderedIndex));
-  assert.deepStrictEqual(
-    roles,
-    new Set([
-      "group-list",
-      "group",
-      "entry-list",
-      "locator-list",
-      "xref-preferred",
-      "xref-related",
-      "subentry-list",
-    ]),
-  );
-  assert.strictEqual(ids.size, 2);
-  assert.ok([...ids].every((id) => id.length > 0));
-});
-
-void test("applies the instruction template to the anchors its renderer returns", () => {
-  const target = createTarget();
-  const indexWithTemplates: Index = {
-    children: [
-      {
-        key: { html: "し", reading: "し" },
-        children: [
-          {
-            key: { html: "自由利用", reading: "じゆうりよう" },
-            locators: [
-              {
-                location: { type: "range", start: "104.html#a", end: "110.html#b" },
-                template: "<strong><slot></slot></strong>",
-              },
-            ],
-            xrefPreferred: [
-              {
-                target: {
-                  group: { html: "し", reading: "し" },
-                  entry: { html: "自由利用", reading: "じゆうりよう" },
-                },
-                template: "<em><slot></slot></em>",
-              },
-            ],
-            xrefRelated: [],
-            children: [],
-          },
-        ],
-      },
-    ],
-  };
-  const renderer: IndexRenderer = {
-    group: () => ({
-      entry: () => ({
-        locatorAnchors: ({ locator }) =>
-          locator.location.type === "range"
-            ? [
-                h("a", { href: locator.location.start }),
-                h("span", "から"),
-                h("a", { href: locator.location.end }),
-              ]
-            : [],
-        xrefAnchor: ({ href, contents }) => [h("a", { href, dataXref: "" }, contents)],
-      }),
-    }),
-  };
-
-  renderIndex(indexWithTemplates, target, "index", renderer);
-  const root = rootOf(target);
-
-  assert.deepStrictEqual(
-    selectAll(`${LOCATORS} > li > strong > span`, root).map((separator) => toText(separator)),
-    ["から"],
-  );
-  assert.strictEqual(selectAll(`${XREF_PREFERRED} > li > em > a[data-xref]`, root).length, 1);
-});
-
-void test("hands the template-applied nodes to the locator and cross-reference renderers", () => {
-  const target = createTarget();
-  const indexWithTemplates: Index = {
-    children: [
-      {
-        key: { html: "し", reading: "し" },
-        children: [
-          {
-            key: { html: "自由利用", reading: "じゆうりよう" },
-            locators: [
-              {
-                location: { type: "page", href: "104.html#a" },
-                template: "<strong><slot></slot></strong>",
-              },
-            ],
-            xrefPreferred: [
-              {
-                target: {
-                  group: { html: "し", reading: "し" },
-                  entry: { html: "自由利用", reading: "じゆうりよう" },
-                },
-                template: "<em><slot></slot></em>",
-              },
-            ],
-            xrefRelated: [],
-            children: [],
-          },
-        ],
-      },
-    ],
-  };
-  const renderer: IndexRenderer = {
-    group: () => ({
-      entry: () => ({
-        locator: ({ children }) => [h("li", { dataItem: "locator" }, children)],
-        xref: ({ type, children }) => [h("li", { dataItem: `xref-${type}` }, children)],
-      }),
-    }),
-  };
-
-  renderIndex(indexWithTemplates, target, "index", renderer);
-  const root = rootOf(target);
-
-  assert.deepStrictEqual(
-    selectAll(`${LOCATORS} > li[data-item="locator"] > strong > a`, root).map((link) =>
-      getAttribute(link, "href"),
-    ),
-    ["104.html#a"],
-  );
-  assert.strictEqual(
-    selectAll(`${XREF_PREFERRED} > li[data-item="xref-preferred"] > em > a`, root).length,
-    1,
-  );
-});
-
-void test("renders every list through its list renderer", () => {
-  const target = createTarget();
-  const indexWithEveryList: Index = {
-    children: [
-      {
-        key: { html: "そ", reading: "そ" },
-        children: [
-          {
-            key: { html: "相続", reading: "そうぞく" },
-            locators: [{ location: { type: "page", href: "088.html#b" } }],
-            xrefPreferred: [
-              {
-                target: {
-                  group: { html: "い", reading: "い" },
-                  entry: { html: "遺産", reading: "いさん" },
-                },
-              },
-            ],
-            xrefRelated: [
-              {
-                target: {
-                  group: { html: "ほ", reading: "ほ" },
-                  entry: { html: "法定相続", reading: "ほうていそうぞく" },
-                },
-              },
-            ],
-            children: [
-              {
-                key: { html: "一身専属", reading: "いっしんせんぞく" },
-                locators: [{ location: { type: "page", href: "076.html#c" } }],
-                xrefPreferred: [],
-                xrefRelated: [],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  };
-  const renderer: IndexRenderer = {
-    group: () => ({
-      entry: () => ({
-        locatorList: ({ properties, locators }) => [
-          h(
-            "ol",
-            { ...properties, dataList: `locators:${locators.length}` },
-            locators.flatMap(({ children }) => children),
-          ),
-        ],
-        xrefPreferredList: ({ properties, xrefs }) => [
-          h(
-            "ul",
-            {
-              ...properties,
-              dataList: `preferred:${xrefs.map(({ xref }) => xref.target.entry.reading).join(",")}`,
-            },
-            xrefs.flatMap(({ children }) => children),
-          ),
-        ],
-        xrefRelatedList: ({ properties, xrefs }) => [
-          h(
-            "ul",
-            {
-              ...properties,
-              dataList: `related:${xrefs.map(({ xref }) => xref.target.entry.reading).join(",")}`,
-            },
-            xrefs.flatMap(({ children }) => children),
-          ),
-        ],
-        subentryList: ({ properties, subentries }) => [
-          h(
-            "ul",
-            {
-              ...properties,
-              dataList: `subentries:${subentries.map(({ subentry }) => subentry.key.reading).join(",")}`,
-            },
-            subentries.flatMap(({ children }) => children),
-          ),
-        ],
-      }),
-    }),
-  };
-
-  renderIndex(indexWithEveryList, target, "index", renderer);
-  const root = rootOf(target);
-
-  assert.deepStrictEqual(
-    selectAll(`${ENTRY} > [data-list]`, root).map((list) => getAttribute(list, "data-list")),
-    ["locators:1", "preferred:いさん", "related:ほうていそうぞく", "subentries:いっしんせんぞく"],
-  );
-  assert.strictEqual(selectAll(`${ENTRY} > [data-list] > li > a`, root).length, 3);
-  assert.strictEqual(selectAll(`${ENTRY} > [data-list] > li[id] > span`, root).length, 1);
-});
-
-void test("calls the nested list renderers when their lists are empty", () => {
-  const target = createTarget();
-  const indexWithVacantLists: Index = {
-    children: [
-      {
-        key: { html: "あ", reading: "あ" },
-        children: [
-          {
-            key: { html: "A", reading: "あ" },
-            locators: [],
-            xrefPreferred: [],
-            xrefRelated: [],
-            children: [],
-          },
-        ],
-      },
-    ],
-  };
-  const renderer: IndexRenderer = {
-    group: () => ({
-      entry: () => ({
-        locatorList: ({ locators }) => [h("p", `locators:${locators.length}`)],
-        xrefPreferredList: ({ xrefs }) => [h("p", `preferred:${xrefs.length}`)],
-        xrefRelatedList: ({ xrefs }) => [h("p", `related:${xrefs.length}`)],
-        subentryList: ({ subentries }) => [h("p", `subentries:${subentries.length}`)],
-      }),
-    }),
-  };
-
-  renderIndex(indexWithVacantLists, target, "index", renderer);
-
-  assert.deepStrictEqual(
-    selectAll(`${ENTRY} > p`, rootOf(target)).map((list) => toText(list)),
-    ["locators:0", "preferred:0", "related:0", "subentries:0"],
-  );
-});
-
-void test("renders an entry list through its renderer alone", () => {
-  const target = createTarget();
-  const renderer: IndexRenderer = {
-    group: () => ({
-      entryList: ({ properties, entries }) => [
-        h(
-          "ul",
-          { ...properties, dataAlone: "" },
-          entries.flatMap(({ children }) => children),
-        ),
-      ],
-    }),
-  };
-
-  renderIndex(index, target, "index", renderer);
-  const root = rootOf(target);
-
-  assert.strictEqual(selectAll(`${GROUP} > ul[data-alone]`, root).length, 2);
-  assert.strictEqual(selectAll(ENTRY, root).length, 2);
-});
-
-void test("pairs rendered fragments with their model nodes in list parts", () => {
-  const target = createTarget();
-  const renderer: IndexRenderer = {
-    groupList: ({ properties, groups }) => [
-      h(
-        "nav",
-        groups.map(({ group }) => h("a", { href: `#${group.key.reading}` })),
-      ),
-      h(
-        "div",
-        properties,
-        groups.flatMap(({ children }) => children),
-      ),
-    ],
-    group: ({ group }) => ({
-      entryList: ({ properties, entries }) => [
-        h(
-          "ul",
-          {
-            ...properties,
-            dataEntries: entries.map(({ entry }) => entry.key.reading).join(","),
-          },
-          entries.flatMap(({ children }) => children),
-        ),
-      ],
-      self: ({ properties, heading, entryList }) => [
-        h("section", { ...properties, id: group.key.reading }, [...heading, ...entryList]),
-      ],
-    }),
-  };
-
-  renderIndex(index, target, "index", renderer);
-  const root = rootOf(target);
-
-  assert.deepStrictEqual(
-    selectAll("#index > nav > a", root).map((link) => getAttribute(link, "href")),
-    ["#ち", "#そ"],
-  );
-  assert.deepStrictEqual(
-    selectAll("#index > div > section > ul", root).map((list) =>
-      getAttribute(list, "data-entries"),
-    ),
-    ["ちょさくけん", "そうぞく"],
-  );
-});
-
-void test("calls the group list renderer on an index without groups", () => {
-  const target = createTarget();
-  const renderer: IndexRenderer = {
-    groupList: ({ properties, groups }) =>
-      groups.length === 0 ? [h("p", "該当なし")] : [h("div", properties)],
-  };
-
-  renderIndex({ children: [] }, target, "index", renderer);
-
-  assert.deepStrictEqual(childTagNames(target), ["p"]);
-  assert.strictEqual(toText(target.children[0] as hast.Element), "該当なし");
-});
-
-void test("accepts arbitrary content and empty sequences from renderers", () => {
-  const target = createTarget();
-  const renderer: IndexRenderer = {
-    group: ({ group }) => ({
-      self: () => (group.key.reading === "ち" ? [] : [{ type: "text", value: group.key.html }]),
-    }),
-    groupList: ({ groups }) => groups.flatMap(({ children }) => children),
   };
 
   renderIndex(index, target, "index", renderer);
@@ -666,293 +799,33 @@ void test("accepts arbitrary content and empty sequences from renderers", () => 
   assert.deepStrictEqual(target.children, [{ type: "text", value: "そ" }]);
 });
 
-void test("passes rendered entries and groups to their list renderers", () => {
+void test("shares one heading leaf between entries and subentries", () => {
   const target = createTarget();
+  const heading: HeadingRenderer = ({ contents }) => [h("span", { dataShared: "" }, contents)];
   const renderer: IndexRenderer = {
-    group: () => ({
-      entry: () => ({
-        heading: (contents) => [h("b", contents)],
-      }),
-      entryList: ({ properties, entries }) => {
-        const tags = entries.flatMap(({ children }) =>
-          children.flatMap((child) => (child.type === "element" ? [child.tagName] : [])),
-        );
-        return [
-          h(
-            "ul",
-            { ...properties, dataTags: tags.join(",") },
-            entries.flatMap(({ children }) => children),
-          ),
-        ];
-      },
-    }),
-    groupList: ({ properties, groups }) => {
-      const tags = groups.flatMap(({ children }) =>
-        children.flatMap((child) => (child.type === "element" ? [child.tagName] : [])),
-      );
-      return [
-        h(
-          "div",
-          { ...properties, dataTags: tags.join(",") },
-          groups.flatMap(({ children }) => children),
-        ),
-      ];
-    },
-  };
-
-  renderIndex(index, target, "index", renderer);
-  const root = rootOf(target);
-
-  assert.strictEqual(
-    getAttribute(selectAll("#index > div", root)[0]!, "data-tags"),
-    "section,section",
-  );
-  assert.deepStrictEqual(
-    selectAll(`${GROUP} > ul`, root).map((list) => getAttribute(list, "data-tags")),
-    ["li", "li"],
-  );
-  assert.deepStrictEqual(
-    selectAll(`${ENTRY} > b`, root).map((key) => toText(key)),
-    ["著作権", "相続"],
-  );
-});
-
-void test("passes rendered subentries to the entry renderer", () => {
-  const target = createTarget();
-  const renderer: IndexRenderer = {
-    group: () => ({
-      entry: () => ({
-        subentry: () => ({
-          locatorList: ({ properties, locators }) => [
-            h(
-              "ol",
-              { ...properties, dataSub: String(locators.length) },
-              locators.flatMap(({ children }) => children),
-            ),
-          ],
-        }),
-        subentryList: ({ properties, subentries }) => {
-          const tags = subentries.flatMap(({ children }) =>
-            children.flatMap((child) => (child.type === "element" ? [child.tagName] : [])),
-          );
-          return [
-            h(
-              "ul",
-              { ...properties, dataTags: tags.join(",") },
-              subentries.flatMap(({ children }) => children),
-            ),
-          ];
-        },
-        self: ({ properties, heading, subentryList }) => [
-          h("li", { ...properties, dataSelf: "entry" }, [...heading, ...subentryList]),
-        ],
-      }),
-    }),
-  };
-
-  renderIndex(createIndexWithSubentry(), target, "index", renderer);
-  const root = rootOf(target);
-
-  const entries = selectAll("li[data-self='entry']", root);
-  assert.deepStrictEqual(entries.map(childTagNames), [["span", "ul"]]);
-  assert.deepStrictEqual(
-    selectAll(`li[data-self='entry'] > ul${roleOf("subentry-list")}`, root).map((list) =>
-      getAttribute(list, "data-tags"),
-    ),
-    ["li"],
-  );
-  assert.deepStrictEqual(
-    selectAll("li[data-self='entry'] > ul > li > ol[data-sub]", root).map((list) =>
-      getAttribute(list, "data-sub"),
-    ),
-    ["1"],
-  );
-});
-
-void test("renders subentry cross-references through the subentry renderers", () => {
-  const target = createTarget();
-  const indexWithSubentryXref: Index = {
-    children: [
-      {
-        key: { html: "そ", reading: "そ" },
-        children: [
-          {
-            key: { html: "相続", reading: "そうぞく" },
-            locators: [{ location: { type: "page", href: "088.html#b" } }],
-            xrefPreferred: [],
-            xrefRelated: [],
-            children: [
-              {
-                key: { html: "一身専属", reading: "いっしんせんぞく" },
-                locators: [],
-                xrefPreferred: [
-                  {
-                    target: {
-                      group: { html: "そ", reading: "そ" },
-                      entry: { html: "相続", reading: "そうぞく" },
-                    },
-                  },
-                ],
-                xrefRelated: [],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  };
-  const renderer: IndexRenderer = {
-    group: () => ({
-      entry: () => ({
-        subentry: () => ({
-          xrefAnchor: ({ href, contents }) => [h("a", { href, dataSubXref: "" }, contents)],
-          xrefPreferredList: ({ properties, xrefs }) => [
-            h(
-              "ul",
-              { ...properties, dataCount: String(xrefs.length) },
-              xrefs.flatMap(({ children }) => children),
-            ),
-          ],
+    groupList: () => ({
+      group: () => ({
+        entryList: () => ({
+          entry: () => ({
+            heading,
+            subentryList: () => ({
+              subentry: () => ({ heading }),
+            }),
+          }),
         }),
       }),
     }),
   };
 
-  renderIndex(indexWithSubentryXref, target, "index", renderer);
-  const root = rootOf(target);
-
-  const links = selectAll(`${SUBENTRY} > ul[data-count="1"] > li > a[data-sub-xref]`, root);
-  assert.deepStrictEqual(
-    links.map((link) => toText(link)),
-    ["相続"],
-  );
-  assert.ok(links.every((link) => getAttribute(link, "href")?.startsWith("#")));
-});
-
-void test("renders subentry locators and related cross-references through the subentry renderers", () => {
-  const target = createTarget();
-  const indexWithSubentryLists: Index = {
-    children: [
-      {
-        key: { html: "そ", reading: "そ" },
-        children: [
-          {
-            key: { html: "相続", reading: "そうぞく" },
-            locators: [{ location: { type: "page", href: "088.html#b" } }],
-            xrefPreferred: [],
-            xrefRelated: [],
-            children: [
-              {
-                key: { html: "一身専属", reading: "いっしんせんぞく" },
-                locators: [{ location: { type: "page", href: "076.html#c" } }],
-                xrefPreferred: [],
-                xrefRelated: [
-                  {
-                    target: {
-                      group: { html: "そ", reading: "そ" },
-                      entry: { html: "相続", reading: "そうぞく" },
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  };
-  const renderer: IndexRenderer = {
-    group: () => ({
-      entry: () => ({
-        subentry: () => ({
-          locator: ({ children }) => [h("li", { dataItem: "sub-locator" }, children)],
-          locatorList: ({ properties, locators }) => [
-            h(
-              "ol",
-              { ...properties, dataList: `sub-locators:${locators.length}` },
-              locators.flatMap(({ children }) => children),
-            ),
-          ],
-          xref: ({ type, children }) => [h("li", { dataItem: `sub-xref-${type}` }, children)],
-          xrefRelatedList: ({ properties, xrefs }) => [
-            h(
-              "ul",
-              { ...properties, dataList: `sub-related:${xrefs.length}` },
-              xrefs.flatMap(({ children }) => children),
-            ),
-          ],
-        }),
-      }),
-    }),
-  };
-
-  renderIndex(indexWithSubentryLists, target, "index", renderer);
+  renderIndex(indexWithSubentry, target, "index", renderer);
   const root = rootOf(target);
 
   assert.deepStrictEqual(
-    selectAll(
-      `${SUBENTRY} > ol[data-list="sub-locators:1"] > li[data-item="sub-locator"] > a`,
-      root,
-    ).map((link) => getAttribute(link, "href")),
-    ["076.html#c"],
-  );
-  assert.deepStrictEqual(
-    selectAll(
-      `${SUBENTRY} > ul[data-list="sub-related:1"] > li[data-item="sub-xref-related"] > a`,
-      root,
-    ).map((link) => toText(link)),
-    ["相続"],
-  );
-});
-
-void test("hands read-only model nodes to the renderer closures", () => {
-  const target = createTarget();
-  const renderer: IndexRenderer = {
-    group: ({ group }) => {
-      void (() => {
-        // @ts-expect-error
-        group.children.push(group.children[0]!);
-      });
-      return {
-        entry: ({ entry }) => {
-          void (() => {
-            // @ts-expect-error
-            entry.locators.push(entry.locators[0]!);
-          });
-          return {};
-        },
-      };
-    },
-  };
-
-  renderIndex(index, target, "index", renderer);
-
-  assert.strictEqual(selectAll(GROUP, rootOf(target)).length, 2);
-});
-
-void test("shares one heading renderer between entries and subentries", () => {
-  const target = createTarget();
-  const heading = (contents: hast.ElementContent[]): hast.ElementContent[] => [
-    h("span", { dataShared: "" }, contents),
-  ];
-  const renderer: IndexRenderer = {
-    group: () => ({
-      entry: () => ({
-        heading,
-        subentry: () => ({ heading }),
-      }),
-    }),
-  };
-
-  renderIndex(createIndexWithSubentry(), target, "index", renderer);
-  const root = rootOf(target);
-
-  assert.deepStrictEqual(
-    selectAll(`${ENTRY} > span[data-shared]`, root).map((key) => toText(key)),
+    selectAll(`${ENTRY} > span[data-shared]`, root).map((element) => toText(element)),
     ["相続"],
   );
   assert.deepStrictEqual(
-    selectAll(`${SUBENTRY} > span[data-shared]`, root).map((key) => toText(key)),
+    selectAll(`${SUBENTRY} > span[data-shared]`, root).map((element) => toText(element)),
     ["一身専属"],
   );
 });

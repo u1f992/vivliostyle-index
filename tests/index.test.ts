@@ -251,7 +251,9 @@ void test("renders the preamble and headings through one renderer factory", () =
         {
           renderer: ({ h, index }) => ({
             preamble: () => [h("p", index.children.map(({ key }) => key.reading).join(","))],
-            group: () => ({ heading: (contents) => [h("h2", contents)] }),
+            groupList: () => ({
+              group: () => ({ heading: ({ contents }) => [h("h2", contents)] }),
+            }),
           }),
         },
       ],

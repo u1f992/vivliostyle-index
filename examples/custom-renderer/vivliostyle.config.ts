@@ -17,18 +17,18 @@ const index = createIndexPlugin({
               h("dd", "をも見よ参照"),
             ]),
           ],
-          group: () => ({
-            self: ({ properties, heading, entryList }) => [
-              h("li", properties, [...heading, ...entryList]),
+          groupList: ({ properties }) => ({
+            group: ({ properties }) => ({
+              self: ({ heading, entryList }) => [h("li", properties, [...heading, ...entryList])],
+            }),
+            self: ({ groups }) => [
+              h(
+                "ul",
+                properties,
+                groups.flatMap(({ content }) => content),
+              ),
             ],
           }),
-          groupList: ({ properties, groups }) => [
-            h(
-              "ul",
-              properties,
-              groups.flatMap(({ children }) => children),
-            ),
-          ],
         }),
       },
     ],
