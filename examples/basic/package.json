@@ -8,7 +8,6 @@
     "typecheck": "tsc --project ."
   },
   "dependencies": {
-    "@u1f992/vivliostyle-index": "file:../..",
-    "@vivliostyle/cli": "^11.1.0"
+    "@u1f992/vivliostyle-index": "file:../.."
   }
 }
