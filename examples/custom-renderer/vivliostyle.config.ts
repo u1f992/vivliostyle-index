@@ -18,14 +18,14 @@ const index = createIndexPlugin({
             ]),
           ],
           group: () => ({
-            self: ({ heading, entryList }) => [
-              h("li", { dataIndexRole: "group" }, [...heading, ...entryList]),
+            self: ({ properties, heading, entryList }) => [
+              h("li", properties, [...heading, ...entryList]),
             ],
           }),
-          groupList: ({ groups }) => [
+          groupList: ({ properties, groups }) => [
             h(
               "ul",
-              { dataIndexRole: "group-list" },
+              properties,
               groups.flatMap(({ children }) => children),
             ),
           ],

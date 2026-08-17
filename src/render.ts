@@ -17,6 +17,9 @@ import { h } from "hastscript";
 
 type Elem = hast.Element;
 type ElemContent = hast.ElementContent;
+type RoleProperties<Role extends string> = Readonly<{ dataIndexRole: Role }>;
+type IdProperties = Readonly<{ id: string }>;
+type IndexProperties = Readonly<hast.Properties & { dataIndexResult: string }>;
 
 export type HeadingRenderer = (contents: ElemContent[]) => ElemContent[];
 
@@ -28,7 +31,10 @@ export type EntryRendererBase = Readonly<{
     anchors: ElemContent[];
     children: ElemContent[];
   }): ElemContent[];
-  locatorList?(parts: { locators: { locator: Locator; children: ElemContent[] }[] }): ElemContent[];
+  locatorList?(parts: {
+    properties: RoleProperties<"locator-list">;
+    locators: { locator: Locator; children: ElemContent[] }[];
+  }): ElemContent[];
   xrefAnchor?: (context: {
     xref: Xref;
     type: XrefType;
@@ -41,14 +47,20 @@ export type EntryRendererBase = Readonly<{
     anchors: ElemContent[];
     children: ElemContent[];
   }): ElemContent[];
-  xrefPreferredList?(parts: { xrefs: { xref: Xref; children: ElemContent[] }[] }): ElemContent[];
-  xrefRelatedList?(parts: { xrefs: { xref: Xref; children: ElemContent[] }[] }): ElemContent[];
+  xrefPreferredList?(parts: {
+    properties: RoleProperties<"xref-preferred">;
+    xrefs: { xref: Xref; children: ElemContent[] }[];
+  }): ElemContent[];
+  xrefRelatedList?(parts: {
+    properties: RoleProperties<"xref-related">;
+    xrefs: { xref: Xref; children: ElemContent[] }[];
+  }): ElemContent[];
 }>;
 
 export type SubentryRenderer = EntryRendererBase &
   Readonly<{
     self?(parts: {
-      props: hast.Properties & { id: string };
+      properties: IdProperties;
       heading: ElemContent[];
       locatorList: ElemContent[];
       xrefPreferredList: ElemContent[];
@@ -60,10 +72,11 @@ export type EntryRenderer = EntryRendererBase &
   Readonly<{
     subentry?: (context: { subentry: ReadonlySubentry; id: string }) => SubentryRenderer;
     subentryList?(parts: {
+      properties: RoleProperties<"subentry-list">;
       subentries: { subentry: ReadonlySubentry; children: ElemContent[] }[];
     }): ElemContent[];
     self?(parts: {
-      props: hast.Properties & { id: string };
+      properties: IdProperties;
       heading: ElemContent[];
       locatorList: ElemContent[];
       xrefPreferredList: ElemContent[];
@@ -76,17 +89,25 @@ export type GroupRenderer = Readonly<{
   heading?: HeadingRenderer;
   entry?: (context: { entry: ReadonlyEntry; id: string }) => EntryRenderer;
   entryList?(parts: {
+    properties: RoleProperties<"entry-list">;
     entries: { entry: ReadonlyEntry; children: ElemContent[] }[];
   }): ElemContent[];
-  self?(parts: { heading: ElemContent[]; entryList: ElemContent[] }): ElemContent[];
+  self?(parts: {
+    properties: RoleProperties<"group">;
+    heading: ElemContent[];
+    entryList: ElemContent[];
+  }): ElemContent[];
 }>;
 
 export type IndexRenderer = Readonly<{
   preamble?: () => ElemContent[];
   group?: (context: { group: ReadonlyGroup }) => GroupRenderer;
-  groupList?(parts: { groups: { group: ReadonlyGroup; children: ElemContent[] }[] }): ElemContent[];
+  groupList?(parts: {
+    properties: RoleProperties<"group-list">;
+    groups: { group: ReadonlyGroup; children: ElemContent[] }[];
+  }): ElemContent[];
   self?(parts: {
-    props: hast.Properties & { dataIndexResult: string };
+    properties: IndexProperties;
     preamble: ElemContent[];
     groupList: ElemContent[];
   }): { properties: hast.Properties; children: ElemContent[] };
@@ -105,20 +126,25 @@ export function renderIndex(
     group,
     children: renderGroup(group, indexId, renderer.group?.({ group }) ?? {}),
   }));
+  const groupListProperties = { dataIndexRole: "group-list" } as const;
   const groupList =
-    renderer.groupList?.({ groups }) ??
+    renderer.groupList?.({ properties: groupListProperties, groups }) ??
     (groups.length === 0
       ? []
       : [
           h(
             "div",
-            { dataIndexRole: "group-list" },
+            groupListProperties,
             groups.flatMap(({ children }) => children),
           ),
         ]);
-  const props = { ...target.properties, dataIndexResult: JSON.stringify(index) };
-  const { properties, children } = renderer.self?.({ props, preamble, groupList }) ?? {
-    properties: props,
+  const indexProperties = { ...target.properties, dataIndexResult: JSON.stringify(index) };
+  const { properties, children } = renderer.self?.({
+    properties: indexProperties,
+    preamble,
+    groupList,
+  }) ?? {
+    properties: indexProperties,
     children: [...preamble, ...groupList],
   };
   target.properties = properties;
@@ -156,16 +182,18 @@ const renderGroup = (
       children: renderEntry(entry, id, indexId, group.key, renderer.entry?.({ entry, id }) ?? {}),
     };
   });
-  const entryList = renderer.entryList?.({ entries }) ?? [
+  const entryListProperties = { dataIndexRole: "entry-list" } as const;
+  const entryList = renderer.entryList?.({ properties: entryListProperties, entries }) ?? [
     h(
       "ul",
-      { dataIndexRole: "entry-list" },
+      entryListProperties,
       entries.flatMap(({ children }) => children),
     ),
   ];
+  const properties = { dataIndexRole: "group" } as const;
   return (
-    renderer.self?.({ heading, entryList }) ?? [
-      h("section", { dataIndexRole: "group" }, [...heading, ...entryList]),
+    renderer.self?.({ properties, heading, entryList }) ?? [
+      h("section", properties, [...heading, ...entryList]),
     ]
   );
 };
@@ -193,24 +221,28 @@ const renderEntry = (
       ),
     };
   });
-  const subentryList = renderer.subentryList?.({ subentries }) ?? [
+  const subentryListProperties = { dataIndexRole: "subentry-list" } as const;
+  const subentryList = renderer.subentryList?.({
+    properties: subentryListProperties,
+    subentries,
+  }) ?? [
     h(
       "ul",
-      { dataIndexRole: "subentry-list" },
+      subentryListProperties,
       subentries.flatMap(({ children }) => children),
     ),
   ];
-  const props = { id };
+  const properties = { id };
   return (
     renderer.self?.({
-      props,
+      properties,
       heading,
       locatorList,
       xrefPreferredList,
       xrefRelatedList,
       subentryList,
     }) ?? [
-      h("li", props, [
+      h("li", properties, [
         ...heading,
         ...locatorList,
         ...xrefPreferredList,
@@ -231,10 +263,10 @@ const renderSubentry = (
   const locatorList = renderLocatorList(subentry.locators, renderer);
   const xrefPreferredList = renderXrefList(subentry.xrefPreferred, "preferred", indexId, renderer);
   const xrefRelatedList = renderXrefList(subentry.xrefRelated, "related", indexId, renderer);
-  const props = { id };
+  const properties = { id };
   return (
-    renderer.self?.({ props, heading, locatorList, xrefPreferredList, xrefRelatedList }) ?? [
-      h("li", props, [...heading, ...locatorList, ...xrefPreferredList, ...xrefRelatedList]),
+    renderer.self?.({ properties, heading, locatorList, xrefPreferredList, xrefRelatedList }) ?? [
+      h("li", properties, [...heading, ...locatorList, ...xrefPreferredList, ...xrefRelatedList]),
     ]
   );
 };
@@ -247,11 +279,12 @@ const renderLocatorList = (
     locator,
     children: renderLocatorItem(locator, renderer),
   }));
+  const properties = { dataIndexRole: "locator-list" } as const;
   return (
-    renderer.locatorList?.({ locators: rendered }) ?? [
+    renderer.locatorList?.({ properties, locators: rendered }) ?? [
       h(
         "ol",
-        { dataIndexRole: "locator-list" },
+        properties,
         rendered.flatMap(({ children }) => children),
       ),
     ]
@@ -284,12 +317,24 @@ const renderXrefList = (
     xref,
     children: renderXrefItem(xref, type, indexId, renderer),
   }));
-  const renderList = type === "preferred" ? renderer.xrefPreferredList : renderer.xrefRelatedList;
+  if (type === "preferred") {
+    const properties = { dataIndexRole: "xref-preferred" } as const;
+    return (
+      renderer.xrefPreferredList?.({ properties, xrefs: rendered }) ?? [
+        h(
+          "ul",
+          properties,
+          rendered.flatMap(({ children }) => children),
+        ),
+      ]
+    );
+  }
+  const properties = { dataIndexRole: "xref-related" } as const;
   return (
-    renderList?.({ xrefs: rendered }) ?? [
+    renderer.xrefRelatedList?.({ properties, xrefs: rendered }) ?? [
       h(
         "ul",
-        { dataIndexRole: `xref-${type}` },
+        properties,
         rendered.flatMap(({ children }) => children),
       ),
     ]
