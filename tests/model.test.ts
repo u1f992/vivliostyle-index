@@ -10,6 +10,7 @@ import {
   type Index,
   type Subentry,
 } from "../src/model.ts";
+import { identityTemplate } from "../src/template.ts";
 
 const group = { html: "ち", reading: "ち" };
 const intellectualProperty = { html: "知的財産権", reading: "ちてきざいさんけん" };
@@ -55,6 +56,7 @@ function createIndex(): Index {
             xrefRelated: [
               {
                 target: { group, entry: intellectualProperty },
+                template: identityTemplate,
               },
             ],
           },
@@ -120,7 +122,9 @@ void test("revokes headings that hold no locator or cross-reference", () => {
 });
 
 void test("keeps a heading that only carries subentries", () => {
-  const index = createIndexWithSubentry([{ location: { type: "page", href: "chapter.html#a" } }]);
+  const index = createIndexWithSubentry([
+    { location: { type: "page", href: "chapter.html#a" }, template: identityTemplate },
+  ]);
 
   const revoked = revokeVacantEntries(index);
 
@@ -145,6 +149,7 @@ void test("revokes only the locator that was inserted", () => {
   const intellectualPropertyEntry = ensureEntry(index, { group, entry: intellectualProperty });
   const locators = ["001.html#a", "002.html#b", "003.html#c"].map((href) => ({
     location: { type: "page", href } as const,
+    template: identityTemplate,
   }));
   const revocations = locators.map((locator) => insertLocator(intellectualPropertyEntry, locator));
 
@@ -177,7 +182,10 @@ void test("distinguishes headings that share HTML but not their reading", () => 
 void test("revokes an inserted locator only once", () => {
   const index: Index = { children: [] };
   const intellectualPropertyEntry = ensureEntry(index, { group, entry: intellectualProperty });
-  const input = { location: { type: "page", href: "001.html#a" } } as const;
+  const input = {
+    location: { type: "page", href: "001.html#a" },
+    template: identityTemplate,
+  } as const;
   const revoke = insertLocator(intellectualPropertyEntry, input);
   insertLocator(intellectualPropertyEntry, input);
 

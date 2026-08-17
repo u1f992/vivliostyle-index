@@ -40,7 +40,6 @@ export type {
   CreateRenderer,
   EntryListRenderer,
   EntryRenderer,
-  FillTemplate,
   GroupListRenderer,
   GroupRenderer,
   HeadingRenderer,

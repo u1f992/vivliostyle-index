@@ -18,6 +18,7 @@ import {
   type SubentryRenderer,
   type XrefListRenderer,
 } from "../src/render.ts";
+import { identityTemplate } from "../src/template.ts";
 
 const index: Index = {
   children: [
@@ -27,7 +28,9 @@ const index: Index = {
         {
           key: { html: "著作権", reading: "ちょさくけん" },
           children: [],
-          locators: [{ location: { type: "page", href: "003.html#a" } }],
+          locators: [
+            { location: { type: "page", href: "003.html#a" }, template: identityTemplate },
+          ],
           xrefPreferred: [],
           xrefRelated: [],
         },
@@ -39,7 +42,9 @@ const index: Index = {
         {
           key: { html: "相続", reading: "そうぞく" },
           children: [],
-          locators: [{ location: { type: "page", href: "088.html#b" } }],
+          locators: [
+            { location: { type: "page", href: "088.html#b" }, template: identityTemplate },
+          ],
           xrefPreferred: [],
           xrefRelated: [],
         },
@@ -58,19 +63,24 @@ const indexWithSubentry: Index = {
           children: [
             {
               key: { html: "一身専属", reading: "いっしんせんぞく" },
-              locators: [{ location: { type: "page", href: "076.html#c" } }],
+              locators: [
+                { location: { type: "page", href: "076.html#c" }, template: identityTemplate },
+              ],
               xrefPreferred: [
                 {
                   target: {
                     group: { html: "そ", reading: "そ" },
                     entry: { html: "相続", reading: "そうぞく" },
                   },
+                  template: identityTemplate,
                 },
               ],
               xrefRelated: [],
             },
           ],
-          locators: [{ location: { type: "page", href: "088.html#b" } }],
+          locators: [
+            { location: { type: "page", href: "088.html#b" }, template: identityTemplate },
+          ],
           xrefPreferred: [],
           xrefRelated: [],
         },
@@ -321,17 +331,17 @@ void test("keeps the receiver of every leaf renderer", () => {
   const target = createTarget();
   const leafCalls: string[] = [];
   const locatorListRenderer: LocatorListRenderer = {
-    locator({ children }) {
+    locator() {
       assert.strictEqual(this, locatorListRenderer);
       leafCalls.push("locator");
-      return [h("li", children)];
+      return [];
     },
   };
   const xrefListRenderer: XrefListRenderer = {
-    xref({ children }) {
+    xref() {
       assert.strictEqual(this, xrefListRenderer);
       leafCalls.push("xref");
-      return [h("li", children)];
+      return [];
     },
   };
   const subentryRenderer: SubentryRenderer = {
@@ -366,6 +376,7 @@ void test("keeps the receiver of every leaf renderer", () => {
 
   renderIndex(indexWithSubentry, target, "index", renderer);
 
+  const root = rootOf(target);
   assert.deepStrictEqual(leafCalls, [
     "group-heading",
     "entry-heading",
@@ -374,6 +385,8 @@ void test("keeps the receiver of every leaf renderer", () => {
     "locator",
     "xref",
   ]);
+  assert.strictEqual(selectAll('[data-index-role="locator-list"] > li', root).length, 0);
+  assert.strictEqual(selectAll('[data-index-role="xref-preferred"] > li', root).length, 0);
 });
 
 void test("renders every branch through its self function", () => {
@@ -534,7 +547,7 @@ void test("calls every nested list self function for an empty list", () => {
   );
 });
 
-void test("exposes default and template-applied locator content to a locator leaf", () => {
+void test("applies a locator template after the locator leaf", () => {
   const target = createTarget();
   const rangeIndex: Index = {
     children: [
@@ -563,19 +576,14 @@ void test("exposes default and template-applied locator content to a locator lea
         entryList: () => ({
           entry: () => ({
             locatorList: ({ properties: listProperties }) => ({
-              locator: ({ locator, properties, anchor, children, fillTemplate }) => {
-                assert.strictEqual(anchor.length, 1);
-                assert.strictEqual(children[0]?.type, "element");
-                const content =
-                  locator.location.type === "page"
-                    ? anchor
-                    : [
-                        h("a", { href: locator.location.start }),
-                        h("span", "から"),
-                        h("a", { href: locator.location.end }),
-                      ];
-                return [h("li", { ...properties, dataLegacy: "" }, fillTemplate(content))];
-              },
+              locator: ({ locator }) =>
+                locator.location.type === "page"
+                  ? [h("a", { href: locator.location.href })]
+                  : [
+                      h("a", { href: locator.location.start }),
+                      h("span", "から"),
+                      h("a", { href: locator.location.end }),
+                    ],
               self: ({ locators }) => [
                 h(
                   "ol",
@@ -594,18 +602,16 @@ void test("exposes default and template-applied locator content to a locator lea
   const root = rootOf(target);
 
   assert.deepStrictEqual(
-    selectAll(`${LOCATORS} > li[data-legacy] > strong > *`, root).map((element) => element.tagName),
+    selectAll(`${LOCATORS} > li > strong > *`, root).map((element) => element.tagName),
     ["a", "span", "a"],
   );
   assert.deepStrictEqual(
-    selectAll(`${LOCATORS} > li[data-legacy] > strong > a`, root).map((link) =>
-      getAttribute(link, "href"),
-    ),
+    selectAll(`${LOCATORS} > li > strong > a`, root).map((link) => getAttribute(link, "href")),
     ["104.html#a", "110.html#b"],
   );
 });
 
-void test("exposes cross-reference metadata and template application to an xref leaf", () => {
+void test("applies an xref template after the xref leaf", () => {
   const target = createTarget();
   const xrefIndex: Index = {
     children: [
@@ -638,30 +644,13 @@ void test("exposes cross-reference metadata and template application to an xref 
         entryList: () => ({
           entry: () => ({
             xrefPreferredList: ({ type: listType, properties: listProperties }) => ({
-              xref: ({
-                xref,
-                type,
-                href,
-                properties,
-                contents,
-                anchor,
-                children,
-                fillTemplate,
-              }) => {
+              xref: ({ xref, type, href, contents }) => {
                 assert.strictEqual(listType, "preferred");
                 assert.strictEqual(type, "preferred");
                 assert.strictEqual(xref.target.subentry?.reading, "いっしんせんぞく");
                 assert.ok(href.startsWith("#"));
                 assert.strictEqual(contents.length, 3);
-                assert.strictEqual(anchor.length, 1);
-                assert.strictEqual(children[0]?.type, "element");
-                return [
-                  h(
-                    "li",
-                    { ...properties, dataXref: type },
-                    fillTemplate([h("a", { href, dataCustom: "" }, contents)]),
-                  ),
-                ];
+                return [h("a", { href, dataCustom: type }, contents)];
               },
               self: ({ xrefs }) => [
                 h(
@@ -681,7 +670,7 @@ void test("exposes cross-reference metadata and template application to an xref 
   const root = rootOf(target);
 
   assert.strictEqual(
-    selectAll(`${XREF_PREFERRED} > li[data-xref="preferred"] > em > a[data-custom]`, root).length,
+    selectAll(`${XREF_PREFERRED} > li > em > a[data-custom="preferred"]`, root).length,
     1,
   );
   assert.strictEqual(
@@ -700,9 +689,10 @@ void test("uses the same leaf and list contracts for subentries", () => {
             subentryList: ({ properties: subentryListProperties }) => ({
               subentry: ({ subentry, properties: subentryProperties }) => ({
                 locatorList: ({ properties: locatorListProperties }) => ({
-                  locator: ({ children, properties }) => [
-                    h("li", { ...properties, dataItem: subentry.reading }, children),
-                  ],
+                  locator: ({ locator }) =>
+                    locator.location.type === "page"
+                      ? [h("a", { href: locator.location.href, dataItem: subentry.reading })]
+                      : [],
                   self: ({ locators }) => [
                     h(
                       "ol",
@@ -712,9 +702,7 @@ void test("uses the same leaf and list contracts for subentries", () => {
                   ],
                 }),
                 xrefPreferredList: ({ properties: xrefListProperties }) => ({
-                  xref: ({ href, contents, properties }) => [
-                    h("li", properties, [h("a", { href, dataSubXref: "" }, contents)]),
-                  ],
+                  xref: ({ href, contents }) => [h("a", { href, dataSubXref: "" }, contents)],
                   self: ({ xrefs }) => [
                     h(
                       "ul",
@@ -749,7 +737,7 @@ void test("uses the same leaf and list contracts for subentries", () => {
   const root = rootOf(target);
 
   assert.deepStrictEqual(
-    selectAll(`${SUBENTRY} > ol > li[data-item] > a`, root).map((link) =>
+    selectAll(`${SUBENTRY} > ol > li > a[data-item]`, root).map((link) =>
       getAttribute(link, "href"),
     ),
     ["076.html#c"],

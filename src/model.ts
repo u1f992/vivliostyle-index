@@ -39,7 +39,7 @@ function insert<T>(list: T[], item: T): Revocation {
 
 export type Locator = Readonly<{
   location: PageLocation | RangeLocation;
-  template?: string;
+  template: string;
 }>;
 type HasLocators = { locators: Locator[] };
 export function insertLocator(entry: HasLocators, locator: Locator): Revocation {
@@ -48,7 +48,7 @@ export function insertLocator(entry: HasLocators, locator: Locator): Revocation 
 
 export type Xref = Readonly<{
   target: EntryAddress;
-  template?: string;
+  template: string;
 }>;
 export type XrefType = "preferred" | "related";
 type HasXrefs = {
@@ -64,12 +64,9 @@ export function insertXref(
   entry: HasXrefs,
   type: XrefType,
   target: EntryAddress,
-  template?: string,
+  template: string,
 ): Revocation {
-  return insert(entry[xrefListKey[type]], {
-    target,
-    ...(template === undefined ? {} : { template }),
-  });
+  return insert(entry[xrefListKey[type]], { target, template });
 }
 
 export type EntryBase = HasLocators & HasXrefs;

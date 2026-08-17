@@ -23,8 +23,6 @@ type RoleProperties<Role extends string> = Readonly<hast.Properties & { dataInde
 type IdProperties = Readonly<hast.Properties & { id: string }>;
 type IndexProperties = Readonly<hast.Properties & { dataIndexResult: string }>;
 
-export type FillTemplate = (content: Content) => Content;
-
 export type RenderedGroup = Readonly<{ group: Key; content: Content }>;
 export type RenderedEntry = Readonly<{ entry: Key; content: Content }>;
 export type RenderedSubentry = Readonly<{ subentry: Key; content: Content }>;
@@ -38,23 +36,13 @@ export type HeadingRenderer = (parts: {
   contents: Content;
 }) => Content;
 
-export type LocatorRenderer = (parts: {
-  locator: Locator;
-  properties: ElementProperties;
-  anchor: Content;
-  children: Content;
-  fillTemplate: FillTemplate;
-}) => Content;
+export type LocatorRenderer = (parts: { locator: Locator }) => Content;
 
 export type XrefRenderer = (parts: {
   xref: Xref;
   type: XrefType;
   href: string;
-  properties: ElementProperties;
   contents: Content;
-  anchor: Content;
-  children: Content;
-  fillTemplate: FillTemplate;
 }) => Content;
 
 export type LocatorListRenderer = Readonly<{
@@ -341,19 +329,11 @@ const defaultLocatorAnchor = ({ location }: Locator): Content =>
         ]),
       ];
 
-const createFillTemplate = (template: string | undefined): FillTemplate =>
-  template === undefined ? (content) => content : (content) => fillSlot(template, content);
-
 const renderLocator = (locator: Locator, renderer: LocatorListRenderer): Content => {
   const properties = {};
-  const anchor = defaultLocatorAnchor(locator);
-  const fillTemplate = createFillTemplate(locator.template);
-  const children = fillTemplate(anchor);
-  return (
-    renderer.locator?.({ locator, properties, anchor, children, fillTemplate }) ?? [
-      h("li", properties, children),
-    ]
-  );
+  const content = renderer.locator?.({ locator }) ?? defaultLocatorAnchor(locator);
+  const children = fillSlot(locator.template, content);
+  return children.length === 0 ? [] : [h("li", properties, children)];
 };
 
 const xrefId = (indexId: string, { group, entry, subentry }: EntryAddress): string =>
@@ -422,19 +402,7 @@ const renderXref = (
           h("span"),
           h("span", parseFragment(target.subentry.html)),
         ];
-  const anchor = [h("a", { href }, contents)];
-  const fillTemplate = createFillTemplate(template);
-  const children = fillTemplate(anchor);
-  return (
-    renderer.xref?.({
-      xref,
-      type,
-      href,
-      properties,
-      contents,
-      anchor,
-      children,
-      fillTemplate,
-    }) ?? [h("li", properties, children)]
-  );
+  const content = renderer.xref?.({ xref, type, href, contents }) ?? [h("a", { href }, contents)];
+  const children = fillSlot(template, content);
+  return children.length === 0 ? [] : [h("li", properties, children)];
 };

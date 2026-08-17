@@ -6,6 +6,7 @@ import { fromHtml } from "hast-util-from-html";
 import { buildIndexes } from "../src/index-builder.ts";
 import { collectSourceSnapshot } from "../src/source-snapshot.ts";
 import { createTargetKey } from "../src/target.ts";
+import { identityTemplate } from "../src/template.ts";
 
 void test("builds range locators from ordered source snapshots", () => {
   const chapterPath = "/publication/chapter.md";
@@ -42,6 +43,7 @@ void test("builds range locators from ordered source snapshots", () => {
                   start: "chapter.html#start",
                   end: "end.html#end",
                 },
+                template: identityTemplate,
               },
             ],
             xrefPreferred: [],

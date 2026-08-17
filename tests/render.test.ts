@@ -8,6 +8,7 @@ import { toText } from "hast-util-to-text";
 
 import type { Index } from "../src/model.ts";
 import { renderIndex } from "../src/render.ts";
+import { identityTemplate } from "../src/template.ts";
 
 const index: Index = {
   children: [
@@ -17,7 +18,9 @@ const index: Index = {
         {
           key: { html: "著作権", reading: "ちょさくけん" },
           children: [],
-          locators: [{ location: { type: "page", href: "003.html#a" } }],
+          locators: [
+            { location: { type: "page", href: "003.html#a" }, template: identityTemplate },
+          ],
           xrefPreferred: [],
           xrefRelated: [],
         },
@@ -29,7 +32,9 @@ const index: Index = {
         {
           key: { html: "相続", reading: "そうぞく" },
           children: [],
-          locators: [{ location: { type: "page", href: "088.html#b" } }],
+          locators: [
+            { location: { type: "page", href: "088.html#b" }, template: identityTemplate },
+          ],
           xrefPreferred: [],
           xrefRelated: [],
         },
@@ -85,12 +90,16 @@ void test("wraps every key in an element of its own", () => {
             children: [
               {
                 key: { html: "一身専属", reading: "いっしんせんぞく" },
-                locators: [{ location: { type: "page", href: "076.html#c" } }],
+                locators: [
+                  { location: { type: "page", href: "076.html#c" }, template: identityTemplate },
+                ],
                 xrefPreferred: [],
                 xrefRelated: [],
               },
             ],
-            locators: [{ location: { type: "page", href: "088.html#b" } }],
+            locators: [
+              { location: { type: "page", href: "088.html#b" }, template: identityTemplate },
+            ],
             xrefPreferred: [],
             xrefRelated: [],
           },
@@ -132,13 +141,16 @@ void test("gives every entry the same lists in the same order", () => {
         children: [
           {
             key: { html: "A", reading: "あ" },
-            locators: [{ location: { type: "page", href: "001.html#a" } }],
+            locators: [
+              { location: { type: "page", href: "001.html#a" }, template: identityTemplate },
+            ],
             xrefPreferred: [
               {
                 target: {
                   group: { html: "い", reading: "い" },
                   entry: { html: "B", reading: "び" },
                 },
+                template: identityTemplate,
               },
             ],
             xrefRelated: [
@@ -147,6 +159,7 @@ void test("gives every entry the same lists in the same order", () => {
                   group: { html: "う", reading: "う" },
                   entry: { html: "C", reading: "し" },
                 },
+                template: identityTemplate,
               },
             ],
             children: [
@@ -165,7 +178,9 @@ void test("gives every entry the same lists in the same order", () => {
         children: [
           {
             key: { html: "E", reading: "い" },
-            locators: [{ location: { type: "page", href: "002.html#b" } }],
+            locators: [
+              { location: { type: "page", href: "002.html#b" }, template: identityTemplate },
+            ],
             xrefPreferred: [],
             xrefRelated: [],
             children: [],
@@ -220,7 +235,7 @@ void test("wraps a locator in the template of its instruction", () => {
                 location: { type: "page", href: "104.html#a" },
                 template: "<strong><slot></slot></strong>",
               },
-              { location: { type: "page", href: "112.html#b" } },
+              { location: { type: "page", href: "112.html#b" }, template: identityTemplate },
             ],
             xrefPreferred: [],
             xrefRelated: [],
@@ -288,6 +303,7 @@ void test("wraps a cross-reference in the template of its instruction", () => {
                   group: { html: "は", reading: "は" },
                   entry: { html: "パブリックドメイン", reading: "ぱぶりっくどめいん" },
                 },
+                template: identityTemplate,
               },
             ],
             children: [],
@@ -342,6 +358,7 @@ void test("names the keys of the exposed index", () => {
                   entry: { html: "B", reading: "び" },
                   subentry: { html: "C", reading: "し" },
                 },
+                template: identityTemplate,
               },
             ],
             xrefRelated: [],
@@ -418,7 +435,12 @@ void test("renders a range locator as one start link containing two page numbers
         children: [
           {
             key: { html: "自由利用", reading: "じゆうりよう" },
-            locators: [{ location: { type: "range", start: "104.html#a", end: "110.html#b" } }],
+            locators: [
+              {
+                location: { type: "range", start: "104.html#a", end: "110.html#b" },
+                template: identityTemplate,
+              },
+            ],
             xrefPreferred: [],
             xrefRelated: [],
             children: [],

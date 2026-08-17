@@ -6,6 +6,7 @@ import { getAttribute } from "hast-util-get-attribute";
 import { select } from "hast-util-select";
 
 import { collectSourceSnapshot } from "../src/source-snapshot.ts";
+import { identityTemplate } from "../src/template.ts";
 
 void test("extracts instructions, targets, locations, and element IDs", () => {
   const root = fromHtml(
@@ -28,6 +29,7 @@ void test("extracts instructions, targets, locations, and element IDs", () => {
         entry: { html: "Apple", reading: "Apple" },
       },
       endReference: "end.md?x=1#end",
+      template: identityTemplate,
     },
     locationHref: "chapter.html#%2Fhtml%2Fbody%2Fspan",
     rangeEnd: { path: "/publication/end.md", id: "end" },

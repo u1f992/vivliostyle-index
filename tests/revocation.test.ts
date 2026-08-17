@@ -11,6 +11,7 @@ import {
   type Key,
 } from "../src/model.ts";
 import { revokeViolations, type Revocable, type RevocationScope } from "../src/revocation.ts";
+import { identityTemplate } from "../src/template.ts";
 
 const group = { html: "a", reading: "a" };
 const apple = { html: "Apple", reading: "Apple" };
@@ -20,7 +21,12 @@ const reportingPath = "/publication/index.md";
 
 function createXrefRevocable(index: Index, from: Key, to: Key): Revocable {
   const target = { group, entry: to };
-  const revoke = insertXref(ensureEntry(index, { group, entry: from }), "preferred", target);
+  const revoke = insertXref(
+    ensureEntry(index, { group, entry: from }),
+    "preferred",
+    target,
+    identityTemplate,
+  );
   return {
     reportingPath,
     revoke,
@@ -65,6 +71,7 @@ void test("keeps a heading while one of its cross-references resolves", () => {
   const index: Index = { children: [] };
   insertLocator(ensureEntry(index, { group, entry: banana }), {
     location: { type: "page", href: "chapter.html#banana" },
+    template: identityTemplate,
   });
 
   revokeViolations(

@@ -8,24 +8,25 @@ import {
   type Revocation,
   type XrefType,
 } from "./model.ts";
+import { identityTemplate } from "./template.ts";
 
 export type ParsedInstruction =
   | Readonly<{
       type: "page";
       address: EntryAddress;
-      template?: string;
+      template: string;
     }>
   | Readonly<{
       type: "range";
       address: EntryAddress;
       endReference: string;
-      template?: string;
+      template: string;
     }>
   | Readonly<{
       type: XrefType;
       address: EntryAddress;
       target: EntryAddress;
-      template?: string;
+      template: string;
     }>;
 
 export class InstructionSyntaxError extends SyntaxError {
@@ -248,7 +249,7 @@ function parseEndReference(input: ParserInput, start: number): EndReferenceResul
 function parseRange(input: ParserInput, address: EntryAddress, start: number): ParsedInstruction {
   const { endReference, offset } = parseEndReference(input, start);
   return offset === input.graphemes.length
-    ? { type: "range", address, endReference }
+    ? { type: "range", address, endReference, template: identityTemplate }
     : { type: "range", address, endReference, template: parseTemplate(input, offset + 1) };
 }
 
@@ -260,7 +261,7 @@ function parseXref(
 ): ParsedInstruction {
   const { address: target, offset } = parseHierarchy(input, targetOffset);
   return offset === input.graphemes.length
-    ? { type, address, target }
+    ? { type, address, target, template: identityTemplate }
     : { type, address, target, template: parseTemplate(input, offset + 1) };
 }
 
@@ -272,7 +273,7 @@ export function parseInstruction(source: string): ParsedInstruction {
   const input = createParserInput(source);
   const { address, offset } = parseHierarchy(input, 0);
   if (offset === input.graphemes.length) {
-    return { type: "page", address };
+    return { type: "page", address, template: identityTemplate };
   }
 
   const operatorOffset = offset + 1;
@@ -302,7 +303,7 @@ export function applyPageInstruction(
 ): Revocation {
   return insertLocator(ensureEntry(index, instruction.address), {
     location: { type: "page", href: locationHref },
-    ...(instruction.template === undefined ? {} : { template: instruction.template }),
+    template: instruction.template,
   });
 }
 
@@ -314,7 +315,7 @@ export function applyRangeInstruction(
 ): Revocation {
   return insertLocator(ensureEntry(index, instruction.address), {
     location: { type: "range", start: startHref, end: endHref },
-    ...(instruction.template === undefined ? {} : { template: instruction.template }),
+    template: instruction.template,
   });
 }
 

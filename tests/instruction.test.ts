@@ -9,6 +9,7 @@ import {
   parseInstruction,
 } from "../src/instruction.ts";
 import type { Index } from "../src/model.ts";
+import { identityTemplate } from "../src/template.ts";
 
 const group = { html: "グループ", reading: "ぐるーぷ" };
 const entry = { html: "主見出し", reading: "しゅみだし" };
@@ -18,7 +19,7 @@ const address = { group, entry, subentry };
 void test("parses page instructions", () => {
   assert.deepStrictEqual(
     parseInstruction("ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し"),
-    { type: "page", address },
+    { type: "page", address, template: identityTemplate },
   );
   assert.deepStrictEqual(
     parseInstruction(
@@ -35,6 +36,7 @@ void test("parses range instructions", () => {
       type: "range",
       address,
       endReference: "path.md#fragment",
+      template: identityTemplate,
     },
   );
   assert.deepStrictEqual(
@@ -55,6 +57,7 @@ void test("parses range instructions", () => {
       entry: { html: "main", reading: "main" },
     },
     endReference: "#fragment",
+    template: identityTemplate,
   });
 });
 
@@ -67,13 +70,13 @@ void test("parses preferred and related cross-reference instructions", () => {
     parseInstruction(
       "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|->べつぐるーぷ@別グループ!みだしご@見出し語",
     ),
-    { type: "preferred", address, target },
+    { type: "preferred", address, target, template: identityTemplate },
   );
   assert.deepStrictEqual(
     parseInstruction(
       "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|=>べつぐるーぷ@別グループ!みだしご@見出し語",
     ),
-    { type: "related", address, target },
+    { type: "related", address, target, template: identityTemplate },
   );
   assert.deepStrictEqual(
     parseInstruction("group!main|->target-group!target-main!target-subentry"),
@@ -88,6 +91,7 @@ void test("parses preferred and related cross-reference instructions", () => {
         entry: { html: "target-main", reading: "target-main" },
         subentry: { html: "target-subentry", reading: "target-subentry" },
       },
+      template: identityTemplate,
     },
   );
 });
@@ -99,6 +103,7 @@ void test("uses an omitted display value as the reading and HTML", () => {
       group: { html: "group", reading: "group" },
       entry: { html: "main", reading: "main" },
     },
+    template: identityTemplate,
   });
 });
 
@@ -109,6 +114,7 @@ void test("unescapes an omitted display value into both the reading and HTML", (
       group: { html: "a@b!c|d\\e", reading: "a@b!c|d\\e" },
       entry: { html: "main", reading: "main" },
     },
+    template: identityTemplate,
   });
 });
 
@@ -129,6 +135,7 @@ void test("preserves display values as HTML fragments", () => {
           reading: "きょうとだいがく",
         },
       },
+      template: identityTemplate,
     },
   );
   assert.deepStrictEqual(parseInstruction("g@<em>unclosed!main"), {
@@ -137,6 +144,7 @@ void test("preserves display values as HTML fragments", () => {
       group: { html: "<em>unclosed", reading: "g" },
       entry: { html: "main", reading: "main" },
     },
+    template: identityTemplate,
   });
 });
 
@@ -157,6 +165,7 @@ void test("preserves HTML fragments at every entry position", () => {
         entry: { html: "<i>TM</i>", reading: "tm" },
         subentry: { html: "<u>TS</u>", reading: "ts" },
       },
+      template: identityTemplate,
     },
   );
 });
@@ -172,6 +181,7 @@ void test("normalizes readings and HTML to NFC", () => {
       group: { html: nfc, reading: nfc },
       entry: { html: "main", reading: "main" },
     },
+    template: identityTemplate,
   });
 });
 
@@ -182,6 +192,7 @@ void test("preserves surrounding whitespace and HTML line breaks", () => {
       group: { html: "<span>\nG\t</span>", reading: " group " },
       entry: { html: " main ", reading: " main " },
     },
+    template: identityTemplate,
   });
 });
 
@@ -192,6 +203,7 @@ void test("unescapes metacharacters in readings and display values", () => {
       group: { html: "表@示!分類", reading: "よ@み" },
       entry: { html: "主|表示|値", reading: "主!見出し" },
     },
+    template: identityTemplate,
   });
 });
 
@@ -202,6 +214,7 @@ void test("distinguishes escaped metacharacters at syntax boundaries", () => {
       group: { html: "@b", reading: "a@" },
       entry: { html: "main", reading: "main" },
     },
+    template: identityTemplate,
   });
   assert.deepStrictEqual(parseInstruction("a\\!!\\!main"), {
     type: "page",
@@ -209,6 +222,7 @@ void test("distinguishes escaped metacharacters at syntax boundaries", () => {
       group: { html: "a!", reading: "a!" },
       entry: { html: "!main", reading: "!main" },
     },
+    template: identityTemplate,
   });
   assert.deepStrictEqual(parseInstruction("group!main\\|||<b><slot></slot></b>"), {
     type: "page",
@@ -262,6 +276,7 @@ void test("reads a range end reference up to the template", () => {
       entry: { html: "main", reading: "main" },
     },
     endReference: "../章 @!.md?x=1&y=2+#終点)",
+    template: identityTemplate,
   });
   assert.deepStrictEqual(parseInstruction("group!main|(a\\@b\\!c\\\\d#end"), {
     type: "range",
@@ -270,6 +285,7 @@ void test("reads a range end reference up to the template", () => {
       entry: { html: "main", reading: "main" },
     },
     endReference: "a@b!c\\d#end",
+    template: identityTemplate,
   });
   assert.deepStrictEqual(
     parseInstruction("group!main|(../章 @!\\|.md#終点|<em><slot></slot></em>"),
@@ -308,6 +324,7 @@ void test("reads a cross-reference target up to the template", () => {
       group: { html: "tg", reading: "tg" },
       entry: { html: "tm|x", reading: "tm|x" },
     },
+    template: identityTemplate,
   });
 });
 
@@ -431,6 +448,7 @@ void test("applies range instructions", () => {
             locators: [
               {
                 location: { type: "range", start: "chapter.html#start", end: "chapter.html#end" },
+                template: identityTemplate,
               },
             ],
             xrefPreferred: [],
@@ -480,6 +498,7 @@ void test("applies cross-reference instructions", () => {
                   group: { html: "ち", reading: "ち" },
                   entry: { html: "知的財産権", reading: "ちてきざいさんけん" },
                 },
+                template: identityTemplate,
               },
             ],
           },

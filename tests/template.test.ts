@@ -7,7 +7,7 @@ import { select, selectAll } from "hast-util-select";
 import { toText } from "hast-util-to-text";
 import { h } from "hastscript";
 
-import { fillSlot } from "../src/template.ts";
+import { fillSlot, identityTemplate } from "../src/template.ts";
 
 function asRoot(children: hast.ElementContent[]): hast.Root {
   return { type: "root", children };
@@ -30,6 +30,50 @@ void test("fills every slot with its own copy of the nodes", () => {
     ["#a", "#a"],
   );
   assert.notStrictEqual(links[0], links[1]);
+});
+
+void test("passes uncloneable data through the identity template", () => {
+  const callback = () => {};
+  const content = [h("a", { href: "#a" })];
+  content[0]!.data = { metadata: { callback } };
+
+  const filled = fillSlot(identityTemplate, content);
+
+  assert.strictEqual(filled[0], content[0]);
+  assert.strictEqual(filled[0]?.data, content[0]?.data);
+  assert.strictEqual(filled[0]?.data?.metadata, content[0]?.data?.metadata);
+  assert.strictEqual(
+    (filled[0]?.data?.metadata as { callback: unknown } | undefined)?.callback,
+    callback,
+  );
+});
+
+void test("copies nodes with uncloneable data into explicit templates", () => {
+  const callback = () => {};
+  const metadata = { callback };
+  const content = [h("a", { href: "#a" })];
+  content[0]!.data = { metadata };
+
+  const filled = fillSlot("<slot></slot><slot></slot>", content);
+  const [first, second] = filled;
+
+  assert.ok(first?.type === "element" && second?.type === "element");
+  assert.notStrictEqual(first, content[0]);
+  assert.notStrictEqual(first, second);
+  assert.notStrictEqual(first.data, second.data);
+  assert.strictEqual(first.data?.metadata, metadata);
+  assert.strictEqual(second.data?.metadata, metadata);
+});
+
+void test("copies template contents independently between slots", () => {
+  const content = [h("template", [h("span", "x")])];
+
+  const filled = fillSlot("<slot></slot><slot></slot>", content);
+  const [first, second] = filled;
+
+  assert.ok(first?.type === "element" && second?.type === "element");
+  assert.notStrictEqual(first.content, second.content);
+  assert.notStrictEqual(first.content?.children[0], second.content?.children[0]);
 });
 
 void test("leaves a slot inside a template element unfilled", () => {
