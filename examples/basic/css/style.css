@@ -55,12 +55,28 @@
       content: "";
     }
 
-    a::before {
-      content: target-counter(attr(href url), page);
+    a:not([data-index-role="range"])::before {
+      content: target-counter(attr(href), page);
     }
 
-    a + span::before {
-      content: "-";
+    [data-index-range-start]::before {
+      /*
+       * target-counter() accepts <string> | <url>, but an attr()-tainted value
+       * cannot be used as <url>. Leaving attr() untyped supplies <string>.
+       * Vivliostyle CLI 11.1.0 / Core 2.44.1 accepts attr(... url), but this
+       * implementation behavior does not remove the CSS Values restriction.
+       * https://drafts.csswg.org/css-content-3/#funcdef-target-counter
+       * https://drafts.csswg.org/css-values-5/#attr-security
+       */
+      content: target-counter(attr(data-index-range-start), page);
+    }
+
+    [data-index-role="range-separator"]::before {
+      content: "–";
+    }
+
+    [data-index-range-end]::before {
+      content: target-counter(attr(data-index-range-end), page);
     }
   }
 

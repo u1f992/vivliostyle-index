@@ -294,7 +294,13 @@ const renderLocatorList = (
 const defaultLocatorAnchors = ({ location }: Locator): ElemContent[] =>
   location.type === "page"
     ? [h("a", { href: location.href })]
-    : [h("a", { href: location.start }), h("span"), h("a", { href: location.end })];
+    : [
+        h("a", { dataIndexRole: "range", href: location.start }, [
+          h("span", { dataIndexRangeStart: location.start }),
+          h("span", { dataIndexRole: "range-separator" }),
+          h("span", { dataIndexRangeEnd: location.end }),
+        ]),
+      ];
 
 const renderLocatorItem = (locator: Locator, renderer: EntryRendererBase): ElemContent[] => {
   const anchors = renderer.locatorAnchors?.({ locator }) ?? defaultLocatorAnchors(locator);

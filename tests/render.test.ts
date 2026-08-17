@@ -390,7 +390,7 @@ void test("exposes an emptied index on the target element", () => {
   assert.strictEqual(getAttribute(target, "data-index-result"), '{"children":[]}');
 });
 
-void test("renders a range locator as two links around an empty separator", () => {
+void test("renders a range locator as one start link containing its three parts", () => {
   const target = createTarget();
   const indexWithRange: Index = {
     children: [
@@ -416,11 +416,23 @@ void test("renders a range locator as two links around an empty separator", () =
   assert.ok(item);
   assert.deepStrictEqual(
     item.children.flatMap((child) => (child.type === "element" ? [child.tagName] : [])),
-    ["a", "span", "a"],
+    ["a"],
   );
+  const range = select(`${LOCATORS} > li > a[data-index-role="range"]`, root);
+  assert.ok(range);
+  assert.strictEqual(getAttribute(range, "href"), "104.html#a");
   assert.deepStrictEqual(
-    selectAll(`${LOCATORS} > li > a`, root).map((link) => getAttribute(link, "href")),
-    ["104.html#a", "110.html#b"],
+    range.children.flatMap((child) => (child.type === "element" ? [child.tagName] : [])),
+    ["span", "span", "span"],
   );
-  assert.strictEqual(toText(select(`${LOCATORS} > li > span`, root)!), "");
+  assert.strictEqual(
+    getAttribute(select("[data-index-range-start]", range)!, "data-index-range-start"),
+    "104.html#a",
+  );
+  assert.ok(select('[data-index-role="range-separator"]', range));
+  assert.strictEqual(
+    getAttribute(select("[data-index-range-end]", range)!, "data-index-range-end"),
+    "110.html#b",
+  );
+  assert.strictEqual(toText(range), "");
 });

@@ -52,7 +52,7 @@
   }
 
   > [data-index-role="locator-list"] > li a::before {
-    content: target-counter(attr(href url), page);
+    content: target-counter(attr(href), page);
   }
 
   > [data-index-role="xref-related"] > li:first-child::before {

@@ -82,6 +82,12 @@ function locatorLinks(root: hast.Root | hast.Element, targetId = "index") {
   return selectAll(`${locatorsOf(targetId)} a`, root).map((link) => getAttribute(link, "href"));
 }
 
+function rangeEnds(root: hast.Root | hast.Element, targetId = "index") {
+  return selectAll(`${locatorsOf(targetId)} [data-index-range-end]`, root).map((end) =>
+    getAttribute(end, "data-index-range-end"),
+  );
+}
+
 function groupHeadings(root: hast.Root | hast.Element) {
   return selectAll(GROUP, root).map((group) => toText(group).slice(0, 1));
 }
@@ -443,8 +449,9 @@ void test("wraps page and range locators in the template of their instruction", 
   );
   assert.deepStrictEqual(
     selectAll(`${LOCATORS} li > em > a`, root).map((link) => getAttribute(link, "href")),
-    ["chapter.html#range-start", "chapter.html#range-end"],
+    ["chapter.html#range-start"],
   );
+  assert.deepStrictEqual(rangeEnds(root), ["chapter.html#range-end"]);
   assert.strictEqual(select("slot", root), null);
 });
 
@@ -950,7 +957,8 @@ void test("builds a range whose markers are in different entries", () => {
 
   processor.runSync(root, { path: "/publication/index.md" });
 
-  assert.deepStrictEqual(locatorLinks(root), ["001.html#range-start", "100.html#range-end"]);
+  assert.deepStrictEqual(locatorLinks(root), ["001.html#range-start"]);
+  assert.deepStrictEqual(rangeEnds(root), ["100.html#range-end"]);
 });
 
 void test("discards a range end query when resolving its document target", () => {
@@ -968,7 +976,8 @@ void test("discards a range end query when resolving its document target", () =>
 
   processor.runSync(root, { path: "/publication/index.md" });
 
-  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#range-start", "end.html#range-end"]);
+  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#range-start"]);
+  assert.deepStrictEqual(rangeEnds(root), ["end.html#range-end"]);
 });
 
 void test("reports and revokes a range whose end target does not exist", () => {
