@@ -55,6 +55,10 @@
     content: target-counter(attr(href), page);
   }
 
+  > [data-index-role="locator-list"] > li > span::before {
+    content: "–";
+  }
+
   > [data-index-role="xref-related"] > li:first-child::before {
     content: "⇒";
   }
