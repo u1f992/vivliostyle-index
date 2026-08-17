@@ -20,8 +20,9 @@ void test("keeps a template without slots as it is", () => {
   assert.strictEqual(toText(root), "x");
 });
 
-void test("fills every slot with its own copy of the nodes", () => {
-  const filled = fillSlot("<b><slot></slot></b><i><slot></slot></i>", [h("a", { href: "#a" })]);
+void test("uses the original nodes for the first slot and copies for the rest", () => {
+  const content = [h("a", { href: "#a" })];
+  const filled = fillSlot("<b><slot></slot></b><i><slot></slot></i>", content);
   const root = asRoot(filled);
   const links = selectAll("a", root);
 
@@ -29,7 +30,25 @@ void test("fills every slot with its own copy of the nodes", () => {
     links.map((link) => getAttribute(link, "href")),
     ["#a", "#a"],
   );
+  assert.strictEqual(links[0], content[0]);
   assert.notStrictEqual(links[0], links[1]);
+});
+
+void test("uses depth-first order to select the original insertion", () => {
+  const content = [h("a", { href: "#a" })];
+  const root = asRoot(fillSlot("<span><slot></slot></span><slot></slot>", content));
+  const links = selectAll("a", root);
+
+  assert.strictEqual(select("span > a", root), content[0]);
+  assert.notStrictEqual(links[1], content[0]);
+});
+
+void test("ignores slots nested inside a slot", () => {
+  const content = [h("a", { href: "#a" })];
+  const root = asRoot(fillSlot("<slot><slot></slot></slot>", content));
+
+  assert.deepStrictEqual(root.children, content);
+  assert.strictEqual(select("slot", root), null);
 });
 
 void test("passes uncloneable data through the identity template", () => {
@@ -58,8 +77,9 @@ void test("copies nodes with uncloneable data into explicit templates", () => {
   const [first, second] = filled;
 
   assert.ok(first?.type === "element" && second?.type === "element");
-  assert.notStrictEqual(first, content[0]);
+  assert.strictEqual(first, content[0]);
   assert.notStrictEqual(first, second);
+  assert.strictEqual(first.data, content[0]?.data);
   assert.notStrictEqual(first.data, second.data);
   assert.strictEqual(first.data?.metadata, metadata);
   assert.strictEqual(second.data?.metadata, metadata);
@@ -72,6 +92,7 @@ void test("copies template contents independently between slots", () => {
   const [first, second] = filled;
 
   assert.ok(first?.type === "element" && second?.type === "element");
+  assert.strictEqual(first, content[0]);
   assert.notStrictEqual(first.content, second.content);
   assert.notStrictEqual(first.content?.children[0], second.content?.children[0]);
 });

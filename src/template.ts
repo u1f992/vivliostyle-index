@@ -8,22 +8,25 @@ export function fillSlot(
   template: string,
   content: readonly hast.ElementContent[],
 ): hast.ElementContent[] {
-  return template === identityTemplate
-    ? [...content]
-    : replaceSlots(parseFragment(template), content);
+  return replaceSlots(parseFragment(template), content, { hasInsertedContent: false });
 }
 
 const replaceSlots = (
   nodes: readonly hast.ElementContent[],
   content: readonly hast.ElementContent[],
+  state: { hasInsertedContent: boolean },
 ): hast.ElementContent[] =>
   nodes.flatMap((node) => {
     if (node.type !== "element") {
       return [node];
     }
-    return node.tagName === "slot"
-      ? cloneElementContent(content)
-      : [{ ...node, children: replaceSlots(node.children, content) }];
+    if (node.tagName === "slot") {
+      // hast consumers generally expect each occurrence to be a distinct object; sharing a node would make a properties change at one slot affect the others.
+      const inserted = state.hasInsertedContent ? cloneElementContent(content) : [...content];
+      state.hasInsertedContent = true;
+      return inserted;
+    }
+    return [{ ...node, children: replaceSlots(node.children, content, state) }];
   });
 
 const cloneElementContent = (content: readonly hast.ElementContent[]): hast.ElementContent[] =>
