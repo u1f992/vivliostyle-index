@@ -5,7 +5,7 @@ const entry = ["001-050.md", "051-099.md", "index.md", "100-150.md"];
 const index = createIndexPlugin({ entry });
 
 export default defineConfig({
-  title: "example",
+  title: "Basic example",
   author: "u1f992",
   language: "ja",
   theme: "./css",

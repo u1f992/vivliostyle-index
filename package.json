@@ -4,8 +4,8 @@
   "description": "unified plugin that integrates automatic index generation into Vivliostyle CLI workflows.",
   "main": "dist/index.js",
   "scripts": {
-    "lint": "tsc --noEmit --ignoreConfig oxlint.config.ts && oxlint --fix src tests example/vivliostyle.config.ts",
-    "format": "tsc --noEmit --ignoreConfig oxfmt.config.ts && oxfmt src tests example/vivliostyle.config.ts",
+    "lint": "tsc --noEmit --ignoreConfig oxlint.config.ts && oxlint --fix src tests examples/*/vivliostyle.config.ts",
+    "format": "tsc --noEmit --ignoreConfig oxfmt.config.ts && oxfmt src tests examples/*/vivliostyle.config.ts",
     "build": "tsc",
     "test": "tsc --project tests && node --test \"tests/**/*.test.ts\""
   },
@@ -18,7 +18,7 @@
   },
   "type": "module",
   "workspaces": [
-    "example"
+    "examples/*"
   ],
   "devDependencies": {
     "@types/deep-equal": "^1.0.4",

@@ -1,0 +1,9 @@
+{
+  "name": "custom-renderer-css",
+  "private": true,
+  "vivliostyle": {
+    "theme": {
+      "style": "style.css"
+    }
+  }
+}
