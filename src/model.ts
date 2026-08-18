@@ -36,7 +36,7 @@ export type Locator = Readonly<{
 }>;
 type HasLocators = { locators: Locator[] };
 export function insertLocator(entry: HasLocators, locator: Locator): void {
-  entry.locators.push({ ...locator });
+  entry.locators.push(locator);
 }
 
 export type Xref = Readonly<{
