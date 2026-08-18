@@ -34,38 +34,37 @@ export type Locator = Readonly<{
   template: string;
   error?: LocatorError;
 }>;
-type HasLocators = { locators: Locator[] };
-export function insertLocator(entry: HasLocators, locator: Locator): void {
-  entry.locators.push(locator);
-}
-
 export type Xref = Readonly<{
   target: EntryAddress;
   template: string;
   error?: XrefError;
 }>;
 export type XrefType = "preferred" | "related";
-type HasXrefs = {
+
+export type Subentry = HasKey & {
+  locators: Locator[];
   xrefPreferred: Xref[];
   xrefRelated: Xref[];
 };
+export type Entry = Subentry & { subentries: Subentry[] };
+
+export function insertLocator(entry: Entry | Subentry, locator: Locator): void {
+  entry.locators.push(locator);
+}
+
 const xrefListKey = {
   preferred: "xrefPreferred",
   related: "xrefRelated",
-} as const satisfies Record<XrefType, keyof HasXrefs>;
+} as const satisfies Record<XrefType, keyof (Entry | Subentry)>;
 
 export function insertXref(
-  entry: HasXrefs,
+  entry: Entry | Subentry,
   type: XrefType,
   target: EntryAddress,
   template: string,
 ): void {
   entry[xrefListKey[type]].push({ target, template });
 }
-
-export type EntryBase = HasLocators & HasXrefs;
-export type Subentry = HasKey & EntryBase;
-export type Entry = HasKey & EntryBase & { subentries: Subentry[] };
 export type Group = HasKey & { entries: Entry[] };
 
 export type Index = { groups: Group[] };
@@ -120,7 +119,7 @@ export function ensureChild<TChild extends HasKey>(
   return created;
 }
 
-export function ensureEntry(index: Index, address: EntryAddress): EntryBase {
+export function ensureEntry(index: Index, address: EntryAddress): Entry | Subentry {
   const group = ensureChild(index.groups, address.group, { entries: [] });
   const entry = ensureChild(group.entries, address.entry, {
     subentries: [],
