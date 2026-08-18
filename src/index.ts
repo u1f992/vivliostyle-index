@@ -47,14 +47,17 @@ export type {
   GroupRenderer,
   HeadingRenderer,
   IndexRenderer,
+  LocationRenderer,
   LocatorListRenderer,
   LocatorRenderer,
   SubentryListRenderer,
   SubentryRenderer,
   XrefPreferredListRenderer,
   XrefPreferredRenderer,
+  XrefPreferredTargetRenderer,
   XrefRelatedListRenderer,
   XrefRelatedRenderer,
+  XrefRelatedTargetRenderer,
 } from "./render.ts";
 export type { Settings, TargetSettings } from "./settings.ts";
 export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";

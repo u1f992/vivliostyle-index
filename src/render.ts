@@ -37,7 +37,7 @@ const defaultHeading: HeadingRenderer = ({ properties, contents }) => [
   h("span", properties, contents),
 ];
 
-export type LocatorRenderer = Readonly<{
+export type LocationRenderer = Readonly<{
   compose?(parts: {
     properties: Readonly<
       hast.Properties & {
@@ -55,20 +55,33 @@ export type LocatorRenderer = Readonly<{
   }): hast.ElementContent[];
 }>;
 
-const defaultLocatorCompose: NonNullable<LocatorRenderer["compose"]> = ({
+const defaultLocationCompose: NonNullable<LocationRenderer["compose"]> = ({
   properties,
   contents,
 }) => [h("a", properties, contents)];
 
-const defaultPageNumber: NonNullable<LocatorRenderer["pageNumber"]> = ({ properties }) => [
+const defaultPageNumber: NonNullable<LocationRenderer["pageNumber"]> = ({ properties }) => [
   h("span", properties),
 ];
 
-const defaultRangeSeparator: NonNullable<LocatorRenderer["rangeSeparator"]> = ({ properties }) => [
+const defaultRangeSeparator: NonNullable<LocationRenderer["rangeSeparator"]> = ({ properties }) => [
   h("span", properties),
 ];
 
-export type XrefPreferredRenderer = Readonly<{
+export type LocatorRenderer = Readonly<{
+  compose?(parts: {
+    properties: Readonly<hast.Properties>;
+    contents: hast.ElementContent[];
+  }): hast.ElementContent[];
+  location?: LocationRenderer;
+}>;
+
+const defaultLocatorCompose: NonNullable<LocatorRenderer["compose"]> = ({
+  properties,
+  contents,
+}) => [h("li", properties, contents)];
+
+export type XrefPreferredTargetRenderer = Readonly<{
   compose?(parts: {
     properties: Readonly<hast.Properties & { href: string } & ErrorProperties<XrefError>>;
     contents: hast.ElementContent[];
@@ -86,26 +99,39 @@ export type XrefPreferredRenderer = Readonly<{
   }): hast.ElementContent[];
 }>;
 
-const defaultXrefPreferredCompose: NonNullable<XrefPreferredRenderer["compose"]> = ({
+const defaultXrefPreferredTargetCompose: NonNullable<XrefPreferredTargetRenderer["compose"]> = ({
   properties,
   contents,
 }) => [h("a", properties, contents)];
 
-const defaultXrefPreferredEntry: NonNullable<XrefPreferredRenderer["entry"]> = ({
+const defaultXrefPreferredEntry: NonNullable<XrefPreferredTargetRenderer["entry"]> = ({
   properties,
   contents,
 }) => [h("span", properties, contents)];
 
 const defaultXrefPreferredSubentrySeparator: NonNullable<
-  XrefPreferredRenderer["subentrySeparator"]
+  XrefPreferredTargetRenderer["subentrySeparator"]
 > = ({ properties }) => [h("span", properties)];
 
-const defaultXrefPreferredSubentry: NonNullable<XrefPreferredRenderer["subentry"]> = ({
+const defaultXrefPreferredSubentry: NonNullable<XrefPreferredTargetRenderer["subentry"]> = ({
   properties,
   contents,
 }) => [h("span", properties, contents)];
 
-export type XrefRelatedRenderer = Readonly<{
+export type XrefPreferredRenderer = Readonly<{
+  compose?(parts: {
+    properties: Readonly<hast.Properties>;
+    contents: hast.ElementContent[];
+  }): hast.ElementContent[];
+  target?: XrefPreferredTargetRenderer;
+}>;
+
+const defaultXrefPreferredCompose: NonNullable<XrefPreferredRenderer["compose"]> = ({
+  properties,
+  contents,
+}) => [h("li", properties, contents)];
+
+export type XrefRelatedTargetRenderer = Readonly<{
   compose?(parts: {
     properties: Readonly<hast.Properties & { href: string } & ErrorProperties<XrefError>>;
     contents: hast.ElementContent[];
@@ -123,24 +149,37 @@ export type XrefRelatedRenderer = Readonly<{
   }): hast.ElementContent[];
 }>;
 
-const defaultXrefRelatedCompose: NonNullable<XrefRelatedRenderer["compose"]> = ({
+const defaultXrefRelatedTargetCompose: NonNullable<XrefRelatedTargetRenderer["compose"]> = ({
   properties,
   contents,
 }) => [h("a", properties, contents)];
 
-const defaultXrefRelatedEntry: NonNullable<XrefRelatedRenderer["entry"]> = ({
+const defaultXrefRelatedEntry: NonNullable<XrefRelatedTargetRenderer["entry"]> = ({
   properties,
   contents,
 }) => [h("span", properties, contents)];
 
 const defaultXrefRelatedSubentrySeparator: NonNullable<
-  XrefRelatedRenderer["subentrySeparator"]
+  XrefRelatedTargetRenderer["subentrySeparator"]
 > = ({ properties }) => [h("span", properties)];
 
-const defaultXrefRelatedSubentry: NonNullable<XrefRelatedRenderer["subentry"]> = ({
+const defaultXrefRelatedSubentry: NonNullable<XrefRelatedTargetRenderer["subentry"]> = ({
   properties,
   contents,
 }) => [h("span", properties, contents)];
+
+export type XrefRelatedRenderer = Readonly<{
+  compose?(parts: {
+    properties: Readonly<hast.Properties>;
+    contents: hast.ElementContent[];
+  }): hast.ElementContent[];
+  target?: XrefRelatedTargetRenderer;
+}>;
+
+const defaultXrefRelatedCompose: NonNullable<XrefRelatedRenderer["compose"]> = ({
+  properties,
+  contents,
+}) => [h("li", properties, contents)];
 
 export type LocatorListRenderer = Readonly<{
   compose?(parts: {
@@ -430,7 +469,7 @@ const renderLocatorList = (
   return listRenderer.compose?.(locatorListParts) ?? defaultLocatorListCompose(locatorListParts);
 };
 
-const renderPageNumber = (target: string, renderer: LocatorRenderer): hast.ElementContent[] => {
+const renderPageNumber = (target: string, renderer: LocationRenderer): hast.ElementContent[] => {
   const properties = { dataIndexRole: "page-number", dataIndexPageTarget: target } as const;
   const pageNumberParts = { properties };
   return renderer.pageNumber?.(pageNumberParts) ?? defaultPageNumber(pageNumberParts);
@@ -438,7 +477,7 @@ const renderPageNumber = (target: string, renderer: LocatorRenderer): hast.Eleme
 
 const renderLocatorContents = (
   { location }: Locator,
-  renderer: LocatorRenderer,
+  renderer: LocationRenderer,
 ): hast.ElementContent[] => {
   if (location.type === "page") {
     return renderPageNumber(location.href, renderer);
@@ -458,17 +497,25 @@ const renderLocator = (
   listRenderer: LocatorListRenderer,
 ): hast.ElementContent[] => {
   const { location } = locator;
-  const properties = {
+  const locationProperties = {
     dataIndexRole: location.type,
     href: location.type === "page" ? location.href : location.start,
     ...errorProperties(locator.error),
   } as const;
   const renderer = listRenderer.locator?.({ locator }) ?? {};
-  const contents = renderLocatorContents(locator, renderer);
-  const locatorParts = { properties, contents };
-  const content = renderer.compose?.(locatorParts) ?? defaultLocatorCompose(locatorParts);
-  const children = fillSlot(locator.template, content);
-  return children.length === 0 ? [] : [h("li", children)];
+  const locationRenderer = renderer.location ?? {};
+  const locationParts = {
+    properties: locationProperties,
+    contents: renderLocatorContents(locator, locationRenderer),
+  };
+  const content =
+    locationRenderer.compose?.(locationParts) ?? defaultLocationCompose(locationParts);
+  const contents = fillSlot(locator.template, content);
+  if (contents.length === 0) {
+    return [];
+  }
+  const locatorParts = { properties: {}, contents };
+  return renderer.compose?.(locatorParts) ?? defaultLocatorCompose(locatorParts);
 };
 
 const xrefId = (indexId: string, { group, entry, subentry }: EntryAddress): string =>
@@ -524,17 +571,9 @@ const xrefProperties = (
   ...errorProperties(error),
 });
 
-const applyXrefTemplate = (
-  template: string,
-  content: hast.ElementContent[],
-): hast.ElementContent[] => {
-  const children = fillSlot(template, content);
-  return children.length === 0 ? [] : [h("li", children)];
-};
-
 const renderPreferredXrefContents = (
   { target }: Xref,
-  renderer: XrefPreferredRenderer,
+  renderer: XrefPreferredTargetRenderer,
 ): hast.ElementContent[] => {
   const entryProperties = { dataIndexRole: "xref-preferred-entry" } as const;
   const entryContents = parseFragment(target.entry.html);
@@ -560,7 +599,7 @@ const renderPreferredXrefContents = (
 
 const renderRelatedXrefContents = (
   { target }: Xref,
-  renderer: XrefRelatedRenderer,
+  renderer: XrefRelatedTargetRenderer,
 ): hast.ElementContent[] => {
   const entryProperties = { dataIndexRole: "xref-related-entry" } as const;
   const entryContents = parseFragment(target.entry.html);
@@ -590,12 +629,19 @@ const renderPreferredXref = (
   listRenderer: XrefPreferredListRenderer,
 ): hast.ElementContent[] => {
   const renderer = listRenderer.xrefPreferred?.({ xrefPreferred }) ?? {};
-  const properties = xrefProperties(xrefPreferred, indexId);
-  const contents = renderPreferredXrefContents(xrefPreferred, renderer);
-  const xrefPreferredParts = { properties, contents };
+  const targetRenderer = renderer.target ?? {};
+  const targetParts = {
+    properties: xrefProperties(xrefPreferred, indexId),
+    contents: renderPreferredXrefContents(xrefPreferred, targetRenderer),
+  };
   const content =
-    renderer.compose?.(xrefPreferredParts) ?? defaultXrefPreferredCompose(xrefPreferredParts);
-  return applyXrefTemplate(xrefPreferred.template, content);
+    targetRenderer.compose?.(targetParts) ?? defaultXrefPreferredTargetCompose(targetParts);
+  const contents = fillSlot(xrefPreferred.template, content);
+  if (contents.length === 0) {
+    return [];
+  }
+  const xrefPreferredParts = { properties: {}, contents };
+  return renderer.compose?.(xrefPreferredParts) ?? defaultXrefPreferredCompose(xrefPreferredParts);
 };
 
 const renderRelatedXref = (
@@ -604,10 +650,17 @@ const renderRelatedXref = (
   listRenderer: XrefRelatedListRenderer,
 ): hast.ElementContent[] => {
   const renderer = listRenderer.xrefRelated?.({ xrefRelated }) ?? {};
-  const properties = xrefProperties(xrefRelated, indexId);
-  const contents = renderRelatedXrefContents(xrefRelated, renderer);
-  const xrefRelatedParts = { properties, contents };
+  const targetRenderer = renderer.target ?? {};
+  const targetParts = {
+    properties: xrefProperties(xrefRelated, indexId),
+    contents: renderRelatedXrefContents(xrefRelated, targetRenderer),
+  };
   const content =
-    renderer.compose?.(xrefRelatedParts) ?? defaultXrefRelatedCompose(xrefRelatedParts);
-  return applyXrefTemplate(xrefRelated.template, content);
+    targetRenderer.compose?.(targetParts) ?? defaultXrefRelatedTargetCompose(targetParts);
+  const contents = fillSlot(xrefRelated.template, content);
+  if (contents.length === 0) {
+    return [];
+  }
+  const xrefRelatedParts = { properties: {}, contents };
+  return renderer.compose?.(xrefRelatedParts) ?? defaultXrefRelatedCompose(xrefRelatedParts);
 };

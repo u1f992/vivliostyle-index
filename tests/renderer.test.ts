@@ -14,11 +14,13 @@ import {
   type GroupRenderer,
   type HeadingRenderer,
   type IndexRenderer,
+  type LocationRenderer,
   type LocatorListRenderer,
   type LocatorRenderer,
   type SubentryRenderer,
   type XrefPreferredListRenderer,
   type XrefPreferredRenderer,
+  type XrefPreferredTargetRenderer,
   type XrefRelatedListRenderer,
 } from "../src/render.ts";
 import { identityTemplate } from "../src/template.ts";
@@ -332,21 +334,29 @@ void test("passes generated properties to structural compose functions", () => {
 void test("keeps the receiver of every renderer method", () => {
   const target = createTarget();
   const leafCalls: string[] = [];
-  const locatorRenderer: LocatorRenderer = {
-    compose({ properties }) {
-      assert.strictEqual(this, locatorRenderer);
+  const locationRenderer: LocationRenderer = {
+    compose({ properties, contents }) {
+      assert.strictEqual(this, locationRenderer);
       assert.ok(properties.dataIndexRole === "page" || properties.dataIndexRole === "range");
       assert.strictEqual(properties.href.length > 0, true);
-      leafCalls.push("locator-compose");
-      return [];
+      leafCalls.push("location-compose");
+      return contents;
     },
     pageNumber({ properties }) {
-      assert.strictEqual(this, locatorRenderer);
+      assert.strictEqual(this, locationRenderer);
       assert.strictEqual(properties.dataIndexRole, "page-number");
       assert.strictEqual(properties.dataIndexPageTarget.length > 0, true);
       leafCalls.push("page-number");
+      return [{ type: "text", value: "p" }];
+    },
+  };
+  const locatorRenderer: LocatorRenderer = {
+    compose() {
+      assert.strictEqual(this, locatorRenderer);
+      leafCalls.push("locator-compose");
       return [];
     },
+    location: locationRenderer,
   };
   const locatorListRenderer: LocatorListRenderer = {
     locator({ locator }) {
@@ -356,18 +366,26 @@ void test("keeps the receiver of every renderer method", () => {
       return locatorRenderer;
     },
   };
-  const xrefRenderer: XrefPreferredRenderer = {
+  const xrefTargetRenderer: XrefPreferredTargetRenderer = {
     entry({ properties, contents }) {
-      assert.strictEqual(this, xrefRenderer);
+      assert.strictEqual(this, xrefTargetRenderer);
       assert.strictEqual(properties.dataIndexRole, "xref-preferred-entry");
       leafCalls.push("xref-preferred-entry");
       return [h("span", properties, contents)];
     },
+    compose({ contents }) {
+      assert.strictEqual(this, xrefTargetRenderer);
+      leafCalls.push("xref-preferred-target-compose");
+      return contents;
+    },
+  };
+  const xrefRenderer: XrefPreferredRenderer = {
     compose() {
       assert.strictEqual(this, xrefRenderer);
       leafCalls.push("xref-preferred-compose");
       return [];
     },
+    target: xrefTargetRenderer,
   };
   const xrefListRenderer: XrefPreferredListRenderer = {
     xrefPreferred() {
@@ -414,13 +432,16 @@ void test("keeps the receiver of every renderer method", () => {
     "entry-heading",
     "locator",
     "page-number",
+    "location-compose",
     "locator-compose",
     "subentry-heading",
     "locator",
     "page-number",
+    "location-compose",
     "locator-compose",
     "xref-preferred",
     "xref-preferred-entry",
+    "xref-preferred-target-compose",
     "xref-preferred-compose",
   ]);
   assert.strictEqual(selectAll('[data-index-role="locator-list"] > li', root).length, 0);
@@ -593,14 +614,16 @@ void test("applies a locator template after the nested locator renderer", () => 
                 return locator.location.type === "page"
                   ? {}
                   : {
-                      compose: ({ properties: { href, ...properties }, contents }) => {
-                        assert.strictEqual(href, "104.html#a");
-                        return [h("span", properties, contents)];
+                      location: {
+                        compose: ({ properties: { href, ...properties }, contents }) => {
+                          assert.strictEqual(href, "104.html#a");
+                          return [h("span", properties, contents)];
+                        },
+                        pageNumber: ({ properties }) => [
+                          h("a", { ...properties, href: properties.dataIndexPageTarget }),
+                        ],
+                        rangeSeparator: ({ properties }) => [h("span", properties, "から")],
                       },
-                      pageNumber: ({ properties }) => [
-                        h("a", { ...properties, href: properties.dataIndexPageTarget }),
-                      ],
-                      rangeSeparator: ({ properties }) => [h("span", properties, "から")],
                     };
               },
             },
@@ -686,25 +709,27 @@ void test("applies xref templates after their distinct nested renderers", () => 
               xrefPreferred: ({ xrefPreferred }) => {
                 assert.strictEqual(xrefPreferred.target.subentry?.reading, "いっしんせんぞく");
                 return {
-                  compose: ({ properties, contents }) => {
-                    assert.ok(properties.href.startsWith("#"));
-                    assert.strictEqual(contents.length, 3);
-                    return [h("a", { ...properties, dataCustom: "preferred" }, contents)];
-                  },
-                  entry: ({ properties, contents }) => {
-                    assert.strictEqual(properties.dataIndexRole, "xref-preferred-entry");
-                    return [h("span", properties, contents)];
-                  },
-                  subentrySeparator: ({ properties }) => {
-                    assert.strictEqual(
-                      properties.dataIndexRole,
-                      "xref-preferred-subentry-separator",
-                    );
-                    return [h("span", properties)];
-                  },
-                  subentry: ({ properties, contents }) => {
-                    assert.strictEqual(properties.dataIndexRole, "xref-preferred-subentry");
-                    return [h("span", properties, contents)];
+                  target: {
+                    compose: ({ properties, contents }) => {
+                      assert.ok(properties.href.startsWith("#"));
+                      assert.strictEqual(contents.length, 3);
+                      return [h("a", { ...properties, dataCustom: "preferred" }, contents)];
+                    },
+                    entry: ({ properties, contents }) => {
+                      assert.strictEqual(properties.dataIndexRole, "xref-preferred-entry");
+                      return [h("span", properties, contents)];
+                    },
+                    subentrySeparator: ({ properties }) => {
+                      assert.strictEqual(
+                        properties.dataIndexRole,
+                        "xref-preferred-subentry-separator",
+                      );
+                      return [h("span", properties)];
+                    },
+                    subentry: ({ properties, contents }) => {
+                      assert.strictEqual(properties.dataIndexRole, "xref-preferred-subentry");
+                      return [h("span", properties, contents)];
+                    },
                   },
                 };
               },
@@ -717,22 +742,27 @@ void test("applies xref templates after their distinct nested renderers", () => 
               xrefRelated: ({ xrefRelated }) => {
                 assert.strictEqual(xrefRelated.target.subentry?.reading, "いっしんせんぞく");
                 return {
-                  compose: ({ properties, contents }) => {
-                    assert.ok(properties.href.startsWith("#"));
-                    assert.strictEqual(contents.length, 3);
-                    return [h("a", { ...properties, dataCustom: "related" }, contents)];
-                  },
-                  entry: ({ properties, contents }) => {
-                    assert.strictEqual(properties.dataIndexRole, "xref-related-entry");
-                    return [h("span", properties, contents)];
-                  },
-                  subentrySeparator: ({ properties }) => {
-                    assert.strictEqual(properties.dataIndexRole, "xref-related-subentry-separator");
-                    return [h("span", properties)];
-                  },
-                  subentry: ({ properties, contents }) => {
-                    assert.strictEqual(properties.dataIndexRole, "xref-related-subentry");
-                    return [h("span", properties, contents)];
+                  target: {
+                    compose: ({ properties, contents }) => {
+                      assert.ok(properties.href.startsWith("#"));
+                      assert.strictEqual(contents.length, 3);
+                      return [h("a", { ...properties, dataCustom: "related" }, contents)];
+                    },
+                    entry: ({ properties, contents }) => {
+                      assert.strictEqual(properties.dataIndexRole, "xref-related-entry");
+                      return [h("span", properties, contents)];
+                    },
+                    subentrySeparator: ({ properties }) => {
+                      assert.strictEqual(
+                        properties.dataIndexRole,
+                        "xref-related-subentry-separator",
+                      );
+                      return [h("span", properties)];
+                    },
+                    subentry: ({ properties, contents }) => {
+                      assert.strictEqual(properties.dataIndexRole, "xref-related-subentry");
+                      return [h("span", properties, contents)];
+                    },
                   },
                 };
               },
@@ -796,9 +826,11 @@ void test("uses the same leaf and list contracts for subentries", () => {
                 locatorList: {
                   compose: ({ properties, locators }) => [h("ol", properties, locators.flat())],
                   locator: () => ({
-                    compose: ({ properties, contents }) => [
-                      h("a", { ...properties, dataItem: subentry.reading }, contents),
-                    ],
+                    location: {
+                      compose: ({ properties, contents }) => [
+                        h("a", { ...properties, dataItem: subentry.reading }, contents),
+                      ],
+                    },
                   }),
                 },
                 xrefPreferredList: {
@@ -806,9 +838,11 @@ void test("uses the same leaf and list contracts for subentries", () => {
                     h("ul", properties, xrefPreferreds.flat()),
                   ],
                   xrefPreferred: () => ({
-                    compose: ({ properties, contents }) => [
-                      h("a", { ...properties, dataSubXref: "" }, contents),
-                    ],
+                    target: {
+                      compose: ({ properties, contents }) => [
+                        h("a", { ...properties, dataSubXref: "" }, contents),
+                      ],
+                    },
                   }),
                 },
               }),
@@ -831,6 +865,49 @@ void test("uses the same leaf and list contracts for subentries", () => {
   assert.deepStrictEqual(
     selectAll(`${SUBENTRY} > ul > li > a[data-sub-xref]`, root).map((element) => toText(element)),
     ["相続"],
+  );
+});
+
+void test("composes locator and xref list items", () => {
+  const target = createTarget();
+  const renderer: IndexRenderer = {
+    groupList: {
+      group: () => ({
+        entryList: {
+          entry: () => ({
+            locatorList: {
+              locator: () => ({
+                compose: ({ contents }) => contents,
+              }),
+            },
+            subentryList: {
+              subentry: () => ({
+                xrefPreferredList: {
+                  xrefPreferred: () => ({
+                    compose: ({ properties, contents }) => [
+                      h("li", { ...properties, dataXrefItem: "" }, contents),
+                    ],
+                  }),
+                },
+              }),
+            },
+          }),
+        },
+      }),
+    },
+  };
+
+  renderIndex(indexWithSubentry, target, "index", renderer);
+  const root = rootOf(target);
+
+  assert.strictEqual(selectAll(`${LOCATORS} > li`, root).length, 0);
+  assert.deepStrictEqual(
+    selectAll(`${LOCATORS} > a`, root).map((link) => getAttribute(link, "href")),
+    ["088.html#b"],
+  );
+  assert.strictEqual(
+    selectAll(`${SUBENTRY} > ${roleOf("xref-preferred")} > li[data-xref-item] > a`, root).length,
+    1,
   );
 });
 
