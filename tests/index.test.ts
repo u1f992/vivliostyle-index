@@ -268,13 +268,13 @@ void test("composes index content separately from rendering model nodes", () => 
           renderer: ({ h, index }) => {
             const groupReadings = index.children.map(({ key }) => key.reading).join(",");
             return {
-              groupList: () => ({
+              groupList: {
                 group: () => ({
                   heading: ({ contents }) => [
                     h("h2", { dataGroupReadings: groupReadings }, contents),
                   ],
                 }),
-              }),
+              },
             };
           },
         },

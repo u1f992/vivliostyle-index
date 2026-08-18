@@ -24,33 +24,29 @@ const index = createIndexPlugin({
             ...groupList,
           ],
         renderer: ({ h }) => {
-          const locatorList = (): LocatorListRenderer => ({
-            locator: ({ properties }) => ({
-              self: ({ contents }) => [h("span", properties, contents)],
+          const locatorList: LocatorListRenderer = {
+            locator: () => ({
+              compose: ({ properties, contents }) => [h("span", properties, contents)],
               pageNumber: ({ properties, target }) => [h("a", { ...properties, href: target })],
             }),
-          });
+          };
           return {
-            groupList: ({ properties }) => ({
-              self: ({ groups }) => [
-                h(
-                  "ul",
-                  properties,
-                  groups.flatMap(({ content }) => content),
-                ),
-              ],
-              group: ({ properties }) => ({
-                self: ({ heading, entryList }) => [h("li", properties, [...heading, ...entryList])],
-                entryList: () => ({
+            groupList: {
+              compose: ({ properties, groups }) => [h("ul", properties, groups.flat())],
+              group: () => ({
+                compose: ({ properties, heading, entryList }) => [
+                  h("li", properties, [...heading, ...entryList]),
+                ],
+                entryList: {
                   entry: () => ({
                     locatorList,
-                    subentryList: () => ({
+                    subentryList: {
                       subentry: () => ({ locatorList }),
-                    }),
+                    },
                   }),
-                }),
+                },
               }),
-            }),
+            },
           };
         },
       },

@@ -144,12 +144,13 @@ void test("accepts arbitrary content and empty output from compose", () => {
   assert.deepStrictEqual(emptyTarget.children, []);
 });
 
-void test("calls group list self for an index without groups", () => {
+void test("calls group list compose for an index without groups", () => {
   const target = createTarget();
   const renderer: IndexRenderer = {
-    groupList: ({ properties }) => ({
-      self: ({ groups }) => (groups.length === 0 ? [h("p", "該当なし")] : [h("div", properties)]),
-    }),
+    groupList: {
+      compose: ({ properties, groups }) =>
+        groups.length === 0 ? [h("p", "該当なし")] : [h("div", properties)],
+    },
   };
 
   renderIndex({ children: [] }, target, "index", renderer);
@@ -168,19 +169,19 @@ void test("renders headings through the leaf functions at every level", () => {
       return [h(level === "group" ? "h2" : "span", { ...properties, dataLevel: level }, contents)];
     };
   const renderer: IndexRenderer = {
-    groupList: () => ({
+    groupList: {
       group: () => ({
         heading: heading("group"),
-        entryList: () => ({
+        entryList: {
           entry: () => ({
             heading: heading("entry"),
-            subentryList: () => ({
+            subentryList: {
               subentry: () => ({ heading: heading("subentry") }),
-            }),
+            },
           }),
-        }),
+        },
       }),
-    }),
+    },
   };
 
   renderIndex(indexWithSubentry, target, "index", renderer);
@@ -201,70 +202,102 @@ void test("renders headings through the leaf functions at every level", () => {
   );
 });
 
-void test("passes generated properties when each structural renderer is created", () => {
+void test("passes generated properties to structural compose functions", () => {
   const target = createTarget();
   const roles = new Set<string>();
   const ids = new Set<string>();
   const keys: string[] = [];
-  const renderer: IndexRenderer = {
-    groupList: ({ properties }) => {
+  const locatorList: LocatorListRenderer = {
+    compose: ({ properties, locators }) => {
       roles.add(properties.dataIndexRole);
-      return {
-        group: ({ group, properties }) => {
-          keys.push(group.reading);
-          roles.add(properties.dataIndexRole);
-          return {
-            entryList: ({ properties }) => {
+      return locators.flat();
+    },
+  };
+  const xrefList: XrefListRenderer = {
+    compose: ({ properties, xrefs }) => {
+      roles.add(properties.dataIndexRole);
+      return xrefs.flat();
+    },
+  };
+  const renderer: IndexRenderer = {
+    groupList: {
+      compose: ({ properties, groups }) => {
+        roles.add(properties.dataIndexRole);
+        return groups.flat();
+      },
+      group: ({ group }) => {
+        keys.push(group.reading);
+        return {
+          compose: ({ properties, heading, entryList }) => {
+            roles.add(properties.dataIndexRole);
+            return [h("section", properties, [...heading, ...entryList])];
+          },
+          entryList: {
+            compose: ({ properties, entries }) => {
               roles.add(properties.dataIndexRole);
+              return entries.flat();
+            },
+            entry: ({ entry }) => {
+              keys.push(entry.reading);
               return {
-                entry: ({ entry, properties }) => {
-                  keys.push(entry.reading);
+                compose: ({
+                  properties,
+                  heading,
+                  locatorList,
+                  xrefPreferredList,
+                  xrefRelatedList,
+                  subentryList,
+                }) => {
                   ids.add(properties.id);
-                  return {
-                    locatorList: ({ properties }) => {
-                      roles.add(properties.dataIndexRole);
-                      return {};
-                    },
-                    xrefPreferredList: ({ type, properties }) => {
-                      assert.strictEqual(type, "preferred");
-                      roles.add(properties.dataIndexRole);
-                      return {};
-                    },
-                    xrefRelatedList: ({ type, properties }) => {
-                      assert.strictEqual(type, "related");
-                      roles.add(properties.dataIndexRole);
-                      return {};
-                    },
-                    subentryList: ({ properties }) => {
-                      roles.add(properties.dataIndexRole);
-                      return {
-                        subentry: ({ subentry, properties }) => {
-                          keys.push(subentry.reading);
-                          ids.add(properties.id);
-                          return {
-                            locatorList: ({ properties }) => {
-                              roles.add(properties.dataIndexRole);
-                              return {};
-                            },
-                            xrefPreferredList: ({ properties }) => {
-                              roles.add(properties.dataIndexRole);
-                              return {};
-                            },
-                            xrefRelatedList: ({ properties }) => {
-                              roles.add(properties.dataIndexRole);
-                              return {};
-                            },
-                          };
-                        },
-                      };
-                    },
-                  };
+                  return [
+                    h("li", properties, [
+                      ...heading,
+                      ...locatorList,
+                      ...xrefPreferredList,
+                      ...xrefRelatedList,
+                      ...subentryList,
+                    ]),
+                  ];
+                },
+                locatorList,
+                xrefPreferredList: xrefList,
+                xrefRelatedList: xrefList,
+                subentryList: {
+                  compose: ({ properties, subentries }) => {
+                    roles.add(properties.dataIndexRole);
+                    return subentries.flat();
+                  },
+                  subentry: ({ subentry }) => {
+                    keys.push(subentry.reading);
+                    return {
+                      compose: ({
+                        properties,
+                        heading,
+                        locatorList,
+                        xrefPreferredList,
+                        xrefRelatedList,
+                      }) => {
+                        ids.add(properties.id);
+                        return [
+                          h("li", properties, [
+                            ...heading,
+                            ...locatorList,
+                            ...xrefPreferredList,
+                            ...xrefRelatedList,
+                          ]),
+                        ];
+                      },
+                      locatorList,
+                      xrefPreferredList: xrefList,
+                      xrefRelatedList: xrefList,
+                    };
+                  },
                 },
               };
             },
-          };
-        },
-      };
+          },
+        };
+      },
     },
   };
 
@@ -288,67 +321,15 @@ void test("passes generated properties when each structural renderer is created"
   assert.ok([...ids].every((id) => id.length > 0));
 });
 
-void test("keeps the receiver of entry and subentry list factory methods", () => {
-  const target = createTarget();
-  let entryCalls = 0;
-  let subentryCalls = 0;
-  const subentryRenderer: SubentryRenderer = {
-    locatorList() {
-      assert.strictEqual(this, subentryRenderer);
-      subentryCalls += 1;
-      return {};
-    },
-    xrefPreferredList() {
-      assert.strictEqual(this, subentryRenderer);
-      subentryCalls += 1;
-      return {};
-    },
-    xrefRelatedList() {
-      assert.strictEqual(this, subentryRenderer);
-      subentryCalls += 1;
-      return {};
-    },
-  };
-  const entryRenderer: EntryRenderer = {
-    locatorList() {
-      assert.strictEqual(this, entryRenderer);
-      entryCalls += 1;
-      return {};
-    },
-    xrefPreferredList() {
-      assert.strictEqual(this, entryRenderer);
-      entryCalls += 1;
-      return {};
-    },
-    xrefRelatedList() {
-      assert.strictEqual(this, entryRenderer);
-      entryCalls += 1;
-      return {};
-    },
-    subentryList: () => ({ subentry: () => subentryRenderer }),
-  };
-  const renderer: IndexRenderer = {
-    groupList: () => ({
-      group: () => ({
-        entryList: () => ({ entry: () => entryRenderer }),
-      }),
-    }),
-  };
-
-  renderIndex(indexWithSubentry, target, "index", renderer);
-
-  assert.strictEqual(entryCalls, 3);
-  assert.strictEqual(subentryCalls, 3);
-});
-
 void test("keeps the receiver of every renderer method", () => {
   const target = createTarget();
   const leafCalls: string[] = [];
   const locatorRenderer: LocatorRenderer = {
-    self({ href }) {
+    compose({ properties, href }) {
       assert.strictEqual(this, locatorRenderer);
+      assert.ok(properties.dataIndexRole === "page" || properties.dataIndexRole === "range");
       assert.strictEqual(href.length > 0, true);
-      leafCalls.push("locator-self");
+      leafCalls.push("locator-compose");
       return [];
     },
     pageNumber({ properties, target }) {
@@ -360,9 +341,9 @@ void test("keeps the receiver of every renderer method", () => {
     },
   };
   const locatorListRenderer: LocatorListRenderer = {
-    locator({ locator, properties }) {
+    locator({ locator }) {
       assert.strictEqual(this, locatorListRenderer);
-      assert.strictEqual(properties.dataIndexRole, locator.location.type);
+      assert.ok(locator.location.type === "page" || locator.location.type === "range");
       leafCalls.push("locator");
       return locatorRenderer;
     },
@@ -380,8 +361,8 @@ void test("keeps the receiver of every renderer method", () => {
       leafCalls.push("subentry-heading");
       return [h("span", contents)];
     },
-    locatorList: () => locatorListRenderer,
-    xrefPreferredList: () => xrefListRenderer,
+    locatorList: locatorListRenderer,
+    xrefPreferredList: xrefListRenderer,
   };
   const entryRenderer: EntryRenderer = {
     heading({ contents }) {
@@ -389,8 +370,8 @@ void test("keeps the receiver of every renderer method", () => {
       leafCalls.push("entry-heading");
       return [h("span", contents)];
     },
-    locatorList: () => locatorListRenderer,
-    subentryList: () => ({ subentry: () => subentryRenderer }),
+    locatorList: locatorListRenderer,
+    subentryList: { subentry: () => subentryRenderer },
   };
   const groupRenderer: GroupRenderer = {
     heading({ contents }) {
@@ -398,10 +379,10 @@ void test("keeps the receiver of every renderer method", () => {
       leafCalls.push("group-heading");
       return [h("span", contents)];
     },
-    entryList: () => ({ entry: () => entryRenderer }),
+    entryList: { entry: () => entryRenderer },
   };
   const renderer: IndexRenderer = {
-    groupList: () => ({ group: () => groupRenderer }),
+    groupList: { group: () => groupRenderer },
   };
 
   renderIndex(indexWithSubentry, target, "index", renderer);
@@ -412,51 +393,38 @@ void test("keeps the receiver of every renderer method", () => {
     "entry-heading",
     "locator",
     "page-number",
-    "locator-self",
+    "locator-compose",
     "subentry-heading",
     "locator",
     "page-number",
-    "locator-self",
+    "locator-compose",
     "xref",
   ]);
   assert.strictEqual(selectAll('[data-index-role="locator-list"] > li', root).length, 0);
   assert.strictEqual(selectAll('[data-index-role="xref-preferred"] > li', root).length, 0);
 });
 
-void test("renders every branch through its self function", () => {
+void test("renders every branch through its compose function", () => {
   const target = createTarget();
   const renderer: IndexRenderer = {
-    groupList: ({ properties: groupListProperties }) => ({
-      self: ({ groups }) => [
-        h(
-          "main",
-          { ...groupListProperties, dataGroups: String(groups.length) },
-          groups.flatMap(({ content }) => content),
-        ),
+    groupList: {
+      compose: ({ properties, groups }) => [
+        h("main", { ...properties, dataGroups: String(groups.length) }, groups.flat()),
       ],
-      group: ({ group, properties: groupProperties }) => ({
-        self: ({ heading, entryList }) => [
-          h("article", { ...groupProperties, dataReading: group.reading }, [
-            ...heading,
-            ...entryList,
-          ]),
+      group: ({ group }) => ({
+        compose: ({ properties, heading, entryList }) => [
+          h("article", { ...properties, dataReading: group.reading }, [...heading, ...entryList]),
         ],
-        entryList: ({ properties: entryListProperties }) => ({
-          self: ({ entries }) => [
-            h(
-              "ol",
-              entryListProperties,
-              entries.flatMap(({ content }) => content),
-            ),
-          ],
-          entry: ({ properties: entryProperties }) => ({
-            self: ({ heading, locatorList }) => [
-              h("li", { ...entryProperties, dataSelf: "entry" }, [...heading, ...locatorList]),
+        entryList: {
+          compose: ({ properties, entries }) => [h("ol", properties, entries.flat())],
+          entry: () => ({
+            compose: ({ properties, heading, locatorList }) => [
+              h("li", { ...properties, dataCompose: "entry" }, [...heading, ...locatorList]),
             ],
           }),
-        }),
+        },
       }),
-    }),
+    },
   };
 
   renderIndex(index, target, "index", renderer);
@@ -471,90 +439,77 @@ void test("renders every branch through its self function", () => {
     2,
   );
   assert.ok(
-    selectAll("li[data-self='entry']", root).every((entry) => getAttribute(entry, "id") !== null),
+    selectAll("li[data-compose='entry']", root).every(
+      (entry) => getAttribute(entry, "id") !== null,
+    ),
   );
 });
 
-void test("passes model keys and rendered content to list self functions", () => {
+void test("passes model keys to child factories and rendered content to list compose functions", () => {
   const target = createTarget();
+  const groupKeys: string[] = [];
+  const entryKeys: string[] = [];
   const renderer: IndexRenderer = {
-    groupList: ({ properties: groupListProperties }) => ({
-      self: ({ groups }) => [
-        h(
-          "nav",
-          groups.map(({ group }) => h("a", { href: `#${group.reading}` })),
-        ),
-        h(
-          "div",
-          groupListProperties,
-          groups.flatMap(({ content }) => content),
-        ),
-      ],
-      group: ({ group, properties: groupProperties }) => ({
-        self: ({ heading, entryList }) => [
-          h("section", { ...groupProperties, id: group.reading }, [...heading, ...entryList]),
-        ],
-        entryList: ({ properties: entryListProperties }) => ({
-          self: ({ entries }) => [
-            h(
-              "ul",
-              {
-                ...entryListProperties,
-                dataEntries: entries.map(({ entry }) => entry.reading).join(","),
-              },
-              entries.flatMap(({ content }) => content),
-            ),
+    groupList: {
+      compose: ({ properties, groups }) => {
+        assert.ok(groups.every(Array.isArray));
+        return [h("div", properties, groups.flat())];
+      },
+      group: ({ group }) => {
+        groupKeys.push(group.reading);
+        return {
+          compose: ({ properties, heading, entryList }) => [
+            h("section", properties, [...heading, ...entryList]),
           ],
-          entry: () => ({
-            heading: ({ contents }) => [h("b", contents)],
-          }),
-        }),
-      }),
-    }),
+          entryList: {
+            compose: ({ properties, entries }) => {
+              assert.ok(entries.every(Array.isArray));
+              return [h("ul", properties, entries.flat())];
+            },
+            entry: ({ entry }) => {
+              entryKeys.push(entry.reading);
+              return { heading: ({ contents }) => [h("b", contents)] };
+            },
+          },
+        };
+      },
+    },
   };
 
   renderIndex(index, target, "index", renderer);
   const root = rootOf(target);
 
-  assert.deepStrictEqual(
-    selectAll("#index > nav > a", root).map((link) => getAttribute(link, "href")),
-    ["#ち", "#そ"],
-  );
-  assert.deepStrictEqual(
-    selectAll("#index > div > section > ul", root).map((list) =>
-      getAttribute(list, "data-entries"),
-    ),
-    ["ちょさくけん", "そうぞく"],
-  );
+  assert.deepStrictEqual(groupKeys, ["ち", "そ"]);
+  assert.deepStrictEqual(entryKeys, ["ちょさくけん", "そうぞく"]);
   assert.deepStrictEqual(
     selectAll("#index > div > section > ul > li > b", root).map((element) => toText(element)),
     ["著作権", "相続"],
   );
 });
 
-void test("calls every nested list self function for an empty list", () => {
+void test("calls every nested list compose function for an empty list", () => {
   const target = createTarget();
   const renderer: IndexRenderer = {
-    groupList: () => ({
+    groupList: {
       group: () => ({
-        entryList: () => ({
+        entryList: {
           entry: () => ({
-            locatorList: () => ({
-              self: ({ locators }) => [h("p", `locators:${locators.length}`)],
-            }),
-            xrefPreferredList: () => ({
-              self: ({ xrefs }) => [h("p", `preferred:${xrefs.length}`)],
-            }),
-            xrefRelatedList: () => ({
-              self: ({ xrefs }) => [h("p", `related:${xrefs.length}`)],
-            }),
-            subentryList: () => ({
-              self: ({ subentries }) => [h("p", `subentries:${subentries.length}`)],
-            }),
+            locatorList: {
+              compose: ({ locators }) => [h("p", `locators:${locators.length}`)],
+            },
+            xrefPreferredList: {
+              compose: ({ xrefs }) => [h("p", `preferred:${xrefs.length}`)],
+            },
+            xrefRelatedList: {
+              compose: ({ xrefs }) => [h("p", `related:${xrefs.length}`)],
+            },
+            subentryList: {
+              compose: ({ subentries }) => [h("p", `subentries:${subentries.length}`)],
+            },
           }),
-        }),
+        },
       }),
-    }),
+    },
   };
   const emptyLists: Index = {
     children: [
@@ -605,35 +560,28 @@ void test("applies a locator template after the nested locator renderer", () => 
     ],
   };
   const renderer: IndexRenderer = {
-    groupList: () => ({
+    groupList: {
       group: () => ({
-        entryList: () => ({
+        entryList: {
           entry: () => ({
-            locatorList: ({ properties: listProperties }) => ({
-              self: ({ locators }) => [
-                h(
-                  "ol",
-                  listProperties,
-                  locators.flatMap(({ content }) => content),
-                ),
-              ],
-              locator: ({ locator, properties: locatorProperties }) => {
-                assert.strictEqual(locatorProperties.dataIndexRole, locator.location.type);
+            locatorList: {
+              compose: ({ properties, locators }) => [h("ol", properties, locators.flat())],
+              locator: ({ locator }) => {
                 return locator.location.type === "page"
                   ? {}
                   : {
-                      self: ({ contents }) => [h("span", locatorProperties, contents)],
+                      compose: ({ properties, contents }) => [h("span", properties, contents)],
                       pageNumber: ({ properties, target }) => [
                         h("a", { ...properties, href: target }),
                       ],
                       rangeSeparator: ({ properties }) => [h("span", properties, "から")],
                     };
               },
-            }),
+            },
           }),
-        }),
+        },
       }),
-    }),
+    },
   };
 
   renderIndex(rangeIndex, target, "index", renderer);
@@ -687,31 +635,24 @@ void test("applies an xref template after the xref leaf", () => {
     ],
   };
   const renderer: IndexRenderer = {
-    groupList: () => ({
+    groupList: {
       group: () => ({
-        entryList: () => ({
+        entryList: {
           entry: () => ({
-            xrefPreferredList: ({ type: listType, properties: listProperties }) => ({
-              self: ({ xrefs }) => [
-                h(
-                  "ul",
-                  listProperties,
-                  xrefs.flatMap(({ content }) => content),
-                ),
-              ],
+            xrefPreferredList: {
+              compose: ({ properties, xrefs }) => [h("ul", properties, xrefs.flat())],
               xref: ({ xref, type, href, contents }) => {
-                assert.strictEqual(listType, "preferred");
                 assert.strictEqual(type, "preferred");
                 assert.strictEqual(xref.target.subentry?.reading, "いっしんせんぞく");
                 assert.ok(href.startsWith("#"));
                 assert.strictEqual(contents.length, 3);
                 return [h("a", { href, dataCustom: type }, contents)];
               },
-            }),
+            },
           }),
-        }),
+        },
       }),
-    }),
+    },
   };
 
   renderIndex(xrefIndex, target, "index", renderer);
@@ -730,56 +671,38 @@ void test("applies an xref template after the xref leaf", () => {
 void test("uses the same leaf and list contracts for subentries", () => {
   const target = createTarget();
   const renderer: IndexRenderer = {
-    groupList: () => ({
+    groupList: {
       group: () => ({
-        entryList: () => ({
+        entryList: {
           entry: () => ({
-            subentryList: ({ properties: subentryListProperties }) => ({
-              self: ({ subentries }) => [
-                h(
-                  "ul",
-                  subentryListProperties,
-                  subentries.flatMap(({ content }) => content),
-                ),
-              ],
-              subentry: ({ subentry, properties: subentryProperties }) => ({
-                self: ({ heading, locatorList, xrefPreferredList }) => [
-                  h("li", { ...subentryProperties, dataSelf: "subentry" }, [
+            subentryList: {
+              compose: ({ properties, subentries }) => [h("ul", properties, subentries.flat())],
+              subentry: ({ subentry }) => ({
+                compose: ({ properties, heading, locatorList, xrefPreferredList }) => [
+                  h("li", { ...properties, dataCompose: "subentry" }, [
                     ...heading,
                     ...locatorList,
                     ...xrefPreferredList,
                   ]),
                 ],
-                locatorList: ({ properties: locatorListProperties }) => ({
-                  self: ({ locators }) => [
-                    h(
-                      "ol",
-                      locatorListProperties,
-                      locators.flatMap(({ content }) => content),
-                    ),
-                  ],
-                  locator: ({ properties }) => ({
-                    self: ({ href, contents }) => [
+                locatorList: {
+                  compose: ({ properties, locators }) => [h("ol", properties, locators.flat())],
+                  locator: () => ({
+                    compose: ({ properties, href, contents }) => [
                       h("a", { ...properties, href, dataItem: subentry.reading }, contents),
                     ],
                   }),
-                }),
-                xrefPreferredList: ({ properties: xrefListProperties }) => ({
-                  self: ({ xrefs }) => [
-                    h(
-                      "ul",
-                      xrefListProperties,
-                      xrefs.flatMap(({ content }) => content),
-                    ),
-                  ],
+                },
+                xrefPreferredList: {
+                  compose: ({ properties, xrefs }) => [h("ul", properties, xrefs.flat())],
                   xref: ({ href, contents }) => [h("a", { href, dataSubXref: "" }, contents)],
-                }),
+                },
               }),
-            }),
+            },
           }),
-        }),
+        },
       }),
-    }),
+    },
   };
 
   renderIndex(indexWithSubentry, target, "index", renderer);
@@ -812,12 +735,12 @@ void test("composes target children while preserving internally managed properti
 void test("accepts arbitrary content and empty output at every branch", () => {
   const target = createTarget();
   const renderer: IndexRenderer = {
-    groupList: () => ({
-      self: ({ groups }) => groups.flatMap(({ content }) => content),
+    groupList: {
+      compose: ({ groups }) => groups.flat(),
       group: ({ group }) => ({
-        self: () => (group.reading === "ち" ? [] : [{ type: "text", value: group.html }]),
+        compose: () => (group.reading === "ち" ? [] : [{ type: "text", value: group.html }]),
       }),
-    }),
+    },
   };
 
   renderIndex(index, target, "index", renderer);
@@ -829,18 +752,18 @@ void test("shares one heading leaf between entries and subentries", () => {
   const target = createTarget();
   const heading: HeadingRenderer = ({ contents }) => [h("span", { dataShared: "" }, contents)];
   const renderer: IndexRenderer = {
-    groupList: () => ({
+    groupList: {
       group: () => ({
-        entryList: () => ({
+        entryList: {
           entry: () => ({
             heading,
-            subentryList: () => ({
+            subentryList: {
               subentry: () => ({ heading }),
-            }),
+            },
           }),
-        }),
+        },
       }),
-    }),
+    },
   };
 
   renderIndex(indexWithSubentry, target, "index", renderer);
