@@ -4,6 +4,7 @@ import { getXPath } from "hast-util-get-xpath";
 import { selectAll } from "hast-util-select";
 
 import { parseInstruction, type ParsedInstruction } from "./instruction.ts";
+import { createSourceId } from "./id.ts";
 import { createLocationHref } from "./location.ts";
 import { messages, type MessageArguments } from "./messages.ts";
 import { documentUrl } from "./platform.ts";
@@ -22,19 +23,19 @@ export type Attachment = AttachmentBase & Readonly<{ instruction: ParsedInstruct
 export type SourceSnapshot = Readonly<{
   attachments: readonly Attachment[];
   messages: readonly MessageArguments[];
-  ids: readonly string[];
 }>;
 
 function ensureId(tree: Readonly<hast.Root>, element: hast.Element): string {
-  let id = getAttribute(element, "id");
-  if (id !== null) {
-    return id;
+  const existingId = getAttribute(element, "id");
+  if (existingId !== null) {
+    return existingId;
   }
 
-  id = getXPath(tree, element);
-  if (id === null) {
-    throw new Error("id === null: won't happen. it's likely a bug in getXPath()");
+  const xpath = getXPath(tree, element);
+  if (xpath === null) {
+    throw new Error("getXPath() returned null for an element in the source tree");
   }
+  const id = createSourceId(xpath);
 
   if (element.properties) {
     element.properties["id"] = id;
@@ -94,25 +95,5 @@ export function collectSourceSnapshot(root: hast.Root, sourcePath: string): Sour
     attachments.push({ ...base, instruction });
   }
 
-  const ids = selectAll("[id]", root).flatMap((element) => {
-    const id = getAttribute(element, "id");
-    return id === null ? [] : [id];
-  });
-  for (const id of findDuplicateIds(ids)) {
-    documentMessages.push(messages.duplicateId(id));
-  }
-  return { attachments, messages: documentMessages, ids };
-}
-
-function findDuplicateIds(ids: readonly string[]): string[] {
-  const seen = new Set<string>();
-  const duplicates = new Set<string>();
-  for (const id of ids) {
-    if (seen.has(id)) {
-      duplicates.add(id);
-    } else {
-      seen.add(id);
-    }
-  }
-  return [...duplicates];
+  return { attachments, messages: documentMessages };
 }

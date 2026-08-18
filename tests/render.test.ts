@@ -74,7 +74,7 @@ void test("renders an index into the target element", () => {
   assert.ok(entry);
   assert.strictEqual(
     getAttribute(entry, "id"),
-    "aW5kZXg.44Gh.44Gh.44Gh44KH44GV44GP44GR44KT.6JGX5L2c5qip",
+    "index.entry.aW5kZXg.44Gh.44Gh.44Gh44KH44GV44GP44GR44KT.6JGX5L2c5qip",
   );
 });
 

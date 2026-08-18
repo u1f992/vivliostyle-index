@@ -54,11 +54,6 @@ export const messages = {
     undefined,
     rule("instruction-parse-error"),
   ],
-  duplicateId: (id: string): MessageArguments => [
-    `id ${JSON.stringify(id)} appears more than once. locators, ranges, and indexes addressing it may resolve to the wrong element.`,
-    undefined,
-    rule("duplicate-id"),
-  ],
   unmatchedRangeStart: (target: Target, address: EntryAddress): MessageArguments => [
     `range start for entry ${formatEntryAddress(address)} of index target ${formatTarget(target)} has no matching range end. the range start is treated as a page locator.`,
     undefined,

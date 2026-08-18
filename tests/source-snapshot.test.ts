@@ -19,7 +19,7 @@ void test("extracts instructions, targets, locations, and element IDs", () => {
   assert.strictEqual(snapshot.attachments.length, 2);
   assert.deepStrictEqual(snapshot.attachments[0], {
     sourcePath: "/publication/chapter.md",
-    sourceId: "/html/body/span",
+    sourceId: "index.source.L2h0bWwvYm9keS9zcGFu",
     target: { path: "/publication/index.md", id: "index" },
     targetKey: '["/publication/index.md","index"]',
     instruction: {
@@ -30,7 +30,7 @@ void test("extracts instructions, targets, locations, and element IDs", () => {
       },
       template: identityTemplate,
     },
-    locationHref: "chapter.html#%2Fhtml%2Fbody%2Fspan",
+    locationHref: "chapter.html#index.source.L2h0bWwvYm9keS9zcGFu",
   });
   assert.deepStrictEqual(snapshot.attachments[1], {
     sourcePath: "/publication/chapter.md",
@@ -46,23 +46,17 @@ void test("extracts instructions, targets, locations, and element IDs", () => {
     },
     locationHref: "chapter.html#end",
   });
-  assert.deepStrictEqual(snapshot.ids, ["/html/body/span", "end"]);
   const source = select("[data-index]", root);
   assert.ok(source);
-  assert.strictEqual(getAttribute(source, "id"), "/html/body/span");
+  assert.strictEqual(getAttribute(source, "id"), "index.source.L2h0bWwvYm9keS9zcGFu");
 });
 
-void test("warns once for each id a document repeats", () => {
+void test("ignores duplicate element IDs", () => {
   const root = fromHtml('<i id="twice"></i><i id="twice"></i><i id="twice"></i><i id="once"></i>');
 
   const snapshot = collectSourceSnapshot(root, "/publication/chapter.md");
 
-  assert.deepStrictEqual(
-    snapshot.messages.map((message) => message[2]?.split(":")[1]),
-    ["duplicate-id"],
-  );
-  assert.match(String(snapshot.messages[0]?.[0]), /"twice"/);
-  assert.deepStrictEqual(snapshot.ids, ["twice", "twice", "twice", "once"]);
+  assert.deepStrictEqual(snapshot.messages, []);
 });
 
 void test("reports invalid references and instructions", () => {

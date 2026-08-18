@@ -153,8 +153,8 @@ void test("renders a complete index before later source entries are transformed"
     "/publication/100.md",
   ]);
   assert.deepStrictEqual(locatorLinks(root), [
-    "001.html#%2Fhtml%2Fbody%2Fspan",
-    "100.html#%2Fhtml%2Fbody%2Fspan",
+    "001.html#index.source.L2h0bWwvYm9keS9zcGFu",
+    "100.html#index.source.L2h0bWwvYm9keS9zcGFu",
   ]);
 });
 
@@ -172,7 +172,7 @@ void test("renders an index after source entries that follow it in the document"
 
   processor.runSync(root, { path });
 
-  assert.deepStrictEqual(locatorLinks(root), ["#%2Fhtml%2Fbody%2Fspan"]);
+  assert.deepStrictEqual(locatorLinks(root), ["#index.source.L2h0bWwvYm9keS9zcGFu"]);
 });
 
 void test("composes configured content into the index it names", () => {
@@ -714,7 +714,7 @@ void test("degrades an unmatched range start to a page locator", () => {
 
   assert.deepStrictEqual(groupHeadings(root), ["a", "b"]);
   assert.deepStrictEqual(locatorLinks(root), [
-    "chapter.html#%2Fhtml%2Fbody%2Fspan%5B1%5D",
+    "chapter.html#index.source.L2h0bWwvYm9keS9zcGFuWzFd",
     "chapter.html#banana",
   ]);
 });
@@ -739,7 +739,9 @@ void test("resolves a cross-reference to a degraded range start", () => {
   processor.runSync(fromHtml(files["/publication/chapter.md"]), chapterFile);
 
   assert.deepStrictEqual(groupHeadings(root), ["a", "b"]);
-  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#%2Fhtml%2Fbody%2Fspan%5B1%5D"]);
+  assert.deepStrictEqual(locatorLinks(root), [
+    "chapter.html#index.source.L2h0bWwvYm9keS9zcGFuWzFd",
+  ]);
   assert.deepStrictEqual(
     selectAll(`${XREF_PREFERRED} a`, root).map((xref) => toText(xref)),
     ["Apple"],
@@ -959,7 +961,9 @@ void test("moves an attachment from an old target document to a new one", () => 
 
   assert.deepStrictEqual(updates, ["/publication/old.md", "/publication/new.md"]);
   assert.deepStrictEqual(locatorLinks(oldRoot, "old"), []);
-  assert.deepStrictEqual(locatorLinks(newRoot, "new"), ["chapter.html#%2Fhtml%2Fbody%2Fspan"]);
+  assert.deepStrictEqual(locatorLinks(newRoot, "new"), [
+    "chapter.html#index.source.L2h0bWwvYm9keS9zcGFu",
+  ]);
 });
 
 void test("moves an attachment between fragments in the same document", () => {
@@ -983,7 +987,7 @@ void test("moves an attachment between fragments in the same document", () => {
   assert.ok(oldTarget);
   assert.ok(newTarget);
   assert.deepStrictEqual(locatorLinks(currentRoot, "old"), []);
-  assert.deepStrictEqual(locatorLinks(currentRoot, "new"), ["#%2Fhtml%2Fbody%2Fspan"]);
+  assert.deepStrictEqual(locatorLinks(currentRoot, "new"), ["#index.source.L2h0bWwvYm9keS9zcGFu"]);
 });
 
 void test("keeps range pairs separate between index targets", () => {
@@ -1050,7 +1054,7 @@ void test("generates an ID for a range end without one", () => {
   processor.runSync(root, { path: "/publication/index.md" });
 
   assert.deepStrictEqual(locatorLinks(root), ["chapter.html#range-start"]);
-  assert.deepStrictEqual(rangeEnds(root), ["end.html#%2Fhtml%2Fbody%2Fspan"]);
+  assert.deepStrictEqual(rangeEnds(root), ["end.html#index.source.L2h0bWwvYm9keS9zcGFu"]);
 });
 
 void test("reports and degrades an unmatched range start", () => {
@@ -1068,7 +1072,7 @@ void test("reports and degrades an unmatched range start", () => {
   const file = VFile({ path: "/publication/chapter.md" });
   processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
 
-  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#%2Fhtml%2Fbody%2Fspan"]);
+  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#index.source.L2h0bWwvYm9keS9zcGFu"]);
   assert.deepStrictEqual(locatorErrors(root), ["unmatched-range-start"]);
   assert.strictEqual(file.messages.length, 1);
   assert.match(file.messages[0]?.reason ?? "", /no matching range end/v);
@@ -1091,7 +1095,7 @@ void test("reports and degrades an unmatched range end", () => {
   const file = VFile({ path: "/publication/chapter.md" });
   processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
 
-  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#%2Fhtml%2Fbody%2Fspan"]);
+  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#index.source.L2h0bWwvYm9keS9zcGFu"]);
   assert.deepStrictEqual(locatorErrors(root), ["unmatched-range-end"]);
   assert.strictEqual(file.messages.length, 1);
   assert.match(file.messages[0]?.reason ?? "", /no matching range start/v);
@@ -1119,7 +1123,7 @@ void test("reports and degrades a range whose end precedes its start in the same
 
   assert.deepStrictEqual(locatorLinks(root), [
     "chapter.html#range-end",
-    "chapter.html#%2Fhtml%2Fbody%2Fspan%5B2%5D",
+    "chapter.html#index.source.L2h0bWwvYm9keS9zcGFuWzJd",
   ]);
   assert.deepStrictEqual(locatorErrors(root), ["unmatched-range-end", "unmatched-range-start"]);
   assert.strictEqual(file.messages.length, 2);
@@ -1171,7 +1175,7 @@ void test("reports and degrades a range whose end is in an earlier entry", () =>
 
   assert.deepStrictEqual(locatorLinks(root), [
     "001.html#range-end",
-    "100.html#%2Fhtml%2Fbody%2Fspan",
+    "100.html#index.source.L2h0bWwvYm9keS9zcGFu",
   ]);
   assert.strictEqual(file.messages.length, 1);
   assert.strictEqual(file.messages[0]?.ruleId, "unmatched-range-start");
@@ -1360,7 +1364,9 @@ void test("resolves entries and index targets above the entry context", () => {
 
   processor.runSync(root, { path: "/indexes/index.md" });
 
-  assert.deepStrictEqual(locatorLinks(root), ["../publication/chapter.html#%2Fhtml%2Fbody%2Fspan"]);
+  assert.deepStrictEqual(locatorLinks(root), [
+    "../publication/chapter.html#index.source.L2h0bWwvYm9keS9zcGFu",
+  ]);
 });
 
 void test("keeps locators in entry and document order when a source is processed again", () => {

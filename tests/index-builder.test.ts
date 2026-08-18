@@ -92,7 +92,7 @@ void test("degrades range markers that precede their starts to page locators", (
     builtIndex.index.children[0]?.children[0]?.locators.map(({ location }) => location),
     [
       { type: "page", href: "001.html#end" },
-      { type: "page", href: "100.html#%2Fhtml%2Fbody%2Fspan%5B1%5D" },
+      { type: "page", href: "100.html#index.source.L2h0bWwvYm9keS9zcGFuWzFd" },
     ],
   );
   assert.deepStrictEqual(

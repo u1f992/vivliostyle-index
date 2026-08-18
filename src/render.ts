@@ -1,4 +1,5 @@
 import { parseFragment } from "./html.ts";
+import { createEntryId, createSubentryId } from "./id.ts";
 import type {
   EntryAddress,
   IndexError,
@@ -323,19 +324,6 @@ export function renderIndex(
   target.children = renderer.compose?.(indexParts) ?? defaultIndexCompose(indexParts);
 }
 
-const idSegmentEncoder = new TextEncoder();
-
-const encodeIdSegment = (value: string): string => {
-  const binary = [...idSegmentEncoder.encode(value)].reduce(
-    (binary, byte) => binary + String.fromCharCode(byte),
-    "",
-  );
-  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-};
-
-const headingId = (indexId: string, keys: readonly Key[]): string =>
-  [indexId, ...keys.flatMap(({ reading, html }) => [reading, html])].map(encodeIdSegment).join(".");
-
 type HeadingOwner = Readonly<{ heading?: HeadingRenderer }>;
 
 const renderHeading = (key: Key, renderer: HeadingOwner): hast.ElementContent[] => {
@@ -357,7 +345,7 @@ const renderGroup = (
   const entries = group.children.map((entry) =>
     renderEntry(
       entry,
-      { id: headingId(indexId, [group.key, entry.key]) },
+      { id: createEntryId(indexId, group.key, entry.key) },
       indexId,
       group.key,
       entryListRenderer.entry?.({ entry: entry.key }) ?? {},
@@ -386,7 +374,7 @@ const renderEntry = (
   const subentries = entry.children.map((subentry) =>
     renderSubentry(
       subentry,
-      { id: headingId(indexId, [groupKey, entry.key, subentry.key]) },
+      { id: createSubentryId(indexId, groupKey, entry.key, subentry.key) },
       indexId,
       subentryListRenderer.subentry?.({ subentry: subentry.key }) ?? {},
     ),
@@ -485,8 +473,8 @@ const renderLocator = (
 
 const xrefId = (indexId: string, { group, entry, subentry }: EntryAddress): string =>
   subentry === undefined
-    ? headingId(indexId, [group, entry])
-    : headingId(indexId, [group, entry, subentry]);
+    ? createEntryId(indexId, group, entry)
+    : createSubentryId(indexId, group, entry, subentry);
 
 const renderPreferredXrefList = (
   xrefPreferreds: readonly Xref[],
