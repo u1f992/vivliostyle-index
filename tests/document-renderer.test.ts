@@ -2,7 +2,6 @@ import assert from "node:assert";
 import test from "node:test";
 
 import { fromHtml } from "hast-util-from-html";
-import { getAttribute } from "hast-util-get-attribute";
 import { select, selectAll } from "hast-util-select";
 import { toText } from "hast-util-to-text";
 import VFile from "vfile";
@@ -180,7 +179,7 @@ void test("refuses a target without a role attribute", () => {
   const element = select("#index", root);
   assert.ok(element);
   assert.strictEqual(toText(element), "placeholder");
-  assert.strictEqual(getAttribute(element, "data-index-result"), null);
+  assert.strictEqual(element.data?.indexResult, undefined);
 });
 
 void test("refuses a target whose role lacks the doc-index token", () => {
@@ -241,7 +240,7 @@ void test("exposes the sorted index on the target element", () => {
 
   const element = select("#index", root);
   assert.ok(element);
-  const payload: Index = JSON.parse(getAttribute(element, "data-index-result") ?? "null");
+  const payload = element.data?.indexResult as Index;
   assert.deepStrictEqual(
     payload.children.map(({ key }) => key.reading),
     ["a", "z"],

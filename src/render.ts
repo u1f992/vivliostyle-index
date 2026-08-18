@@ -319,7 +319,7 @@ export function renderIndex(
   const groupListParts = { properties: groupListProperties, groups };
   const groupList =
     groupListRenderer.compose?.(groupListParts) ?? defaultGroupListCompose(groupListParts);
-  target.properties = { ...target.properties, dataIndexResult: JSON.stringify(index) };
+  target.data = { ...target.data, indexResult: index };
   const indexParts = { groupList };
   target.children = renderer.compose?.(indexParts) ?? defaultIndexCompose(indexParts);
 }

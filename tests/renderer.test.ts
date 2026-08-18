@@ -311,7 +311,7 @@ void test("passes generated properties to structural compose functions", () => {
 
   renderIndex(indexWithSubentry, target, "index", renderer);
 
-  assert.strictEqual(getAttribute(target, "data-index-result"), JSON.stringify(indexWithSubentry));
+  assert.deepStrictEqual(target.data?.indexResult, indexWithSubentry);
   assert.deepStrictEqual(keys, ["そ", "そうぞく", "いっしんせんぞく"]);
   assert.deepStrictEqual(
     roles,
@@ -843,7 +843,7 @@ void test("composes target children while preserving internally managed properti
 
   renderIndex(index, target, "index", renderer);
 
-  assert.strictEqual(getAttribute(target, "data-index-result"), JSON.stringify(index));
+  assert.deepStrictEqual(target.data?.indexResult, index);
   assert.strictEqual(getAttribute(target, "data-index"), "kept");
   assert.strictEqual(selectAll("#index > main > div", rootOf(target)).length, 1);
 });

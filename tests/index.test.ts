@@ -250,7 +250,7 @@ void test("keeps a target without the doc-index role and warns", () => {
   const target = select("#index", root);
   assert.ok(target);
   assert.strictEqual(toText(target), "placeholder");
-  assert.strictEqual(getAttribute(target, "data-index-result"), null);
+  assert.strictEqual(target.data?.indexResult, undefined);
 });
 
 void test("composes index content separately from rendering model nodes", () => {

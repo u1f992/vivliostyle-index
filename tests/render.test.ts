@@ -338,14 +338,14 @@ void test("wraps a cross-reference in the template of its instruction", () => {
   );
 });
 
-void test("exposes the rendered index as JSON on the target element", () => {
+void test("exposes the rendered index as node data on the target element", () => {
   const target = createTarget();
   const root: hast.Root = { type: "root", children: [target] };
 
   renderIndex(index, target, "index", {});
 
-  assert.deepStrictEqual(selectAll("[data-index-result]", root), [target]);
-  assert.strictEqual(getAttribute(target, "data-index-result"), JSON.stringify(index));
+  assert.deepStrictEqual(selectAll("[data-index-result]", root), []);
+  assert.deepStrictEqual(target.data?.indexResult, index);
 });
 
 void test("names the keys of the exposed index", () => {
@@ -382,8 +382,8 @@ void test("names the keys of the exposed index", () => {
   };
 
   renderIndex(indexWithEveryKey, target, "index", {});
-  const exposed = JSON.parse(getAttribute(target, "data-index-result") ?? "null");
-  const entry = exposed.children[0].children[0];
+  const exposed = target.data?.indexResult as Index;
+  const entry = exposed.children[0]!.children[0]!;
 
   assert.deepStrictEqual(Object.keys(entry), [
     "key",
@@ -392,8 +392,8 @@ void test("names the keys of the exposed index", () => {
     "xrefRelated",
     "children",
   ]);
-  assert.deepStrictEqual(Object.keys(entry.locators[0]), ["location", "template"]);
-  assert.deepStrictEqual(Object.keys(entry.xrefPreferred[0].target), [
+  assert.deepStrictEqual(Object.keys(entry.locators[0]!), ["location", "template"]);
+  assert.deepStrictEqual(Object.keys(entry.xrefPreferred[0]!.target), [
     "group",
     "entry",
     "subentry",
@@ -419,7 +419,7 @@ void test("exposes an emptied index on the target element", () => {
   const groupList = select(roleOf("group-list"), target);
   assert.ok(groupList);
   assert.strictEqual(groupList.tagName, "div");
-  assert.strictEqual(getAttribute(target, "data-index-result"), '{"children":[]}');
+  assert.deepStrictEqual(target.data?.indexResult, { children: [] });
 });
 
 void test("renders a page locator as a page link containing one page number", () => {
