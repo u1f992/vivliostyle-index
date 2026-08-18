@@ -26,14 +26,17 @@ export type {
   EntryAddress,
   Group,
   Index,
+  IndexError,
   Key,
   Locator,
+  LocatorError,
   ReadonlyEntry,
   ReadonlyGroup,
   ReadonlyIndex,
   ReadonlySubentry,
   Subentry,
   Xref,
+  XrefError,
   XrefType,
 } from "./model.ts";
 export type {

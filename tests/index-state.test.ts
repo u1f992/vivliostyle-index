@@ -180,7 +180,7 @@ void test("marks documents whose diagnostics change after another source updates
   assert.ok(affected.affectedPaths.has(bananaPath));
   assert.deepStrictEqual(
     messagesFor(affected.state, bananaPath).map((message) => message[2]?.split(":")[1]),
-    ["invalid-xref", "vacant-entry", "target-not-in-entries"],
+    ["invalid-xref", "target-not-in-entries"],
   );
 });
 

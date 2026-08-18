@@ -60,24 +60,19 @@ export const messages = {
     rule("duplicate-id"),
   ],
   unmatchedRangeStart: (target: Target, address: EntryAddress): MessageArguments => [
-    `range start for entry ${formatEntryAddress(address)} of index target ${formatTarget(target)} has no matching range end. the range is revoked.`,
+    `range start for entry ${formatEntryAddress(address)} of index target ${formatTarget(target)} has no matching range end. the range start is treated as a page locator.`,
     undefined,
     rule("unmatched-range-start"),
   ],
   unmatchedRangeEnd: (target: Target, address: EntryAddress): MessageArguments => [
-    `range end for entry ${formatEntryAddress(address)} of index target ${formatTarget(target)} has no matching range start. the range end is ignored.`,
+    `range end for entry ${formatEntryAddress(address)} of index target ${formatTarget(target)} has no matching range start. the range end is treated as a page locator.`,
     undefined,
     rule("unmatched-range-end"),
   ],
   invalidXref: (xref: UnresolvedXref): MessageArguments => [
-    `index does not contain ${formatUnresolvedXref(xref)}. the cross-reference is revoked.`,
+    `index does not contain ${formatUnresolvedXref(xref)}. the cross-reference target will not resolve.`,
     undefined,
     rule("invalid-xref"),
-  ],
-  vacantEntry: (target: Target, address: EntryAddress): MessageArguments => [
-    `entry ${formatEntryAddress(address)} of index target ${formatTarget(target)} holds no locator, cross-reference, or subentry. the entry is revoked.`,
-    undefined,
-    rule("vacant-entry"),
   ],
   targetNotInEntries: (target: Target): MessageArguments => [
     `index target ${formatTarget(target)} is not included in entries`,

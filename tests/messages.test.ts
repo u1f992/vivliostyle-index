@@ -43,18 +43,6 @@ void test("groups message arguments by document and emits VFile messages", () =>
       missing: "subentry",
     }),
   );
-  addMessage(
-    messagesByDocument,
-    "/publication/chapter.md",
-    messages.vacantEntry(
-      { path: "/publication/index.md", id: "index" },
-      {
-        group: { html: "ち", reading: "ち" },
-        entry: { html: "著作権", reading: "ちょさくけん" },
-        subentry: { html: "――の相続", reading: "ちょさくけんのそうぞく" },
-      },
-    ),
-  );
   const file = VFile({ path: "/publication/chapter.md" });
 
   emitMessages(file, messagesByDocument.get("/publication/chapter.md") ?? []);
@@ -76,19 +64,13 @@ void test("groups message arguments by document and emits VFile messages", () =>
         source: "vivliostyle-index",
         ruleId: "invalid-xref",
         reason:
-          'index does not contain group={"html":"ち","reading":"ち"},entry={"html":"工業所有権","reading":"こうぎょうしょゆうけん"}. the cross-reference is revoked.',
+          'index does not contain group={"html":"ち","reading":"ち"},entry={"html":"工業所有権","reading":"こうぎょうしょゆうけん"}. the cross-reference target will not resolve.',
       },
       {
         source: "vivliostyle-index",
         ruleId: "invalid-xref",
         reason:
-          'index does not contain group={"html":"ち","reading":"ち"},entry={"html":"著作権","reading":"ちょさくけん"},subentry={"html":"――の相続","reading":"ちょさくけんのそうぞく"}. the cross-reference is revoked.',
-      },
-      {
-        source: "vivliostyle-index",
-        ruleId: "vacant-entry",
-        reason:
-          'entry group={"html":"ち","reading":"ち"},entry={"html":"著作権","reading":"ちょさくけん"},subentry={"html":"――の相続","reading":"ちょさくけんのそうぞく"} of index target /publication/index.md#index holds no locator, cross-reference, or subentry. the entry is revoked.',
+          'index does not contain group={"html":"ち","reading":"ち"},entry={"html":"著作権","reading":"ちょさくけん"},subentry={"html":"――の相続","reading":"ちょさくけんのそうぞく"}. the cross-reference target will not resolve.',
       },
     ],
   );

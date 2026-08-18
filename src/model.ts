@@ -25,30 +25,24 @@ export type UnresolvedXref = Readonly<{
   missing: keyof EntryAddress;
 }>;
 
-export type Revocation = () => void;
-
-function insert<T>(list: T[], item: T): Revocation {
-  list.push(item);
-  return () => {
-    const position = list.indexOf(item);
-    if (position !== -1) {
-      list.splice(position, 1);
-    }
-  };
-}
+export type IndexError = "invalid-xref" | "unmatched-range-start" | "unmatched-range-end";
+export type LocatorError = Extract<IndexError, "unmatched-range-start" | "unmatched-range-end">;
+export type XrefError = Extract<IndexError, "invalid-xref">;
 
 export type Locator = Readonly<{
   location: PageLocation | RangeLocation;
   template: string;
+  error?: LocatorError;
 }>;
 type HasLocators = { locators: Locator[] };
-export function insertLocator(entry: HasLocators, locator: Locator): Revocation {
-  return insert(entry.locators, { ...locator });
+export function insertLocator(entry: HasLocators, locator: Locator): void {
+  entry.locators.push({ ...locator });
 }
 
 export type Xref = Readonly<{
   target: EntryAddress;
   template: string;
+  error?: XrefError;
 }>;
 export type XrefType = "preferred" | "related";
 type HasXrefs = {
@@ -65,8 +59,8 @@ export function insertXref(
   type: XrefType,
   target: EntryAddress,
   template: string,
-): Revocation {
-  return insert(entry[xrefListKey[type]], { target, template });
+): void {
+  entry[xrefListKey[type]].push({ target, template });
 }
 
 export type EntryBase = HasLocators & HasXrefs;
@@ -141,34 +135,20 @@ export function findUnresolvedXref(index: Index, target: EntryAddress): Unresolv
   return undefined;
 }
 
-function isVacant(entry: EntryBase): boolean {
-  return (
-    entry.locators.length === 0 &&
-    entry.xrefPreferred.length === 0 &&
-    entry.xrefRelated.length === 0
-  );
-}
-
-export function revokeVacantEntries(index: Index): EntryAddress[] {
-  const revoked: EntryAddress[] = [];
+export function labelInvalidXrefs(index: Index): void {
+  const label = (xref: Xref): Xref => ({
+    target: xref.target,
+    template: xref.template,
+    ...(findUnresolvedXref(index, xref.target) === undefined ? {} : { error: "invalid-xref" }),
+  });
   for (const group of index.children) {
     for (const entry of group.children) {
-      entry.children = entry.children.filter((subentry) => {
-        if (!isVacant(subentry)) {
-          return true;
-        }
-        revoked.push({ group: group.key, entry: entry.key, subentry: subentry.key });
-        return false;
-      });
-    }
-    group.children = group.children.filter((entry) => {
-      if (!isVacant(entry) || entry.children.length !== 0) {
-        return true;
+      entry.xrefPreferred = entry.xrefPreferred.map(label);
+      entry.xrefRelated = entry.xrefRelated.map(label);
+      for (const subentry of entry.children) {
+        subentry.xrefPreferred = subentry.xrefPreferred.map(label);
+        subentry.xrefRelated = subentry.xrefRelated.map(label);
       }
-      revoked.push({ group: group.key, entry: entry.key });
-      return false;
-    });
+    }
   }
-  index.children = index.children.filter((group) => group.children.length !== 0);
-  return revoked;
 }

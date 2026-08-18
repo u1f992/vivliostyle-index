@@ -4,10 +4,10 @@ import {
   applyXrefInstruction,
 } from "./instruction.ts";
 import { addMessage, messages, type MessageArguments } from "./messages.ts";
-import { findUnresolvedXref, type Index } from "./model.ts";
-import { revokeViolations, type Revocable } from "./revocation.ts";
+import { findUnresolvedXref, labelInvalidXrefs, type EntryAddress, type Index } from "./model.ts";
 import type { Attachment, SourceSnapshot } from "./source-snapshot.ts";
 import type { Target, TargetKey } from "./target.ts";
+import { identityTemplate } from "./template.ts";
 
 export type BuiltIndex = Readonly<{
   target: Target;
@@ -25,13 +25,22 @@ type PendingIndex = Readonly<{
   index: Index;
   sourcePaths: Set<string>;
   attachments: Attachment[];
-  revocables: Revocable[];
+  xrefValidations: XrefValidation[];
+}>;
+
+type XrefValidation = Readonly<{
+  reportingPath: string;
+  target: EntryAddress;
 }>;
 
 type RangeStartAttachment = Attachment &
   Readonly<{ instruction: Extract<Attachment["instruction"], { type: "range-start" }> }>;
 type RangeEndAttachment = Attachment &
   Readonly<{ instruction: Extract<Attachment["instruction"], { type: "range-end" }> }>;
+type RangePairings = Readonly<{
+  endsByStart: ReadonlyMap<RangeStartAttachment, RangeEndAttachment>;
+  pairedEnds: ReadonlySet<RangeEndAttachment>;
+}>;
 
 const addressKey = (attachment: Attachment): string =>
   JSON.stringify(attachment.instruction.address);
@@ -51,7 +60,7 @@ function ensurePendingIndex(
     index: { children: [] },
     sourcePaths: new Set([attachment.sourcePath]),
     attachments: [attachment],
-    revocables: [],
+    xrefValidations: [],
   };
   pendingIndexes.set(attachment.targetKey, created);
   return created;
@@ -61,19 +70,12 @@ function resolveReportingPath(entryPathSet: ReadonlySet<string>, attachment: Att
   return entryPathSet.has(attachment.target.path) ? attachment.target.path : attachment.sourcePath;
 }
 
-function resolveReportingPaths(
-  entryPathSet: ReadonlySet<string>,
-  { target, sourcePaths }: BuiltIndex,
-): readonly string[] {
-  return entryPathSet.has(target.path) ? [target.path] : sourcePaths;
-}
-
 function applyAttachment(
   entryPathSet: ReadonlySet<string>,
   index: Index,
   attachment: Attachment,
-  rangeEnds: ReadonlyMap<RangeStartAttachment, RangeEndAttachment>,
-): Revocable | undefined {
+  rangePairings: RangePairings,
+): XrefValidation | undefined {
   const { instruction } = attachment;
 
   if (instruction.type === "page") {
@@ -82,34 +84,60 @@ function applyAttachment(
   }
 
   if (instruction.type === "range-start") {
-    const rangeEnd = rangeEnds.get(attachment as RangeStartAttachment);
+    const rangeEnd = rangePairings.endsByStart.get(attachment as RangeStartAttachment);
     if (rangeEnd !== undefined) {
       applyRangeInstruction(index, instruction, attachment.locationHref, rangeEnd.locationHref);
+    } else {
+      applyPageInstruction(
+        index,
+        { type: "page", address: instruction.address, template: instruction.template },
+        attachment.locationHref,
+        "unmatched-range-start",
+      );
     }
     return undefined;
   }
 
   if (instruction.type === "range-end") {
+    if (!rangePairings.pairedEnds.has(attachment as RangeEndAttachment)) {
+      applyPageInstruction(
+        index,
+        { type: "page", address: instruction.address, template: identityTemplate },
+        attachment.locationHref,
+        "unmatched-range-end",
+      );
+    }
     return undefined;
   }
 
-  const revoke = applyXrefInstruction(index, instruction);
+  applyXrefInstruction(index, instruction);
   return {
     reportingPath: resolveReportingPath(entryPathSet, attachment),
-    revoke,
-    findViolation: () => {
-      const unresolvedXref = findUnresolvedXref(index, instruction.target);
-      return unresolvedXref === undefined ? undefined : messages.invalidXref(unresolvedXref);
-    },
+    target: instruction.target,
   };
+}
+
+function validateXrefs(
+  index: Index,
+  validations: readonly XrefValidation[],
+  messagesByDocument: Map<string, MessageArguments[]>,
+): void {
+  labelInvalidXrefs(index);
+  for (const { reportingPath, target } of validations) {
+    const unresolvedXref = findUnresolvedXref(index, target);
+    if (unresolvedXref !== undefined) {
+      addMessage(messagesByDocument, reportingPath, messages.invalidXref(unresolvedXref));
+    }
+  }
 }
 
 function pairRanges(
   pendingIndex: PendingIndex,
   messagesByDocument: Map<string, MessageArguments[]>,
-): ReadonlyMap<RangeStartAttachment, RangeEndAttachment> {
+): RangePairings {
   const startsByAddress = new Map<string, RangeStartAttachment[]>();
-  const rangeEnds = new Map<RangeStartAttachment, RangeEndAttachment>();
+  const endsByStart = new Map<RangeStartAttachment, RangeEndAttachment>();
+  const pairedEnds = new Set<RangeEndAttachment>();
   for (const attachment of pendingIndex.attachments) {
     if (attachment.instruction.type === "range-start") {
       const starts = startsByAddress.get(addressKey(attachment)) ?? [];
@@ -130,7 +158,9 @@ function pairRanges(
       );
       continue;
     }
-    rangeEnds.set(start, attachment as RangeEndAttachment);
+    const rangeEnd = attachment as RangeEndAttachment;
+    endsByStart.set(start, rangeEnd);
+    pairedEnds.add(rangeEnd);
   }
   for (const starts of startsByAddress.values()) {
     for (const start of starts) {
@@ -141,7 +171,7 @@ function pairRanges(
       );
     }
   }
-  return rangeEnds;
+  return { endsByStart, pairedEnds };
 }
 
 export function buildIndexes(
@@ -171,25 +201,17 @@ export function buildIndexes(
 
   const indexes = new Map<TargetKey, BuiltIndex>();
   for (const [targetKey, pendingIndex] of pendingIndexes) {
-    const { target, index, sourcePaths, attachments, revocables } = pendingIndex;
-    const rangeEnds = pairRanges(pendingIndex, messagesByDocument);
+    const { target, index, sourcePaths, attachments, xrefValidations } = pendingIndex;
+    const rangePairings = pairRanges(pendingIndex, messagesByDocument);
     for (const attachment of attachments) {
-      const revocable = applyAttachment(entryPathSet, index, attachment, rangeEnds);
-      if (revocable) {
-        revocables.push(revocable);
+      const validation = applyAttachment(entryPathSet, index, attachment, rangePairings);
+      if (validation) {
+        xrefValidations.push(validation);
       }
     }
+    validateXrefs(index, xrefValidations, messagesByDocument);
     const builtIndex: BuiltIndex = { target, index, sourcePaths: [...sourcePaths] };
     indexes.set(targetKey, builtIndex);
-    revokeViolations(
-      {
-        index,
-        target,
-        reportingPaths: resolveReportingPaths(entryPathSet, builtIndex),
-        revocables,
-      },
-      messagesByDocument,
-    );
   }
 
   for (const { target, sourcePaths } of indexes.values()) {

@@ -1,13 +1,16 @@
 import { parseFragment } from "./html.ts";
 import type {
   EntryAddress,
+  IndexError,
   Key,
   Locator,
+  LocatorError,
   ReadonlyEntry,
   ReadonlyGroup,
   ReadonlyIndex,
   ReadonlySubentry,
   Xref,
+  XrefError,
 } from "./model.ts";
 import { fillSlot } from "./template.ts";
 
@@ -16,6 +19,13 @@ import { h } from "hastscript";
 
 type RoleProperties<Role extends string> = Readonly<hast.Properties & { dataIndexRole: Role }>;
 type IdProperties = Readonly<hast.Properties & { id: string }>;
+type ErrorProperties<Error extends IndexError> = Readonly<{ dataIndexError?: Error }>;
+
+function errorProperties<Error extends IndexError>(
+  error: Error | undefined,
+): ErrorProperties<Error> {
+  return error === undefined ? {} : { dataIndexError: error };
+}
 
 export type HeadingRenderer = (parts: {
   properties: Readonly<hast.Properties>;
@@ -28,7 +38,12 @@ const defaultHeading: HeadingRenderer = ({ properties, contents }) => [
 
 export type LocatorRenderer = Readonly<{
   compose?(parts: {
-    properties: Readonly<hast.Properties & { dataIndexRole: "page" | "range"; href: string }>;
+    properties: Readonly<
+      hast.Properties & {
+        dataIndexRole: "page" | "range";
+        href: string;
+      } & ErrorProperties<LocatorError>
+    >;
     contents: hast.ElementContent[];
   }): hast.ElementContent[];
   pageNumber?(context: {
@@ -54,7 +69,7 @@ const defaultRangeSeparator: NonNullable<LocatorRenderer["rangeSeparator"]> = ({
 
 export type XrefPreferredRenderer = Readonly<{
   compose?(parts: {
-    properties: Readonly<hast.Properties & { href: string }>;
+    properties: Readonly<hast.Properties & { href: string } & ErrorProperties<XrefError>>;
     contents: hast.ElementContent[];
   }): hast.ElementContent[];
   entry?(parts: {
@@ -91,7 +106,7 @@ const defaultXrefPreferredSubentry: NonNullable<XrefPreferredRenderer["subentry"
 
 export type XrefRelatedRenderer = Readonly<{
   compose?(parts: {
-    properties: Readonly<hast.Properties & { href: string }>;
+    properties: Readonly<hast.Properties & { href: string } & ErrorProperties<XrefError>>;
     contents: hast.ElementContent[];
   }): hast.ElementContent[];
   entry?(parts: {
@@ -458,6 +473,7 @@ const renderLocator = (
   const properties = {
     dataIndexRole: location.type,
     href: location.type === "page" ? location.href : location.start,
+    ...errorProperties(locator.error),
   } as const;
   const renderer = listRenderer.locator?.({ locator }) ?? {};
   const contents = renderLocatorContents(locator, renderer);
@@ -513,9 +529,12 @@ const renderRelatedXrefList = (
 };
 
 const xrefProperties = (
-  { target }: Xref,
+  { target, error }: Xref,
   indexId: string,
-): Readonly<hast.Properties & { href: string }> => ({ href: `#${xrefId(indexId, target)}` });
+): Readonly<hast.Properties & { href: string } & ErrorProperties<XrefError>> => ({
+  href: `#${xrefId(indexId, target)}`,
+  ...errorProperties(error),
+});
 
 const applyXrefTemplate = (
   template: string,

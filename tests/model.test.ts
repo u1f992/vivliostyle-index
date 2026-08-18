@@ -1,39 +1,11 @@
 import assert from "node:assert";
 import test from "node:test";
 
-import {
-  ensureEntry,
-  findUnresolvedXref,
-  getChild,
-  insertLocator,
-  revokeVacantEntries,
-  type Index,
-  type Subentry,
-} from "../src/model.ts";
+import { ensureEntry, findUnresolvedXref, getChild, type Index } from "../src/model.ts";
 import { identityTemplate } from "../src/template.ts";
 
 const group = { html: "ち", reading: "ち" };
 const intellectualProperty = { html: "知的財産権", reading: "ちてきざいさんけん" };
-const patent = { html: "特許権", reading: "とっきょけん" };
-
-function createIndexWithSubentry(locators: Subentry["locators"]): Index {
-  return {
-    children: [
-      {
-        key: group,
-        children: [
-          {
-            key: intellectualProperty,
-            children: [{ key: patent, locators, xrefPreferred: [], xrefRelated: [] }],
-            locators: [],
-            xrefPreferred: [],
-            xrefRelated: [],
-          },
-        ],
-      },
-    ],
-  };
-}
 
 function createIndex(): Index {
   return {
@@ -109,61 +81,6 @@ void test("reports a missing subentry of a registered heading", () => {
   );
 });
 
-void test("revokes headings that hold no locator or cross-reference", () => {
-  const index = createIndex();
-
-  const revoked = revokeVacantEntries(index);
-
-  assert.deepStrictEqual(
-    index.children[0]?.children.map(({ key }) => key.html),
-    ["著作権"],
-  );
-  assert.deepStrictEqual(revoked, [{ group, entry: intellectualProperty }]);
-});
-
-void test("keeps a heading that only carries subentries", () => {
-  const index = createIndexWithSubentry([
-    { location: { type: "page", href: "chapter.html#a" }, template: identityTemplate },
-  ]);
-
-  const revoked = revokeVacantEntries(index);
-
-  assert.strictEqual(index.children[0]?.children.length, 1);
-  assert.deepStrictEqual(revoked, []);
-});
-
-void test("revokes a group left without headings", () => {
-  const index = createIndexWithSubentry([]);
-
-  const revoked = revokeVacantEntries(index);
-
-  assert.deepStrictEqual(index.children, []);
-  assert.deepStrictEqual(revoked, [
-    { group, entry: intellectualProperty, subentry: patent },
-    { group, entry: intellectualProperty },
-  ]);
-});
-
-void test("revokes only the locator that was inserted", () => {
-  const index: Index = { children: [] };
-  const intellectualPropertyEntry = ensureEntry(index, { group, entry: intellectualProperty });
-  const locators = ["001.html#a", "002.html#b", "003.html#c"].map((href) => ({
-    location: { type: "page", href } as const,
-    template: identityTemplate,
-  }));
-  const revocations = locators.map((locator) => insertLocator(intellectualPropertyEntry, locator));
-
-  revocations[0]?.();
-
-  assert.deepStrictEqual(
-    intellectualPropertyEntry.locators.map(({ location }) => location),
-    [
-      { type: "page", href: "002.html#b" },
-      { type: "page", href: "003.html#c" },
-    ],
-  );
-});
-
 void test("distinguishes headings that share HTML but not their reading", () => {
   const index: Index = { children: [] };
   const first = { html: "One", reading: "ichi" };
@@ -177,20 +94,4 @@ void test("distinguishes headings that share HTML but not their reading", () => 
     ["ichi", "hitotsu"],
   );
   assert.strictEqual(getChild(index.children[0]!, { html: "One", reading: "san" }), undefined);
-});
-
-void test("revokes an inserted locator only once", () => {
-  const index: Index = { children: [] };
-  const intellectualPropertyEntry = ensureEntry(index, { group, entry: intellectualProperty });
-  const input = {
-    location: { type: "page", href: "001.html#a" },
-    template: identityTemplate,
-  } as const;
-  const revoke = insertLocator(intellectualPropertyEntry, input);
-  insertLocator(intellectualPropertyEntry, input);
-
-  revoke();
-  revoke();
-
-  assert.strictEqual(intellectualPropertyEntry.locators.length, 1);
 });

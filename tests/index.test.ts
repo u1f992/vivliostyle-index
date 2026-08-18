@@ -82,6 +82,12 @@ function locatorLinks(root: hast.Root | hast.Element, targetId = "index") {
   return selectAll(`${locatorsOf(targetId)} a`, root).map((link) => getAttribute(link, "href"));
 }
 
+function locatorErrors(root: hast.Root | hast.Element, targetId = "index") {
+  return selectAll(`${locatorsOf(targetId)} a`, root).map((link) =>
+    getAttribute(link, "data-index-error"),
+  );
+}
+
 function rangeEnds(root: hast.Root | hast.Element, targetId = "index") {
   return selectAll(
     `${locatorsOf(targetId)} [data-index-role="range"] > [data-index-role="page-number"]:last-child`,
@@ -525,6 +531,7 @@ void test("links a cross-reference to a later entry", () => {
   assert.ok(xref);
   assert.ok(target);
   assert.strictEqual(getAttribute(xref, "href"), `#${getAttribute(target, "id")}`);
+  assert.strictEqual(getAttribute(xref, "data-index-error"), null);
 });
 
 void test("links a cross-reference to a later subentry", () => {
@@ -558,7 +565,7 @@ void test("links a cross-reference to a later subentry", () => {
   );
 });
 
-void test("revokes a heading left without content by an unresolved cross-reference", () => {
+void test("renders an unresolved preferred cross-reference as a dangling anchor", () => {
   const files = {
     "/publication/chapter.md":
       '<span data-index="index.md?q=a!Apple|see{b!Banana}#index">Apple</span>',
@@ -570,14 +577,25 @@ void test("revokes a heading left without content by an unresolved cross-referen
   });
   const root = fromHtml(files["/publication/index.md"]);
 
-  processor.runSync(root, { path: "/publication/index.md" });
+  const file = VFile({ path: "/publication/index.md" });
 
-  const target = select("#index", root);
-  assert.ok(target);
-  assert.strictEqual(target.children.length, 1);
-  const groupList = select(roleOf("group-list"), target);
-  assert.ok(groupList);
-  assert.strictEqual(groupList.tagName, "div");
+  processor.runSync(root, file);
+
+  const xref = select(`${XREF_PREFERRED} a`, root);
+  assert.ok(xref);
+  const href = getAttribute(xref, "href");
+  assert.ok(href);
+  assert.ok(href.startsWith("#"));
+  assert.strictEqual(toText(xref), "Banana");
+  assert.strictEqual(getAttribute(xref, "data-index-error"), "invalid-xref");
+  assert.strictEqual(
+    selectAll("[id]", root).some((element) => getAttribute(element, "id") === href.slice(1)),
+    false,
+  );
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["invalid-xref"],
+  );
 });
 
 void test("leaves a target alone when no instruction names it", () => {
@@ -598,7 +616,7 @@ void test("leaves a target alone when no instruction names it", () => {
   assert.strictEqual(toText(target), "placeholder");
 });
 
-void test("reports a missing target of an index whose entries are all revoked", () => {
+void test("reports an unresolved cross-reference and a missing index target", () => {
   const files = {
     "/publication/chapter.md":
       '<span data-index="index.md?q=a!Apple|see{b!Banana}#index">Apple</span>',
@@ -614,11 +632,11 @@ void test("reports a missing target of an index whose entries are all revoked", 
 
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
-    ["invalid-xref", "vacant-entry", "missing-index-target"],
+    ["invalid-xref", "missing-index-target"],
   );
 });
 
-void test("revokes a cross-reference whose target was revoked for being vacant", () => {
+void test("keeps a cross-reference chain whose endpoint is unresolved", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=a!Apple|see{b!Banana}#index">Apple</span>',
@@ -635,14 +653,21 @@ void test("revokes a cross-reference whose target was revoked for being vacant",
 
   processor.runSync(root, file);
 
-  assert.deepStrictEqual(selectAll(ENTRY, root), []);
+  assert.deepStrictEqual(
+    selectAll(ENTRY_KEY, root).map((heading) => toText(heading)),
+    ["Apple", "Banana"],
+  );
+  assert.deepStrictEqual(
+    selectAll(`${XREF_PREFERRED} a`, root).map((xref) => toText(xref)),
+    ["Banana", "Cherry"],
+  );
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
-    ["invalid-xref", "vacant-entry", "invalid-xref", "vacant-entry"],
+    ["invalid-xref"],
   );
 });
 
-void test("keeps a heading whose locator outlives a revoked cross-reference", () => {
+void test("keeps an unresolved cross-reference beside a locator", () => {
   const files = {
     "/publication/chapter.md": [
       '<span id="apple" data-index="index.md?q=a!Apple#index">Apple</span>',
@@ -656,13 +681,22 @@ void test("keeps a heading whose locator outlives a revoked cross-reference", ()
   });
   const root = fromHtml(files["/publication/index.md"]);
 
-  processor.runSync(root, { path: "/publication/index.md" });
+  const file = VFile({ path: "/publication/index.md" });
+
+  processor.runSync(root, file);
 
   assert.deepStrictEqual(locatorLinks(root), ["chapter.html#apple"]);
-  assert.strictEqual(select(XREF_PREFERRED, root)?.children.length, 0);
+  assert.deepStrictEqual(
+    selectAll(`${XREF_PREFERRED} a`, root).map((xref) => toText(xref)),
+    ["Banana"],
+  );
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["invalid-xref"],
+  );
 });
 
-void test("omits a heading carried only by an unmatched range start", () => {
+void test("degrades an unmatched range start to a page locator", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=a!Apple|(#index">Apple</span>',
@@ -678,11 +712,14 @@ void test("omits a heading carried only by an unmatched range start", () => {
 
   processor.runSync(root, { path: "/publication/index.md" });
 
-  assert.deepStrictEqual(groupHeadings(root), ["b"]);
-  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#banana"]);
+  assert.deepStrictEqual(groupHeadings(root), ["a", "b"]);
+  assert.deepStrictEqual(locatorLinks(root), [
+    "chapter.html#%2Fhtml%2Fbody%2Fspan%5B1%5D",
+    "chapter.html#banana",
+  ]);
 });
 
-void test("revokes a cross-reference to a heading omitted with an unmatched range start", () => {
+void test("resolves a cross-reference to a degraded range start", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=a!Apple|(#index">Apple</span>',
@@ -701,18 +738,20 @@ void test("revokes a cross-reference to a heading omitted with an unmatched rang
   processor.runSync(root, indexFile);
   processor.runSync(fromHtml(files["/publication/chapter.md"]), chapterFile);
 
-  assert.deepStrictEqual(groupHeadings(root), []);
+  assert.deepStrictEqual(groupHeadings(root), ["a", "b"]);
+  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#%2Fhtml%2Fbody%2Fspan%5B1%5D"]);
   assert.deepStrictEqual(
-    indexFile.messages.map((message) => message.ruleId),
-    ["invalid-xref", "vacant-entry"],
+    selectAll(`${XREF_PREFERRED} a`, root).map((xref) => toText(xref)),
+    ["Apple"],
   );
+  assert.deepStrictEqual(indexFile.messages, []);
   assert.deepStrictEqual(
     chapterFile.messages.map((message) => message.ruleId),
     ["unmatched-range-start"],
   );
 });
 
-void test("revokes an unresolved related cross-reference while keeping a resolved one", () => {
+void test("keeps resolved and unresolved related cross-references", () => {
   const files = {
     "/publication/chapter.md": [
       '<span id="banana" data-index="index.md?q=b!Banana#index">Banana</span>',
@@ -727,16 +766,28 @@ void test("revokes an unresolved related cross-reference while keeping a resolve
   });
   const root = fromHtml(files["/publication/index.md"]);
 
-  processor.runSync(root, { path: "/publication/index.md" });
+  const file = VFile({ path: "/publication/index.md" });
+
+  processor.runSync(root, file);
 
   assert.deepStrictEqual(groupHeadings(root), ["a", "b"]);
   assert.deepStrictEqual(
     selectAll(`${XREF_RELATED} a`, root).map((link) => toText(link)),
-    ["Banana"],
+    ["Banana", "Cherry"],
+  );
+  const hrefs = selectAll(`${XREF_RELATED} a`, root).map((link) => getAttribute(link, "href"));
+  const ids = new Set(selectAll("[id]", root).map((element) => getAttribute(element, "id")));
+  assert.deepStrictEqual(
+    hrefs.map((href) => ids.has(href?.slice(1) ?? "")),
+    [true, false],
+  );
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["invalid-xref"],
   );
 });
 
-void test("revokes a cross-reference chain across several rounds", () => {
+void test("keeps a cross-reference chain and reports its unresolved endpoint", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=a!Apple|see{b!Banana}#index">Apple</span>',
@@ -754,29 +805,19 @@ void test("revokes a cross-reference chain across several rounds", () => {
 
   processor.runSync(root, file);
 
-  assert.deepStrictEqual(groupHeadings(root), []);
+  assert.deepStrictEqual(groupHeadings(root), ["a", "b", "c"]);
+  assert.deepStrictEqual(
+    selectAll(`${XREF_PREFERRED} a`, root).map((xref) => toText(xref)),
+    ["Banana", "Cherry", "Date"],
+  );
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
-    [
-      "invalid-xref",
-      "vacant-entry",
-      "invalid-xref",
-      "vacant-entry",
-      "invalid-xref",
-      "vacant-entry",
-    ],
+    ["invalid-xref"],
   );
-  assert.deepStrictEqual(
-    file.messages
-      .filter((message) => message.ruleId === "vacant-entry")
-      .map((message) =>
-        ["Cherry", "Banana", "Apple"].find((name) => message.reason.includes(name)),
-      ),
-    ["Cherry", "Banana", "Apple"],
-  );
+  assert.ok(file.messages[0]?.reason.includes('group={"html":"d","reading":"d"}'));
 });
 
-void test("revokes a heading emptied by revoking its subentry", () => {
+void test("keeps a subentry containing an unresolved cross-reference", () => {
   const files = {
     "/publication/chapter.md":
       '<span data-index="index.md?q=a!Apple!Fuji|see{b!Banana}#index">Fuji</span>',
@@ -791,16 +832,15 @@ void test("revokes a heading emptied by revoking its subentry", () => {
 
   processor.runSync(root, file);
 
-  assert.deepStrictEqual(groupHeadings(root), []);
+  assert.deepStrictEqual(groupHeadings(root), ["a"]);
+  assert.strictEqual(selectAll(SUBENTRY, root).length, 1);
   assert.deepStrictEqual(
-    file.messages.map((message) => message.ruleId),
-    ["invalid-xref", "vacant-entry", "vacant-entry"],
+    selectAll(`${SUBENTRY} ${roleOf("xref-preferred")} a`, root).map((xref) => toText(xref)),
+    ["Banana"],
   );
   assert.deepStrictEqual(
-    file.messages
-      .filter((message) => message.ruleId === "vacant-entry")
-      .map((message) => message.reason.includes("Fuji")),
-    [true, false],
+    file.messages.map((message) => message.ruleId),
+    ["invalid-xref"],
   );
 });
 
@@ -1013,7 +1053,7 @@ void test("generates an ID for a range end without one", () => {
   assert.deepStrictEqual(rangeEnds(root), ["end.html#%2Fhtml%2Fbody%2Fspan"]);
 });
 
-void test("reports and revokes an unmatched range start", () => {
+void test("reports and degrades an unmatched range start", () => {
   const files = {
     "/publication/chapter.md": '<span data-index="index.md?q=a!Apple|(#index">Apple</span>',
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
@@ -1028,13 +1068,15 @@ void test("reports and revokes an unmatched range start", () => {
   const file = VFile({ path: "/publication/chapter.md" });
   processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
 
-  assert.deepStrictEqual(locatorLinks(root), []);
+  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#%2Fhtml%2Fbody%2Fspan"]);
+  assert.deepStrictEqual(locatorErrors(root), ["unmatched-range-start"]);
   assert.strictEqual(file.messages.length, 1);
   assert.match(file.messages[0]?.reason ?? "", /no matching range end/v);
+  assert.match(file.messages[0]?.reason ?? "", /treated as a page locator/v);
   assert.strictEqual(file.messages[0]?.ruleId, "unmatched-range-start");
 });
 
-void test("reports and ignores an unmatched range end", () => {
+void test("reports and degrades an unmatched range end", () => {
   const files = {
     "/publication/chapter.md": '<span data-index="index.md?q=a!Apple|)#index">Apple</span>',
     "/publication/index.md": '<nav id="index" role="doc-index">placeholder</nav>',
@@ -1049,15 +1091,15 @@ void test("reports and ignores an unmatched range end", () => {
   const file = VFile({ path: "/publication/chapter.md" });
   processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
 
-  const target = select("#index", root);
-  assert.ok(target);
-  assert.strictEqual(toText(target), "");
+  assert.deepStrictEqual(locatorLinks(root), ["chapter.html#%2Fhtml%2Fbody%2Fspan"]);
+  assert.deepStrictEqual(locatorErrors(root), ["unmatched-range-end"]);
   assert.strictEqual(file.messages.length, 1);
   assert.match(file.messages[0]?.reason ?? "", /no matching range start/v);
+  assert.match(file.messages[0]?.reason ?? "", /treated as a page locator/v);
   assert.strictEqual(file.messages[0]?.ruleId, "unmatched-range-end");
 });
 
-void test("reports and revokes a range whose end precedes its start in the same entry", () => {
+void test("reports and degrades a range whose end precedes its start in the same entry", () => {
   const files = {
     "/publication/chapter.md": [
       '<span id="range-end" data-index="index.md?q=a!Apple|)#index"></span>',
@@ -1075,7 +1117,11 @@ void test("reports and revokes a range whose end precedes its start in the same 
   const file = VFile({ path: "/publication/chapter.md" });
   processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
 
-  assert.deepStrictEqual(locatorLinks(root), []);
+  assert.deepStrictEqual(locatorLinks(root), [
+    "chapter.html#range-end",
+    "chapter.html#%2Fhtml%2Fbody%2Fspan%5B2%5D",
+  ]);
+  assert.deepStrictEqual(locatorErrors(root), ["unmatched-range-end", "unmatched-range-start"]);
   assert.strictEqual(file.messages.length, 2);
   assert.deepStrictEqual(
     file.messages.map(({ ruleId }) => ruleId),
@@ -1107,7 +1153,7 @@ void test("pairs nested ranges from the inside out", () => {
   assert.deepStrictEqual(rangeEnds(root), ["chapter.html#outer-end", "chapter.html#inner-end"]);
 });
 
-void test("reports and revokes a range whose end is in an earlier entry", () => {
+void test("reports and degrades a range whose end is in an earlier entry", () => {
   const files = {
     "/publication/001.md": '<span id="range-end" data-index="index.md?q=a!Apple|)#index"></span>',
     "/publication/100.md": '<span data-index="index.md?q=a!Apple|(#index">Apple</span>',
@@ -1123,7 +1169,10 @@ void test("reports and revokes a range whose end is in an earlier entry", () => 
   const file = VFile({ path: "/publication/100.md" });
   processor.runSync(fromHtml(files["/publication/100.md"]), file);
 
-  assert.deepStrictEqual(locatorLinks(root), []);
+  assert.deepStrictEqual(locatorLinks(root), [
+    "001.html#range-end",
+    "100.html#%2Fhtml%2Fbody%2Fspan",
+  ]);
   assert.strictEqual(file.messages.length, 1);
   assert.strictEqual(file.messages[0]?.ruleId, "unmatched-range-start");
 });
@@ -1229,7 +1278,7 @@ void test("reports an invalid cross-reference on its index file", () => {
 
   assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
-    ["invalid-xref", "vacant-entry"],
+    ["invalid-xref"],
   );
 });
 

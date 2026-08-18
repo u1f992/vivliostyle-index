@@ -62,7 +62,7 @@ void test("builds range locators from ordered source snapshots", () => {
   assert.deepStrictEqual([...messages.values()], [[], [], []]);
 });
 
-void test("reports range ends that precede their starts", () => {
+void test("degrades range markers that precede their starts to page locators", () => {
   const endPath = "/publication/001.md";
   const chapterPath = "/publication/100.md";
   const indexPath = "/publication/index.md";
@@ -88,7 +88,13 @@ void test("reports range ends that precede their starts", () => {
   const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
 
   assert.ok(builtIndex);
-  assert.deepStrictEqual(builtIndex.index.children, []);
+  assert.deepStrictEqual(
+    builtIndex.index.children[0]?.children[0]?.locators.map(({ location }) => location),
+    [
+      { type: "page", href: "001.html#end" },
+      { type: "page", href: "100.html#%2Fhtml%2Fbody%2Fspan%5B1%5D" },
+    ],
+  );
   assert.deepStrictEqual(
     messages.get(chapterPath)?.map((message) => message[2]?.split(":")[1]),
     ["instruction-parse-error", "unmatched-range-start"],
@@ -111,15 +117,21 @@ void test("reports unresolved cross-references and targets outside the entry lis
     ],
   ]);
 
-  const { messages } = buildIndexes([chapterPath], sources);
+  const { indexes, messages } = buildIndexes([chapterPath], sources);
+  const builtIndex = indexes.get(createTargetKey({ path: "/publication/outside.md", id: "index" }));
 
+  assert.strictEqual(builtIndex?.index.children[0]?.children[0]?.xrefPreferred.length, 1);
+  assert.strictEqual(
+    builtIndex?.index.children[0]?.children[0]?.xrefPreferred[0]?.error,
+    "invalid-xref",
+  );
   assert.deepStrictEqual(
     messages.get(chapterPath)?.map((message) => message[2]?.split(":")[1]),
-    ["invalid-xref", "vacant-entry", "target-not-in-entries"],
+    ["invalid-xref", "target-not-in-entries"],
   );
 });
 
-void test("revokes a range whose end lies outside the entry list", () => {
+void test("degrades a range start whose end lies outside the entry list", () => {
   const chapterPath = "/publication/chapter.md";
   const endPath = "/publication/end.md";
   const indexPath = "/publication/index.md";
@@ -145,7 +157,10 @@ void test("revokes a range whose end lies outside the entry list", () => {
   const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
 
   assert.ok(builtIndex);
-  assert.deepStrictEqual(builtIndex.index.children, []);
+  assert.deepStrictEqual(
+    builtIndex.index.children[0]?.children[0]?.locators.map(({ location }) => location),
+    [{ type: "page", href: "chapter.html#start" }],
+  );
   assert.deepStrictEqual(
     messages.get(chapterPath)?.map((message) => message[2]?.split(":")[1]),
     ["unmatched-range-start"],
@@ -157,7 +172,7 @@ void test("revokes a range whose end lies outside the entry list", () => {
   );
 });
 
-void test("names the entry list when a range ends in an unprocessed document", () => {
+void test("degrades a range start when its end is in an unprocessed document", () => {
   const chapterPath = "/publication/chapter.md";
   const indexPath = "/publication/index.md";
   const sources = new Map([
@@ -175,7 +190,10 @@ void test("names the entry list when a range ends in an unprocessed document", (
   const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
 
   assert.ok(builtIndex);
-  assert.deepStrictEqual(builtIndex.index.children, []);
+  assert.deepStrictEqual(
+    builtIndex.index.children[0]?.children[0]?.locators.map(({ location }) => location),
+    [{ type: "page", href: "chapter.html#start" }],
+  );
   assert.deepStrictEqual(
     messages.get(chapterPath)?.map((message) => message[2]?.split(":")[1]),
     ["unmatched-range-start"],
@@ -229,11 +247,11 @@ void test("reports index-wide diagnostics to every document naming a target outs
 
   assert.deepStrictEqual(
     messages.get(soundPath)?.map((message) => message[2]?.split(":")[1]),
-    ["vacant-entry", "target-not-in-entries"],
+    ["target-not-in-entries"],
   );
   assert.deepStrictEqual(
     messages.get(brokenPath)?.map((message) => message[2]?.split(":")[1]),
-    ["invalid-xref", "vacant-entry", "target-not-in-entries"],
+    ["invalid-xref", "target-not-in-entries"],
   );
 });
 

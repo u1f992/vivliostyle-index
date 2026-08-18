@@ -5,7 +5,7 @@ import {
   type EntryAddress,
   type Index,
   type Key,
-  type Revocation,
+  type LocatorError,
   type XrefType,
 } from "./model.ts";
 import { identityTemplate } from "./template.ts";
@@ -393,10 +393,12 @@ export function applyPageInstruction(
   index: Index,
   instruction: PageInstruction,
   locationHref: string,
-): Revocation {
-  return insertLocator(ensureEntry(index, instruction.address), {
+  error?: LocatorError,
+): void {
+  insertLocator(ensureEntry(index, instruction.address), {
     location: { type: "page", href: locationHref },
     template: instruction.template,
+    ...(error === undefined ? {} : { error }),
   });
 }
 
@@ -405,15 +407,15 @@ export function applyRangeInstruction(
   instruction: RangeInstruction,
   startHref: string,
   endHref: string,
-): Revocation {
-  return insertLocator(ensureEntry(index, instruction.address), {
+): void {
+  insertLocator(ensureEntry(index, instruction.address), {
     location: { type: "range", start: startHref, end: endHref },
     template: instruction.template,
   });
 }
 
-export function applyXrefInstruction(index: Index, instruction: XrefInstruction): Revocation {
-  return insertXref(
+export function applyXrefInstruction(index: Index, instruction: XrefInstruction): void {
+  insertXref(
     ensureEntry(index, instruction.address),
     instruction.type,
     instruction.target,
