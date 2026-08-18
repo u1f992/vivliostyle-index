@@ -56,7 +56,7 @@
   }
 
   > [data-index-role="locator-list"] > li > span::before {
-    content: "–";
+    content: "...";
   }
 
   > [data-index-role="locator-list"] > li [data-index-role="range-separator"]::before {
