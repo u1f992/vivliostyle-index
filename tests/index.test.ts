@@ -576,9 +576,10 @@ void test("renders an unresolved preferred cross-reference as a dangling anchor"
     files,
   });
   const root = fromHtml(files["/publication/index.md"]);
-
+  const chapterFile = VFile({ path: "/publication/chapter.md" });
   const file = VFile({ path: "/publication/index.md" });
 
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), chapterFile);
   processor.runSync(root, file);
 
   const xref = select(`${XREF_PREFERRED} a`, root);
@@ -593,9 +594,10 @@ void test("renders an unresolved preferred cross-reference as a dangling anchor"
     false,
   );
   assert.deepStrictEqual(
-    file.messages.map((message) => message.ruleId),
+    chapterFile.messages.map((message) => message.ruleId),
     ["invalid-xref"],
   );
+  assert.deepStrictEqual(file.messages, []);
 });
 
 void test("leaves a target alone when no instruction names it", () => {
@@ -626,13 +628,19 @@ void test("reports an unresolved cross-reference and a missing index target", ()
     entries: ["index.md", "chapter.md"],
     files,
   });
+  const chapterFile = VFile({ path: "/publication/chapter.md" });
   const file = VFile({ path: "/publication/index.md" });
 
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), chapterFile);
   processor.runSync(fromHtml(files["/publication/index.md"]), file);
 
   assert.deepStrictEqual(
+    chapterFile.messages.map((message) => message.ruleId),
+    ["invalid-xref"],
+  );
+  assert.deepStrictEqual(
     file.messages.map((message) => message.ruleId),
-    ["invalid-xref", "missing-index-target"],
+    ["missing-index-target"],
   );
 });
 
@@ -649,8 +657,10 @@ void test("keeps a cross-reference chain whose endpoint is unresolved", () => {
     files,
   });
   const root = fromHtml(files["/publication/index.md"]);
+  const chapterFile = VFile({ path: "/publication/chapter.md" });
   const file = VFile({ path: "/publication/index.md" });
 
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), chapterFile);
   processor.runSync(root, file);
 
   assert.deepStrictEqual(
@@ -662,9 +672,10 @@ void test("keeps a cross-reference chain whose endpoint is unresolved", () => {
     ["Banana", "Cherry"],
   );
   assert.deepStrictEqual(
-    file.messages.map((message) => message.ruleId),
+    chapterFile.messages.map((message) => message.ruleId),
     ["invalid-xref"],
   );
+  assert.deepStrictEqual(file.messages, []);
 });
 
 void test("keeps an unresolved cross-reference beside a locator", () => {
@@ -680,9 +691,10 @@ void test("keeps an unresolved cross-reference beside a locator", () => {
     files,
   });
   const root = fromHtml(files["/publication/index.md"]);
-
+  const chapterFile = VFile({ path: "/publication/chapter.md" });
   const file = VFile({ path: "/publication/index.md" });
 
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), chapterFile);
   processor.runSync(root, file);
 
   assert.deepStrictEqual(locatorLinks(root), ["chapter.html#apple"]);
@@ -691,9 +703,10 @@ void test("keeps an unresolved cross-reference beside a locator", () => {
     ["Banana"],
   );
   assert.deepStrictEqual(
-    file.messages.map((message) => message.ruleId),
+    chapterFile.messages.map((message) => message.ruleId),
     ["invalid-xref"],
   );
+  assert.deepStrictEqual(file.messages, []);
 });
 
 void test("degrades an unmatched range start to a page locator", () => {
@@ -767,9 +780,10 @@ void test("keeps resolved and unresolved related cross-references", () => {
     files,
   });
   const root = fromHtml(files["/publication/index.md"]);
-
+  const chapterFile = VFile({ path: "/publication/chapter.md" });
   const file = VFile({ path: "/publication/index.md" });
 
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), chapterFile);
   processor.runSync(root, file);
 
   assert.deepStrictEqual(groupHeadings(root), ["a", "b"]);
@@ -784,9 +798,10 @@ void test("keeps resolved and unresolved related cross-references", () => {
     [true, false],
   );
   assert.deepStrictEqual(
-    file.messages.map((message) => message.ruleId),
+    chapterFile.messages.map((message) => message.ruleId),
     ["invalid-xref"],
   );
+  assert.deepStrictEqual(file.messages, []);
 });
 
 void test("keeps a cross-reference chain and reports its unresolved endpoint", () => {
@@ -803,8 +818,10 @@ void test("keeps a cross-reference chain and reports its unresolved endpoint", (
     files,
   });
   const root = fromHtml(files["/publication/index.md"]);
+  const chapterFile = VFile({ path: "/publication/chapter.md" });
   const file = VFile({ path: "/publication/index.md" });
 
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), chapterFile);
   processor.runSync(root, file);
 
   assert.deepStrictEqual(groupHeadings(root), ["a", "b", "c"]);
@@ -813,10 +830,11 @@ void test("keeps a cross-reference chain and reports its unresolved endpoint", (
     ["Banana", "Cherry", "Date"],
   );
   assert.deepStrictEqual(
-    file.messages.map((message) => message.ruleId),
+    chapterFile.messages.map((message) => message.ruleId),
     ["invalid-xref"],
   );
-  assert.ok(file.messages[0]?.reason.includes('group={"html":"d","reading":"d"}'));
+  assert.ok(chapterFile.messages[0]?.reason.includes('group={"html":"d","reading":"d"}'));
+  assert.deepStrictEqual(file.messages, []);
 });
 
 void test("keeps a subentry containing an unresolved cross-reference", () => {
@@ -830,8 +848,10 @@ void test("keeps a subentry containing an unresolved cross-reference", () => {
     files,
   });
   const root = fromHtml(files["/publication/index.md"]);
+  const chapterFile = VFile({ path: "/publication/chapter.md" });
   const file = VFile({ path: "/publication/index.md" });
 
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), chapterFile);
   processor.runSync(root, file);
 
   assert.deepStrictEqual(groupHeadings(root), ["a"]);
@@ -841,9 +861,10 @@ void test("keeps a subentry containing an unresolved cross-reference", () => {
     ["Banana"],
   );
   assert.deepStrictEqual(
-    file.messages.map((message) => message.ruleId),
+    chapterFile.messages.map((message) => message.ruleId),
     ["invalid-xref"],
   );
+  assert.deepStrictEqual(file.messages, []);
 });
 
 void test("keeps mutually cross-referencing headings that hold no locator", () => {
@@ -1266,7 +1287,7 @@ void test("reports an index target outside entries on its source file", () => {
   assert.strictEqual(file.messages[0]?.ruleId, "target-not-in-entries");
 });
 
-void test("reports an invalid cross-reference on its index file", () => {
+void test("reports an invalid cross-reference on its source file", () => {
   const files = {
     "/publication/chapter.md":
       '<span data-index="index.md?q=a!Apple|see{b!Banana}#index">Apple</span>',
@@ -1276,14 +1297,17 @@ void test("reports an invalid cross-reference on its index file", () => {
     entries: ["chapter.md", "index.md"],
     files,
   });
-  const file = VFile({ path: "/publication/index.md" });
+  const chapterFile = VFile({ path: "/publication/chapter.md" });
+  const indexFile = VFile({ path: "/publication/index.md" });
 
-  processor.runSync(fromHtml(files["/publication/index.md"]), file);
+  processor.runSync(fromHtml(files["/publication/chapter.md"]), chapterFile);
+  processor.runSync(fromHtml(files["/publication/index.md"]), indexFile);
 
   assert.deepStrictEqual(
-    file.messages.map((message) => message.ruleId),
+    chapterFile.messages.map((message) => message.ruleId),
     ["invalid-xref"],
   );
+  assert.deepStrictEqual(indexFile.messages, []);
 });
 
 void test("rejects an index reference without a fragment where it is written", () => {

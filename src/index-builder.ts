@@ -66,12 +66,7 @@ function ensurePendingIndex(
   return created;
 }
 
-function resolveReportingPath(entryPathSet: ReadonlySet<string>, attachment: Attachment): string {
-  return entryPathSet.has(attachment.target.path) ? attachment.target.path : attachment.sourcePath;
-}
-
 function applyAttachment(
-  entryPathSet: ReadonlySet<string>,
   index: Index,
   attachment: Attachment,
   rangePairings: RangePairings,
@@ -112,7 +107,7 @@ function applyAttachment(
 
   applyXrefInstruction(index, instruction);
   return {
-    reportingPath: resolveReportingPath(entryPathSet, attachment),
+    reportingPath: attachment.sourcePath,
     target: instruction.target,
   };
 }
@@ -204,7 +199,7 @@ export function buildIndexes(
     const { target, index, sourcePaths, attachments, xrefValidations } = pendingIndex;
     const rangePairings = pairRanges(pendingIndex, messagesByDocument);
     for (const attachment of attachments) {
-      const validation = applyAttachment(entryPathSet, index, attachment, rangePairings);
+      const validation = applyAttachment(index, attachment, rangePairings);
       if (validation) {
         xrefValidations.push(validation);
       }
