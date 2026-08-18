@@ -128,7 +128,7 @@ void test("composes content with and without groups", () => {
   renderIndex({ children: [] }, empty, "index", renderer);
 
   assert.deepStrictEqual(childTagNames(populated), ["p", "hr", "div"]);
-  assert.deepStrictEqual(childTagNames(empty), ["p", "hr"]);
+  assert.deepStrictEqual(childTagNames(empty), ["p", "hr", "div"]);
 });
 
 void test("accepts arbitrary content and empty output from compose", () => {

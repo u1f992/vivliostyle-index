@@ -162,6 +162,124 @@ export type IndexRenderer = Readonly<{
 
 export type CreateRenderer = (context: { h: typeof h; index: ReadonlyIndex }) => IndexRenderer;
 
+const defaultIndexCompose: NonNullable<IndexRenderer["compose"]> = ({ groupList }) => groupList;
+
+const defaultHeading: HeadingRenderer = ({ properties, contents }) => [
+  h("span", properties, contents),
+];
+
+const defaultGroupListCompose: NonNullable<GroupListRenderer["compose"]> = ({
+  properties,
+  groups,
+}) => [h("div", properties, groups.flat())];
+
+const defaultGroupCompose: NonNullable<GroupRenderer["compose"]> = ({
+  properties,
+  heading,
+  entryList,
+}) => [h("section", properties, [...heading, ...entryList])];
+
+const defaultEntryListCompose: NonNullable<EntryListRenderer["compose"]> = ({
+  properties,
+  entries,
+}) => [h("ul", properties, entries.flat())];
+
+const defaultEntryCompose: NonNullable<EntryRenderer["compose"]> = ({
+  properties,
+  heading,
+  locatorList,
+  xrefPreferredList,
+  xrefRelatedList,
+  subentryList,
+}) => [
+  h("li", properties, [
+    ...heading,
+    ...locatorList,
+    ...xrefPreferredList,
+    ...xrefRelatedList,
+    ...subentryList,
+  ]),
+];
+
+const defaultSubentryListCompose: NonNullable<SubentryListRenderer["compose"]> = ({
+  properties,
+  subentries,
+}) => [h("ul", properties, subentries.flat())];
+
+const defaultSubentryCompose: NonNullable<SubentryRenderer["compose"]> = ({
+  properties,
+  heading,
+  locatorList,
+  xrefPreferredList,
+  xrefRelatedList,
+}) => [h("li", properties, [...heading, ...locatorList, ...xrefPreferredList, ...xrefRelatedList])];
+
+const defaultLocatorListCompose: NonNullable<LocatorListRenderer["compose"]> = ({
+  properties,
+  locators,
+}) => [h("ol", properties, locators.flat())];
+
+const defaultLocatorCompose: NonNullable<LocatorRenderer["compose"]> = ({
+  properties,
+  contents,
+}) => [h("a", properties, contents)];
+
+const defaultPageNumber: NonNullable<LocatorRenderer["pageNumber"]> = ({ properties }) => [
+  h("span", properties),
+];
+
+const defaultRangeSeparator: NonNullable<LocatorRenderer["rangeSeparator"]> = ({ properties }) => [
+  h("span", properties),
+];
+
+const defaultXrefPreferredListCompose: NonNullable<XrefPreferredListRenderer["compose"]> = ({
+  properties,
+  xrefPreferreds,
+}) => [h("ul", properties, xrefPreferreds.flat())];
+
+const defaultXrefPreferredCompose: NonNullable<XrefPreferredRenderer["compose"]> = ({
+  properties,
+  contents,
+}) => [h("a", properties, contents)];
+
+const defaultXrefPreferredEntry: NonNullable<XrefPreferredRenderer["entry"]> = ({
+  properties,
+  contents,
+}) => [h("span", properties, contents)];
+
+const defaultXrefPreferredSubentrySeparator: NonNullable<
+  XrefPreferredRenderer["subentrySeparator"]
+> = ({ properties }) => [h("span", properties)];
+
+const defaultXrefPreferredSubentry: NonNullable<XrefPreferredRenderer["subentry"]> = ({
+  properties,
+  contents,
+}) => [h("span", properties, contents)];
+
+const defaultXrefRelatedListCompose: NonNullable<XrefRelatedListRenderer["compose"]> = ({
+  properties,
+  xrefRelateds,
+}) => [h("ul", properties, xrefRelateds.flat())];
+
+const defaultXrefRelatedCompose: NonNullable<XrefRelatedRenderer["compose"]> = ({
+  properties,
+  contents,
+}) => [h("a", properties, contents)];
+
+const defaultXrefRelatedEntry: NonNullable<XrefRelatedRenderer["entry"]> = ({
+  properties,
+  contents,
+}) => [h("span", properties, contents)];
+
+const defaultXrefRelatedSubentrySeparator: NonNullable<
+  XrefRelatedRenderer["subentrySeparator"]
+> = ({ properties }) => [h("span", properties)];
+
+const defaultXrefRelatedSubentry: NonNullable<XrefRelatedRenderer["subentry"]> = ({
+  properties,
+  contents,
+}) => [h("span", properties, contents)];
+
 export function renderIndex(
   index: ReadonlyIndex,
   target: Elem,
@@ -170,16 +288,20 @@ export function renderIndex(
 ): void {
   const groupListProperties = { dataIndexRole: "group-list" } as const;
   const groupListRenderer = renderer.groupList ?? {};
-  const groups = index.children.map((group) => {
-    const properties = { dataIndexRole: "group" } as const;
-    const groupRenderer = groupListRenderer.group?.({ group: group.key }) ?? {};
-    return renderGroup(group, properties, indexId, groupRenderer);
-  });
+  const groups = index.children.map((group) =>
+    renderGroup(
+      group,
+      { dataIndexRole: "group" },
+      indexId,
+      groupListRenderer.group?.({ group: group.key }) ?? {},
+    ),
+  );
+  const groupListParts = { properties: groupListProperties, groups };
   const groupList =
-    groupListRenderer.compose?.({ properties: groupListProperties, groups }) ??
-    (groups.length === 0 ? [] : [h("div", groupListProperties, groups.flat())]);
+    groupListRenderer.compose?.(groupListParts) ?? defaultGroupListCompose(groupListParts);
   target.properties = { ...target.properties, dataIndexResult: JSON.stringify(index) };
-  target.children = renderer.compose?.({ groupList }) ?? groupList;
+  const indexParts = { groupList };
+  target.children = renderer.compose?.(indexParts) ?? defaultIndexCompose(indexParts);
 }
 
 const idSegmentEncoder = new TextEncoder();
@@ -200,7 +322,8 @@ type HeadingOwner = Readonly<{ heading?: HeadingRenderer }>;
 const renderHeading = (key: Key, renderer: HeadingOwner): Content => {
   const properties = {};
   const contents = parseFragment(key.html);
-  return renderer.heading?.({ properties, contents }) ?? [h("span", properties, contents)];
+  const headingParts = { properties, contents };
+  return renderer.heading?.(headingParts) ?? defaultHeading(headingParts);
 };
 
 const renderGroup = (
@@ -212,19 +335,20 @@ const renderGroup = (
   const heading = renderHeading(group.key, renderer);
   const entryListProperties = { dataIndexRole: "entry-list" } as const;
   const entryListRenderer = renderer.entryList ?? {};
-  const entries = group.children.map((entry) => {
-    const entryProperties = { id: headingId(indexId, [group.key, entry.key]) };
-    const entryRenderer = entryListRenderer.entry?.({ entry: entry.key }) ?? {};
-    return renderEntry(entry, entryProperties, indexId, group.key, entryRenderer);
-  });
-  const entryList = entryListRenderer.compose?.({ properties: entryListProperties, entries }) ?? [
-    h("ul", entryListProperties, entries.flat()),
-  ];
-  return (
-    renderer.compose?.({ properties, heading, entryList }) ?? [
-      h("section", properties, [...heading, ...entryList]),
-    ]
+  const entries = group.children.map((entry) =>
+    renderEntry(
+      entry,
+      { id: headingId(indexId, [group.key, entry.key]) },
+      indexId,
+      group.key,
+      entryListRenderer.entry?.({ entry: entry.key }) ?? {},
+    ),
   );
+  const entryListParts = { properties: entryListProperties, entries };
+  const entryList =
+    entryListRenderer.compose?.(entryListParts) ?? defaultEntryListCompose(entryListParts);
+  const groupParts = { properties, heading, entryList };
+  return renderer.compose?.(groupParts) ?? defaultGroupCompose(groupParts);
 };
 
 const renderEntry = (
@@ -240,35 +364,30 @@ const renderEntry = (
   const xrefRelatedList = renderRelatedXrefList(entry.xrefRelated, indexId, renderer);
   const subentryListProperties = { dataIndexRole: "subentry-list" } as const;
   const subentryListRenderer = renderer.subentryList ?? {};
-  const subentries = entry.children.map((subentry) => {
-    const subentryProperties = {
-      id: headingId(indexId, [groupKey, entry.key, subentry.key]),
-    };
-    const subentryRenderer = subentryListRenderer.subentry?.({ subentry: subentry.key }) ?? {};
-    return renderSubentry(subentry, subentryProperties, indexId, subentryRenderer);
-  });
-  const subentryList = subentryListRenderer.compose?.({
+  const subentries = entry.children.map((subentry) =>
+    renderSubentry(
+      subentry,
+      { id: headingId(indexId, [groupKey, entry.key, subentry.key]) },
+      indexId,
+      subentryListRenderer.subentry?.({ subentry: subentry.key }) ?? {},
+    ),
+  );
+  const subentryListParts = {
     properties: subentryListProperties,
     subentries,
-  }) ?? [h("ul", subentryListProperties, subentries.flat())];
-  return (
-    renderer.compose?.({
-      properties,
-      heading,
-      locatorList,
-      xrefPreferredList,
-      xrefRelatedList,
-      subentryList,
-    }) ?? [
-      h("li", properties, [
-        ...heading,
-        ...locatorList,
-        ...xrefPreferredList,
-        ...xrefRelatedList,
-        ...subentryList,
-      ]),
-    ]
-  );
+  };
+  const subentryList =
+    subentryListRenderer.compose?.(subentryListParts) ??
+    defaultSubentryListCompose(subentryListParts);
+  const entryParts = {
+    properties,
+    heading,
+    locatorList,
+    xrefPreferredList,
+    xrefRelatedList,
+    subentryList,
+  };
+  return renderer.compose?.(entryParts) ?? defaultEntryCompose(entryParts);
 };
 
 const renderSubentry = (
@@ -281,17 +400,14 @@ const renderSubentry = (
   const locatorList = renderLocatorList(subentry.locators, renderer);
   const xrefPreferredList = renderPreferredXrefList(subentry.xrefPreferred, indexId, renderer);
   const xrefRelatedList = renderRelatedXrefList(subentry.xrefRelated, indexId, renderer);
-  return (
-    renderer.compose?.({
-      properties,
-      heading,
-      locatorList,
-      xrefPreferredList,
-      xrefRelatedList,
-    }) ?? [
-      h("li", properties, [...heading, ...locatorList, ...xrefPreferredList, ...xrefRelatedList]),
-    ]
-  );
+  const subentryParts = {
+    properties,
+    heading,
+    locatorList,
+    xrefPreferredList,
+    xrefRelatedList,
+  };
+  return renderer.compose?.(subentryParts) ?? defaultSubentryCompose(subentryParts);
 };
 
 type EntryContentRenderer = EntryRenderer | SubentryRenderer;
@@ -303,16 +419,14 @@ const renderLocatorList = (
   const properties = { dataIndexRole: "locator-list" } as const;
   const listRenderer = renderer.locatorList ?? {};
   const renderedLocators = locators.map((locator) => renderLocator(locator, listRenderer));
-  return (
-    listRenderer.compose?.({ properties, locators: renderedLocators }) ?? [
-      h("ol", properties, renderedLocators.flat()),
-    ]
-  );
+  const locatorListParts = { properties, locators: renderedLocators };
+  return listRenderer.compose?.(locatorListParts) ?? defaultLocatorListCompose(locatorListParts);
 };
 
 const renderPageNumber = (target: string, renderer: LocatorRenderer): Content => {
   const properties = { dataIndexRole: "page-number", dataIndexPageTarget: target } as const;
-  return renderer.pageNumber?.({ properties }) ?? [h("span", properties)];
+  const pageNumberParts = { properties };
+  return renderer.pageNumber?.(pageNumberParts) ?? defaultPageNumber(pageNumberParts);
 };
 
 const renderLocatorContents = ({ location }: Locator, renderer: LocatorRenderer): Content => {
@@ -320,11 +434,11 @@ const renderLocatorContents = ({ location }: Locator, renderer: LocatorRenderer)
     return renderPageNumber(location.href, renderer);
   }
   const separatorProperties = { dataIndexRole: "range-separator" } as const;
+  const rangeSeparatorParts = { properties: separatorProperties };
   return [
     ...renderPageNumber(location.start, renderer),
-    ...(renderer.rangeSeparator?.({ properties: separatorProperties }) ?? [
-      h("span", separatorProperties),
-    ]),
+    ...(renderer.rangeSeparator?.(rangeSeparatorParts) ??
+      defaultRangeSeparator(rangeSeparatorParts)),
     ...renderPageNumber(location.end, renderer),
   ];
 };
@@ -337,7 +451,8 @@ const renderLocator = (locator: Locator, listRenderer: LocatorListRenderer): Con
   } as const;
   const renderer = listRenderer.locator?.({ locator }) ?? {};
   const contents = renderLocatorContents(locator, renderer);
-  const content = renderer.compose?.({ properties, contents }) ?? [h("a", properties, contents)];
+  const locatorParts = { properties, contents };
+  const content = renderer.compose?.(locatorParts) ?? defaultLocatorCompose(locatorParts);
   const children = fillSlot(locator.template, content);
   return children.length === 0 ? [] : [h("li", children)];
 };
@@ -357,10 +472,13 @@ const renderPreferredXrefList = (
   const renderedXrefPreferreds = xrefPreferreds.map((xrefPreferred) =>
     renderPreferredXref(xrefPreferred, indexId, listRenderer),
   );
+  const xrefPreferredListParts = {
+    properties,
+    xrefPreferreds: renderedXrefPreferreds,
+  };
   return (
-    listRenderer.compose?.({ properties, xrefPreferreds: renderedXrefPreferreds }) ?? [
-      h("ul", properties, renderedXrefPreferreds.flat()),
-    ]
+    listRenderer.compose?.(xrefPreferredListParts) ??
+    defaultXrefPreferredListCompose(xrefPreferredListParts)
   );
 };
 
@@ -374,10 +492,13 @@ const renderRelatedXrefList = (
   const renderedXrefRelateds = xrefRelateds.map((xrefRelated) =>
     renderRelatedXref(xrefRelated, indexId, listRenderer),
   );
+  const xrefRelatedListParts = {
+    properties,
+    xrefRelateds: renderedXrefRelateds,
+  };
   return (
-    listRenderer.compose?.({ properties, xrefRelateds: renderedXrefRelateds }) ?? [
-      h("ul", properties, renderedXrefRelateds.flat()),
-    ]
+    listRenderer.compose?.(xrefRelatedListParts) ??
+    defaultXrefRelatedListCompose(xrefRelatedListParts)
   );
 };
 
@@ -397,10 +518,8 @@ const renderPreferredXrefContents = (
 ): Content => {
   const entryProperties = { dataIndexRole: "xref-preferred-entry" } as const;
   const entryContents = parseFragment(target.entry.html);
-  const entry = renderer.entry?.({
-    properties: entryProperties,
-    contents: entryContents,
-  }) ?? [h("span", entryProperties, entryContents)];
+  const entryParts = { properties: entryProperties, contents: entryContents };
+  const entry = renderer.entry?.(entryParts) ?? defaultXrefPreferredEntry(entryParts);
   if (target.subentry === undefined) {
     return entry;
   }
@@ -409,25 +528,21 @@ const renderPreferredXrefContents = (
   } as const;
   const subentryProperties = { dataIndexRole: "xref-preferred-subentry" } as const;
   const subentryContents = parseFragment(target.subentry.html);
+  const subentrySeparatorParts = { properties: separatorProperties };
+  const subentryParts = { properties: subentryProperties, contents: subentryContents };
   return [
     ...entry,
-    ...(renderer.subentrySeparator?.({ properties: separatorProperties }) ?? [
-      h("span", separatorProperties),
-    ]),
-    ...(renderer.subentry?.({
-      properties: subentryProperties,
-      contents: subentryContents,
-    }) ?? [h("span", subentryProperties, subentryContents)]),
+    ...(renderer.subentrySeparator?.(subentrySeparatorParts) ??
+      defaultXrefPreferredSubentrySeparator(subentrySeparatorParts)),
+    ...(renderer.subentry?.(subentryParts) ?? defaultXrefPreferredSubentry(subentryParts)),
   ];
 };
 
 const renderRelatedXrefContents = ({ target }: Xref, renderer: XrefRelatedRenderer): Content => {
   const entryProperties = { dataIndexRole: "xref-related-entry" } as const;
   const entryContents = parseFragment(target.entry.html);
-  const entry = renderer.entry?.({
-    properties: entryProperties,
-    contents: entryContents,
-  }) ?? [h("span", entryProperties, entryContents)];
+  const entryParts = { properties: entryProperties, contents: entryContents };
+  const entry = renderer.entry?.(entryParts) ?? defaultXrefRelatedEntry(entryParts);
   if (target.subentry === undefined) {
     return entry;
   }
@@ -436,15 +551,13 @@ const renderRelatedXrefContents = ({ target }: Xref, renderer: XrefRelatedRender
   } as const;
   const subentryProperties = { dataIndexRole: "xref-related-subentry" } as const;
   const subentryContents = parseFragment(target.subentry.html);
+  const subentrySeparatorParts = { properties: separatorProperties };
+  const subentryParts = { properties: subentryProperties, contents: subentryContents };
   return [
     ...entry,
-    ...(renderer.subentrySeparator?.({ properties: separatorProperties }) ?? [
-      h("span", separatorProperties),
-    ]),
-    ...(renderer.subentry?.({
-      properties: subentryProperties,
-      contents: subentryContents,
-    }) ?? [h("span", subentryProperties, subentryContents)]),
+    ...(renderer.subentrySeparator?.(subentrySeparatorParts) ??
+      defaultXrefRelatedSubentrySeparator(subentrySeparatorParts)),
+    ...(renderer.subentry?.(subentryParts) ?? defaultXrefRelatedSubentry(subentryParts)),
   ];
 };
 
@@ -456,7 +569,9 @@ const renderPreferredXref = (
   const renderer = listRenderer.xrefPreferred?.({ xrefPreferred }) ?? {};
   const properties = xrefProperties(xrefPreferred, indexId);
   const contents = renderPreferredXrefContents(xrefPreferred, renderer);
-  const content = renderer.compose?.({ properties, contents }) ?? [h("a", properties, contents)];
+  const xrefPreferredParts = { properties, contents };
+  const content =
+    renderer.compose?.(xrefPreferredParts) ?? defaultXrefPreferredCompose(xrefPreferredParts);
   return applyXrefTemplate(xrefPreferred.template, content);
 };
 
@@ -468,6 +583,8 @@ const renderRelatedXref = (
   const renderer = listRenderer.xrefRelated?.({ xrefRelated }) ?? {};
   const properties = xrefProperties(xrefRelated, indexId);
   const contents = renderRelatedXrefContents(xrefRelated, renderer);
-  const content = renderer.compose?.({ properties, contents }) ?? [h("a", properties, contents)];
+  const xrefRelatedParts = { properties, contents };
+  const content =
+    renderer.compose?.(xrefRelatedParts) ?? defaultXrefRelatedCompose(xrefRelatedParts);
   return applyXrefTemplate(xrefRelated.template, content);
 };

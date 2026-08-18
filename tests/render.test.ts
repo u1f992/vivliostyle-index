@@ -415,7 +415,10 @@ void test("exposes an emptied index on the target element", () => {
 
   renderIndex({ children: [] }, target, "index", {});
 
-  assert.deepStrictEqual(target.children, []);
+  assert.strictEqual(target.children.length, 1);
+  const groupList = select(roleOf("group-list"), target);
+  assert.ok(groupList);
+  assert.strictEqual(groupList.tagName, "div");
   assert.strictEqual(getAttribute(target, "data-index-result"), '{"children":[]}');
 });
 

@@ -574,7 +574,10 @@ void test("revokes a heading left without content by an unresolved cross-referen
 
   const target = select("#index", root);
   assert.ok(target);
-  assert.deepStrictEqual(target.children, []);
+  assert.strictEqual(target.children.length, 1);
+  const groupList = select(roleOf("group-list"), target);
+  assert.ok(groupList);
+  assert.strictEqual(groupList.tagName, "div");
 });
 
 void test("leaves a target alone when no instruction names it", () => {
