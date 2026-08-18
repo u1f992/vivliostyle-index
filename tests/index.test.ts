@@ -455,9 +455,9 @@ void test("decodes a URL-encoded DSL query value", () => {
 void test("wraps page and range locators in the template of their instruction", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span id="range-start" data-index="index.md?q=そ!そうぞく@相続|(%23range-end|<em><slot></slot></em>#index">相続</span>',
-      '<span id="page" data-index="index.md?q=し!じゆうりよう@自由利用||<strong><slot></slot></strong>#index">自由利用</span>',
-      '<span id="range-end">おわり</span>',
+      '<span id="range-start" data-index="index.md?q=そ!そうぞく@相続|(<em><slot></slot></em>#index">相続</span>',
+      '<span id="page" data-index="index.md?q=し!じゆうりよう@自由利用|<strong><slot></slot></strong>#index">自由利用</span>',
+      '<span id="range-end" data-index="index.md?q=そ!そうぞく@相続|)#index">おわり</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
@@ -484,7 +484,7 @@ void test("wraps page and range locators in the template of their instruction", 
 void test("renders a slotless template without a locator link", () => {
   const files = {
     "/publication/chapter.md":
-      '<span data-index="index.md?q=\u3057!\u3058\u3086\u3046\u308a\u3088\u3046@\u81ea\u7531\u5229\u7528||<em>\u63b2\u8f09\u7565</em>#index">\u81ea\u7531\u5229\u7528</span>',
+      '<span data-index="index.md?q=\u3057!\u3058\u3086\u3046\u308a\u3088\u3046@\u81ea\u7531\u5229\u7528|<em>\u63b2\u8f09\u7565</em>#index">\u81ea\u7531\u5229\u7528</span>',
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
   const { processor } = createProcessor({
@@ -507,7 +507,7 @@ void test("renders a slotless template without a locator link", () => {
 void test("links a cross-reference to a later entry", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?q=た!だいがく@大学|->き!きょうとだいがく@%3Cem%3E京都大学%3C%2Fem%3E#index">大学</span>',
+      '<span data-index="index.md?q=た!だいがく@大学|see{き!きょうとだいがく@%3Cem%3E京都大学%3C%2Fem%3E}#index">大学</span>',
       '<span data-index="index.md?q=き!きょうとだいがく@%3Cem%3E京都大学%3C%2Fem%3E#index">京都大学</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
@@ -530,7 +530,7 @@ void test("links a cross-reference to a later entry", () => {
 void test("links a cross-reference to a later subentry", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?q=a!Alpha|->b!Beta!Gamma#index">Alpha</span>',
+      '<span data-index="index.md?q=a!Alpha|see{b!Beta!Gamma}#index">Alpha</span>',
       '<span data-index="index.md?q=b!Beta!Gamma#index">Gamma</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
@@ -561,7 +561,7 @@ void test("links a cross-reference to a later subentry", () => {
 void test("revokes a heading left without content by an unresolved cross-reference", () => {
   const files = {
     "/publication/chapter.md":
-      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
+      '<span data-index="index.md?q=a!Apple|see{b!Banana}#index">Apple</span>',
     "/publication/index.md": '<nav id="index" role="doc-index">placeholder</nav>',
   };
   const { processor } = createProcessor({
@@ -601,7 +601,7 @@ void test("leaves a target alone when no instruction names it", () => {
 void test("reports a missing target of an index whose entries are all revoked", () => {
   const files = {
     "/publication/chapter.md":
-      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
+      '<span data-index="index.md?q=a!Apple|see{b!Banana}#index">Apple</span>',
     "/publication/index.md": "<p>no index target here</p>",
   };
   const { processor } = createProcessor({
@@ -621,8 +621,8 @@ void test("reports a missing target of an index whose entries are all revoked", 
 void test("revokes a cross-reference whose target was revoked for being vacant", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
-      '<span data-index="index.md?q=b!Banana|->c!Cherry#index">Banana</span>',
+      '<span data-index="index.md?q=a!Apple|see{b!Banana}#index">Apple</span>',
+      '<span data-index="index.md?q=b!Banana|see{c!Cherry}#index">Banana</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
@@ -646,7 +646,7 @@ void test("keeps a heading whose locator outlives a revoked cross-reference", ()
   const files = {
     "/publication/chapter.md": [
       '<span id="apple" data-index="index.md?q=a!Apple#index">Apple</span>',
-      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
+      '<span data-index="index.md?q=a!Apple|see{b!Banana}#index">Apple</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
@@ -662,10 +662,10 @@ void test("keeps a heading whose locator outlives a revoked cross-reference", ()
   assert.strictEqual(select(XREF_PREFERRED, root)?.children.length, 0);
 });
 
-void test("revokes a heading left without content by an invalid range", () => {
+void test("omits a heading carried only by an unmatched range start", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?q=a!Apple|(%23missing#index">Apple</span>',
+      '<span data-index="index.md?q=a!Apple|(#index">Apple</span>',
       '<span id="banana" data-index="index.md?q=b!Banana#index">Banana</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
@@ -682,11 +682,11 @@ void test("revokes a heading left without content by an invalid range", () => {
   assert.deepStrictEqual(locatorLinks(root), ["chapter.html#banana"]);
 });
 
-void test("revokes a cross-reference to a heading revoked by an invalid range", () => {
+void test("revokes a cross-reference to a heading omitted with an unmatched range start", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?q=a!Apple|(%23missing#index">Apple</span>',
-      '<span data-index="index.md?q=b!Banana|->a!Apple#index">Banana</span>',
+      '<span data-index="index.md?q=a!Apple|(#index">Apple</span>',
+      '<span data-index="index.md?q=b!Banana|see{a!Apple}#index">Banana</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
@@ -704,11 +704,11 @@ void test("revokes a cross-reference to a heading revoked by an invalid range", 
   assert.deepStrictEqual(groupHeadings(root), []);
   assert.deepStrictEqual(
     indexFile.messages.map((message) => message.ruleId),
-    ["vacant-entry", "invalid-xref", "vacant-entry"],
+    ["invalid-xref", "vacant-entry"],
   );
   assert.deepStrictEqual(
     chapterFile.messages.map((message) => message.ruleId),
-    ["missing-range-end"],
+    ["unmatched-range-start"],
   );
 });
 
@@ -716,8 +716,8 @@ void test("revokes an unresolved related cross-reference while keeping a resolve
   const files = {
     "/publication/chapter.md": [
       '<span id="banana" data-index="index.md?q=b!Banana#index">Banana</span>',
-      '<span data-index="index.md?q=a!Apple|=>b!Banana#index">Apple</span>',
-      '<span data-index="index.md?q=a!Apple|=>c!Cherry#index">Apple</span>',
+      '<span data-index="index.md?q=a!Apple|seealso{b!Banana}#index">Apple</span>',
+      '<span data-index="index.md?q=a!Apple|seealso{c!Cherry}#index">Apple</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
@@ -739,9 +739,9 @@ void test("revokes an unresolved related cross-reference while keeping a resolve
 void test("revokes a cross-reference chain across several rounds", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
-      '<span data-index="index.md?q=b!Banana|->c!Cherry#index">Banana</span>',
-      '<span data-index="index.md?q=c!Cherry|->d!Date#index">Cherry</span>',
+      '<span data-index="index.md?q=a!Apple|see{b!Banana}#index">Apple</span>',
+      '<span data-index="index.md?q=b!Banana|see{c!Cherry}#index">Banana</span>',
+      '<span data-index="index.md?q=c!Cherry|see{d!Date}#index">Cherry</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
@@ -779,7 +779,7 @@ void test("revokes a cross-reference chain across several rounds", () => {
 void test("revokes a heading emptied by revoking its subentry", () => {
   const files = {
     "/publication/chapter.md":
-      '<span data-index="index.md?q=a!Apple!Fuji|->b!Banana#index">Fuji</span>',
+      '<span data-index="index.md?q=a!Apple!Fuji|see{b!Banana}#index">Fuji</span>',
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
   const { processor } = createProcessor({
@@ -807,8 +807,8 @@ void test("revokes a heading emptied by revoking its subentry", () => {
 void test("keeps mutually cross-referencing headings that hold no locator", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
-      '<span data-index="index.md?q=b!Banana|->a!Apple#index">Banana</span>',
+      '<span data-index="index.md?q=a!Apple|see{b!Banana}#index">Apple</span>',
+      '<span data-index="index.md?q=b!Banana|see{a!Apple}#index">Banana</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
@@ -946,13 +946,13 @@ void test("moves an attachment between fragments in the same document", () => {
   assert.deepStrictEqual(locatorLinks(currentRoot, "new"), ["#%2Fhtml%2Fbody%2Fspan"]);
 });
 
-void test("keeps range end references separate between index targets", () => {
+void test("keeps range pairs separate between index targets", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span data-index="index.md?q=a!Apple|(%23apple-end#first">Apple</span>',
-      '<span data-index="index.md?q=b!Banana|(%23banana-end#second">Banana</span>',
-      '<span id="apple-end"></span>',
-      '<span id="banana-end"></span>',
+      '<span data-index="index.md?q=a!Apple|(#first">Apple</span>',
+      '<span data-index="index.md?q=b!Banana|(#second">Banana</span>',
+      '<span id="apple-end" data-index="index.md?q=a!Apple|)#first"></span>',
+      '<span id="banana-end" data-index="index.md?q=b!Banana|)#second"></span>',
     ].join(""),
     "/publication/index.md":
       '<nav id="first" role="doc-index"></nav><nav id="second" role="doc-index"></nav>',
@@ -978,9 +978,9 @@ void test("keeps range end references separate between index targets", () => {
 void test("builds a range whose markers are in different entries", () => {
   const files = {
     "/publication/001.md":
-      '<span id="range-start" data-index="index.md?q=a!Apple|(100.md%23range-end#index">Apple</span>',
+      '<span id="range-start" data-index="index.md?q=a!Apple|(#index">Apple</span>',
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
-    "/publication/100.md": '<span id="range-end"></span>',
+    "/publication/100.md": '<span id="range-end" data-index="index.md?q=a!Apple|)#index"></span>',
   };
   const { processor } = createProcessor({
     entries: ["001.md", "index.md", "100.md"],
@@ -994,11 +994,11 @@ void test("builds a range whose markers are in different entries", () => {
   assert.deepStrictEqual(rangeEnds(root), ["100.html#range-end"]);
 });
 
-void test("discards a range end query when resolving its document target", () => {
+void test("generates an ID for a range end without one", () => {
   const files = {
     "/publication/chapter.md":
-      '<span id="range-start" data-index="index.md?q=a!Apple|(end.md%3Fq%3Dx%23range-end#index">Apple</span>',
-    "/publication/end.md": '<span id="range-end"></span>',
+      '<span id="range-start" data-index="index.md?q=a!Apple|(#index">Apple</span>',
+    "/publication/end.md": '<span data-index="index.md?q=a!Apple|)#index"></span>',
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
   const { processor } = createProcessor({
@@ -1010,13 +1010,12 @@ void test("discards a range end query when resolving its document target", () =>
   processor.runSync(root, { path: "/publication/index.md" });
 
   assert.deepStrictEqual(locatorLinks(root), ["chapter.html#range-start"]);
-  assert.deepStrictEqual(rangeEnds(root), ["end.html#range-end"]);
+  assert.deepStrictEqual(rangeEnds(root), ["end.html#%2Fhtml%2Fbody%2Fspan"]);
 });
 
-void test("reports and revokes a range whose end target does not exist", () => {
+void test("reports and revokes an unmatched range start", () => {
   const files = {
-    "/publication/chapter.md":
-      '<span data-index="index.md?q=a!Apple|(%23missing#index">Apple</span>',
+    "/publication/chapter.md": '<span data-index="index.md?q=a!Apple|(#index">Apple</span>',
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
   const { processor } = createProcessor({
@@ -1031,18 +1030,17 @@ void test("reports and revokes a range whose end target does not exist", () => {
 
   assert.deepStrictEqual(locatorLinks(root), []);
   assert.strictEqual(file.messages.length, 1);
-  assert.match(file.messages[0]?.reason ?? "", /does not exist/v);
-  assert.strictEqual(file.messages[0]?.ruleId, "missing-range-end");
+  assert.match(file.messages[0]?.reason ?? "", /no matching range end/v);
+  assert.strictEqual(file.messages[0]?.ruleId, "unmatched-range-start");
 });
 
-void test("reports and rejects a range end reference without a fragment", () => {
+void test("reports and ignores an unmatched range end", () => {
   const files = {
-    "/publication/chapter.md": '<span data-index="index.md?q=a!Apple|(end.md#index">Apple</span>',
-    "/publication/end.md": '<span id="range-end"></span>',
+    "/publication/chapter.md": '<span data-index="index.md?q=a!Apple|)#index">Apple</span>',
     "/publication/index.md": '<nav id="index" role="doc-index">placeholder</nav>',
   };
   const { processor } = createProcessor({
-    entries: ["chapter.md", "end.md", "index.md"],
+    entries: ["chapter.md", "index.md"],
     files,
   });
   const root = fromHtml(files["/publication/index.md"]);
@@ -1053,17 +1051,17 @@ void test("reports and rejects a range end reference without a fragment", () => 
 
   const target = select("#index", root);
   assert.ok(target);
-  assert.strictEqual(toText(target), "placeholder");
+  assert.strictEqual(toText(target), "");
   assert.strictEqual(file.messages.length, 1);
-  assert.match(file.messages[0]?.reason ?? "", /invalid range end reference/v);
-  assert.strictEqual(file.messages[0]?.ruleId, "invalid-range-end-reference");
+  assert.match(file.messages[0]?.reason ?? "", /no matching range start/v);
+  assert.strictEqual(file.messages[0]?.ruleId, "unmatched-range-end");
 });
 
 void test("reports and revokes a range whose end precedes its start in the same entry", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span id="range-end"></span>',
-      '<span data-index="index.md?q=a!Apple|(%23range-end#index">Apple</span>',
+      '<span id="range-end" data-index="index.md?q=a!Apple|)#index"></span>',
+      '<span data-index="index.md?q=a!Apple|(#index">Apple</span>',
     ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
@@ -1078,15 +1076,21 @@ void test("reports and revokes a range whose end precedes its start in the same 
   processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
 
   assert.deepStrictEqual(locatorLinks(root), []);
-  assert.strictEqual(file.messages.length, 1);
-  assert.match(file.messages[0]?.reason ?? "", /does not follow its start/v);
-  assert.strictEqual(file.messages[0]?.ruleId, "range-end-order");
+  assert.strictEqual(file.messages.length, 2);
+  assert.deepStrictEqual(
+    file.messages.map(({ ruleId }) => ruleId),
+    ["unmatched-range-end", "unmatched-range-start"],
+  );
 });
 
-void test("reports and revokes a range whose end is its start", () => {
+void test("pairs nested ranges from the inside out", () => {
   const files = {
-    "/publication/chapter.md":
-      '<span id="range-start" data-index="index.md?q=a!Apple|(%23range-start#index">Apple</span>',
+    "/publication/chapter.md": [
+      '<span id="outer-start" data-index="index.md?q=a!Apple|(#index"></span>',
+      '<span id="inner-start" data-index="index.md?q=a!Apple|(#index"></span>',
+      '<span id="inner-end" data-index="index.md?q=a!Apple|)#index"></span>',
+      '<span id="outer-end" data-index="index.md?q=a!Apple|)#index"></span>',
+    ].join(""),
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
   const { processor } = createProcessor({
@@ -1096,20 +1100,17 @@ void test("reports and revokes a range whose end is its start", () => {
   const root = fromHtml(files["/publication/index.md"]);
 
   processor.runSync(root, { path: "/publication/index.md" });
-  const file = VFile({ path: "/publication/chapter.md" });
-  processor.runSync(fromHtml(files["/publication/chapter.md"]), file);
-
-  assert.deepStrictEqual(locatorLinks(root), []);
-  assert.strictEqual(file.messages.length, 1);
-  assert.match(file.messages[0]?.reason ?? "", /does not follow its start/v);
-  assert.strictEqual(file.messages[0]?.ruleId, "range-end-order");
+  assert.deepStrictEqual(locatorLinks(root), [
+    "chapter.html#outer-start",
+    "chapter.html#inner-start",
+  ]);
+  assert.deepStrictEqual(rangeEnds(root), ["chapter.html#outer-end", "chapter.html#inner-end"]);
 });
 
 void test("reports and revokes a range whose end is in an earlier entry", () => {
   const files = {
-    "/publication/001.md": '<span id="range-end"></span>',
-    "/publication/100.md":
-      '<span data-index="index.md?q=a!Apple|(001.md%23range-end#index">Apple</span>',
+    "/publication/001.md": '<span id="range-end" data-index="index.md?q=a!Apple|)#index"></span>',
+    "/publication/100.md": '<span data-index="index.md?q=a!Apple|(#index">Apple</span>',
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
   const { processor } = createProcessor({
@@ -1124,16 +1125,14 @@ void test("reports and revokes a range whose end is in an earlier entry", () => 
 
   assert.deepStrictEqual(locatorLinks(root), []);
   assert.strictEqual(file.messages.length, 1);
-  assert.match(file.messages[0]?.reason ?? "", /does not follow its start/v);
-  assert.strictEqual(file.messages[0]?.ruleId, "range-end-order");
+  assert.strictEqual(file.messages[0]?.ruleId, "unmatched-range-start");
 });
 
 void test("touches an index target after its range end changes", () => {
   const updates: string[] = [];
   const files = {
-    "/publication/chapter.md":
-      '<span data-index="index.md?q=a!Apple|(end.md%23range-end#index">Apple</span>',
-    "/publication/end.md": '<span id="range-end"></span>',
+    "/publication/chapter.md": '<span data-index="index.md?q=a!Apple|(#index">Apple</span>',
+    "/publication/end.md": '<span id="range-end" data-index="index.md?q=a!Apple|)#index"></span>',
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
   const { processor } = createProcessor({
@@ -1147,7 +1146,7 @@ void test("touches an index target after its range end changes", () => {
   });
   processor.runSync(fromHtml(""), { path: "/publication/end.md" });
 
-  assert.deepStrictEqual(updates, ["/publication/chapter.md", "/publication/index.md"]);
+  assert.deepStrictEqual(updates, ["/publication/index.md", "/publication/chapter.md"]);
 });
 
 void test("reports and rejects index references that cannot be normalized", () => {
@@ -1217,7 +1216,7 @@ void test("reports an index target outside entries on its source file", () => {
 void test("reports an invalid cross-reference on its index file", () => {
   const files = {
     "/publication/chapter.md":
-      '<span data-index="index.md?q=a!Apple|->b!Banana#index">Apple</span>',
+      '<span data-index="index.md?q=a!Apple|see{b!Banana}#index">Apple</span>',
     "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
   };
   const { processor } = createProcessor({

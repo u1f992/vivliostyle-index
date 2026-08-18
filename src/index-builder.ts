@@ -3,11 +3,10 @@ import {
   applyRangeInstruction,
   applyXrefInstruction,
 } from "./instruction.ts";
-import { createLocationHref } from "./location.ts";
 import { addMessage, messages, type MessageArguments } from "./messages.ts";
 import { findUnresolvedXref, type Index } from "./model.ts";
 import { revokeViolations, type Revocable } from "./revocation.ts";
-import type { Attachment, RangeAttachment, SourceSnapshot } from "./source-snapshot.ts";
+import type { Attachment, SourceSnapshot } from "./source-snapshot.ts";
 import type { Target, TargetKey } from "./target.ts";
 
 export type BuiltIndex = Readonly<{
@@ -25,32 +24,17 @@ type PendingIndex = Readonly<{
   target: Target;
   index: Index;
   sourcePaths: Set<string>;
+  attachments: Attachment[];
   revocables: Revocable[];
 }>;
 
-function findRangeEndViolation(
-  entryPaths: readonly string[],
-  sources: ReadonlyMap<string, SourceSnapshot>,
-  attachment: RangeAttachment,
-): MessageArguments | undefined {
-  const { rangeEnd } = attachment;
-  const endEntryIndex = entryPaths.indexOf(rangeEnd.path);
-  if (endEntryIndex === -1) {
-    return messages.rangeEndNotInEntries(rangeEnd);
-  }
-  const rangeEndSource = sources.get(rangeEnd.path);
-  if (!rangeEndSource?.ids.includes(rangeEnd.id)) {
-    return messages.missingRangeEnd(rangeEnd);
-  }
-  const sourceEntryIndex = entryPaths.indexOf(attachment.sourcePath);
-  const endPrecedesSource = endEntryIndex < sourceEntryIndex;
-  const endDoesNotFollowSourceElement =
-    endEntryIndex === sourceEntryIndex &&
-    rangeEndSource.ids.indexOf(rangeEnd.id) <= rangeEndSource.ids.indexOf(attachment.sourceId);
-  return endPrecedesSource || endDoesNotFollowSourceElement
-    ? messages.rangeEndOrder(rangeEnd)
-    : undefined;
-}
+type RangeStartAttachment = Attachment &
+  Readonly<{ instruction: Extract<Attachment["instruction"], { type: "range-start" }> }>;
+type RangeEndAttachment = Attachment &
+  Readonly<{ instruction: Extract<Attachment["instruction"], { type: "range-end" }> }>;
+
+const addressKey = (attachment: Attachment): string =>
+  JSON.stringify(attachment.instruction.address);
 
 function ensurePendingIndex(
   pendingIndexes: Map<TargetKey, PendingIndex>,
@@ -59,12 +43,14 @@ function ensurePendingIndex(
   const pendingIndex = pendingIndexes.get(attachment.targetKey);
   if (pendingIndex) {
     pendingIndex.sourcePaths.add(attachment.sourcePath);
+    pendingIndex.attachments.push(attachment);
     return pendingIndex;
   }
   const created: PendingIndex = {
     target: attachment.target,
     index: { children: [] },
     sourcePaths: new Set([attachment.sourcePath]),
+    attachments: [attachment],
     revocables: [],
   };
   pendingIndexes.set(attachment.targetKey, created);
@@ -83,30 +69,27 @@ function resolveReportingPaths(
 }
 
 function applyAttachment(
-  entryPaths: readonly string[],
   entryPathSet: ReadonlySet<string>,
-  sources: ReadonlyMap<string, SourceSnapshot>,
   index: Index,
   attachment: Attachment,
+  rangeEnds: ReadonlyMap<RangeStartAttachment, RangeEndAttachment>,
 ): Revocable | undefined {
-  if ("rangeEnd" in attachment) {
-    const revoke = applyRangeInstruction(
-      index,
-      attachment.instruction,
-      attachment.locationHref,
-      createLocationHref(attachment.rangeEnd.path, attachment.target.path, attachment.rangeEnd.id),
-    );
-    return {
-      reportingPath: attachment.sourcePath,
-      revoke,
-      findViolation: () => findRangeEndViolation(entryPaths, sources, attachment),
-    };
-  }
-
   const { instruction } = attachment;
 
   if (instruction.type === "page") {
     applyPageInstruction(index, instruction, attachment.locationHref);
+    return undefined;
+  }
+
+  if (instruction.type === "range-start") {
+    const rangeEnd = rangeEnds.get(attachment as RangeStartAttachment);
+    if (rangeEnd !== undefined) {
+      applyRangeInstruction(index, instruction, attachment.locationHref, rangeEnd.locationHref);
+    }
+    return undefined;
+  }
+
+  if (instruction.type === "range-end") {
     return undefined;
   }
 
@@ -119,6 +102,46 @@ function applyAttachment(
       return unresolvedXref === undefined ? undefined : messages.invalidXref(unresolvedXref);
     },
   };
+}
+
+function pairRanges(
+  pendingIndex: PendingIndex,
+  messagesByDocument: Map<string, MessageArguments[]>,
+): ReadonlyMap<RangeStartAttachment, RangeEndAttachment> {
+  const startsByAddress = new Map<string, RangeStartAttachment[]>();
+  const rangeEnds = new Map<RangeStartAttachment, RangeEndAttachment>();
+  for (const attachment of pendingIndex.attachments) {
+    if (attachment.instruction.type === "range-start") {
+      const starts = startsByAddress.get(addressKey(attachment)) ?? [];
+      starts.push(attachment as RangeStartAttachment);
+      startsByAddress.set(addressKey(attachment), starts);
+      continue;
+    }
+    if (attachment.instruction.type !== "range-end") {
+      continue;
+    }
+    const starts = startsByAddress.get(addressKey(attachment));
+    const start = starts?.pop();
+    if (start === undefined) {
+      addMessage(
+        messagesByDocument,
+        attachment.sourcePath,
+        messages.unmatchedRangeEnd(pendingIndex.target, attachment.instruction.address),
+      );
+      continue;
+    }
+    rangeEnds.set(start, attachment as RangeEndAttachment);
+  }
+  for (const starts of startsByAddress.values()) {
+    for (const start of starts) {
+      addMessage(
+        messagesByDocument,
+        start.sourcePath,
+        messages.unmatchedRangeStart(pendingIndex.target, start.instruction.address),
+      );
+    }
+  }
+  return rangeEnds;
 }
 
 export function buildIndexes(
@@ -142,22 +165,20 @@ export function buildIndexes(
       continue;
     }
     for (const attachment of snapshot.attachments) {
-      const pendingIndex = ensurePendingIndex(pendingIndexes, attachment);
-      const revocable = applyAttachment(
-        entryPaths,
-        entryPathSet,
-        sources,
-        pendingIndex.index,
-        attachment,
-      );
-      if (revocable) {
-        pendingIndex.revocables.push(revocable);
-      }
+      ensurePendingIndex(pendingIndexes, attachment);
     }
   }
 
   const indexes = new Map<TargetKey, BuiltIndex>();
-  for (const [targetKey, { target, index, sourcePaths, revocables }] of pendingIndexes) {
+  for (const [targetKey, pendingIndex] of pendingIndexes) {
+    const { target, index, sourcePaths, attachments, revocables } = pendingIndex;
+    const rangeEnds = pairRanges(pendingIndex, messagesByDocument);
+    for (const attachment of attachments) {
+      const revocable = applyAttachment(entryPathSet, index, attachment, rangeEnds);
+      if (revocable) {
+        revocables.push(revocable);
+      }
+    }
     const builtIndex: BuiltIndex = { target, index, sourcePaths: [...sourcePaths] };
     indexes.set(targetKey, builtIndex);
     revokeViolations(

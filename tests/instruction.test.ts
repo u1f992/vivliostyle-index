@@ -23,42 +23,38 @@ void test("parses page instructions", () => {
   );
   assert.deepStrictEqual(
     parseInstruction(
-      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し||<em><slot></slot></em>",
+      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|<em><slot></slot></em>",
     ),
     { type: "page", address, template: "<em><slot></slot></em>" },
   );
 });
 
-void test("parses range instructions", () => {
+void test("parses range start and end instructions", () => {
   assert.deepStrictEqual(
-    parseInstruction("ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|(path.md#fragment"),
+    parseInstruction("ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|("),
     {
-      type: "range",
+      type: "range-start",
       address,
-      endReference: "path.md#fragment",
       template: identityTemplate,
     },
   );
   assert.deepStrictEqual(
     parseInstruction(
-      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|(path.md#fragment|<em><slot></slot></em>",
+      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|(<em><slot></slot></em>",
     ),
     {
-      type: "range",
+      type: "range-start",
       address,
-      endReference: "path.md#fragment",
       template: "<em><slot></slot></em>",
     },
   );
-  assert.deepStrictEqual(parseInstruction("group!main|(#fragment"), {
-    type: "range",
-    address: {
-      group: { html: "group", reading: "group" },
-      entry: { html: "main", reading: "main" },
+  assert.deepStrictEqual(
+    parseInstruction("ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|)"),
+    {
+      type: "range-end",
+      address,
     },
-    endReference: "#fragment",
-    template: identityTemplate,
-  });
+  );
 });
 
 void test("parses preferred and related cross-reference instructions", () => {
@@ -68,18 +64,18 @@ void test("parses preferred and related cross-reference instructions", () => {
   };
   assert.deepStrictEqual(
     parseInstruction(
-      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|->べつぐるーぷ@別グループ!みだしご@見出し語",
+      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|see{べつぐるーぷ@別グループ!みだしご@見出し語}",
     ),
     { type: "preferred", address, target, template: identityTemplate },
   );
   assert.deepStrictEqual(
     parseInstruction(
-      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|=>べつぐるーぷ@別グループ!みだしご@見出し語",
+      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|seealso{べつぐるーぷ@別グループ!みだしご@見出し語}",
     ),
     { type: "related", address, target, template: identityTemplate },
   );
   assert.deepStrictEqual(
-    parseInstruction("group!main|->target-group!target-main!target-subentry"),
+    parseInstruction("group!main|see{target-group!target-main!target-subentry}"),
     {
       type: "preferred",
       address: {
@@ -151,7 +147,7 @@ void test("preserves display values as HTML fragments", () => {
 void test("preserves HTML fragments at every entry position", () => {
   assert.deepStrictEqual(
     parseInstruction(
-      "g@<\\!-- group --><b>G</b>!m@M&amp;M!s@<i>S</i>|->tg@<b>TG</b>!tm@<i>TM</i>!ts@<u>TS</u>",
+      "g@<\\!-- group --><b>G</b>!m@M&amp;M!s@<i>S</i>|see{tg@<b>TG</b>!tm@<i>TM</i>!ts@<u>TS</u>}",
     ),
     {
       type: "preferred",
@@ -224,7 +220,7 @@ void test("distinguishes escaped metacharacters at syntax boundaries", () => {
     },
     template: identityTemplate,
   });
-  assert.deepStrictEqual(parseInstruction("group!main\\|||<b><slot></slot></b>"), {
+  assert.deepStrictEqual(parseInstruction("group!main\\||<b><slot></slot></b>"), {
     type: "page",
     address: {
       group: { html: "group", reading: "group" },
@@ -240,69 +236,60 @@ void test("accepts a template with any number of slots", () => {
     entry: { html: "main", reading: "main" },
   };
 
-  assert.deepStrictEqual(parseInstruction("group!main||"), {
+  assert.deepStrictEqual(parseInstruction("group!main|"), {
     type: "page",
     address,
     template: "",
   });
-  assert.deepStrictEqual(parseInstruction("group!main||<em>掲載略</em>"), {
+  assert.deepStrictEqual(parseInstruction("group!main|掲載略"), {
     type: "page",
     address,
-    template: "<em>掲載略</em>",
+    template: "掲載略",
   });
-  assert.deepStrictEqual(parseInstruction("group!main||<slot></slot><slot></slot>"), {
+  assert.deepStrictEqual(parseInstruction("group!main|<slot></slot><slot></slot>"), {
     type: "page",
     address,
     template: "<slot></slot><slot></slot>",
   });
 });
 
-void test("keeps a template running to the end of the instruction", () => {
-  assert.deepStrictEqual(parseInstruction("group!main||<em>\\@\\!\\|\\\\<slot></slot></em>|x"), {
-    type: "page",
-    address: {
-      group: { html: "group", reading: "group" },
-      entry: { html: "main", reading: "main" },
-    },
-    template: "<em>@!|\\<slot></slot></em>|x",
-  });
-});
-
-void test("reads a range end reference up to the template", () => {
-  assert.deepStrictEqual(parseInstruction("group!main|(../章 @!.md?x=1&y=2+#終点)"), {
-    type: "range",
-    address: {
-      group: { html: "group", reading: "group" },
-      entry: { html: "main", reading: "main" },
-    },
-    endReference: "../章 @!.md?x=1&y=2+#終点)",
-    template: identityTemplate,
-  });
-  assert.deepStrictEqual(parseInstruction("group!main|(a\\@b\\!c\\\\d#end"), {
-    type: "range",
-    address: {
-      group: { html: "group", reading: "group" },
-      entry: { html: "main", reading: "main" },
-    },
-    endReference: "a@b!c\\d#end",
-    template: identityTemplate,
-  });
+void test("requires metasyntax characters in templates to be escaped", () => {
   assert.deepStrictEqual(
-    parseInstruction("group!main|(../章 @!\\|.md#終点|<em><slot></slot></em>"),
+    parseInstruction("group!main|<em>\\@\\!\\|\\(\\)\\{\\}\\\\<slot></slot></em>\\|x"),
     {
-      type: "range",
+      type: "page",
       address: {
         group: { html: "group", reading: "group" },
         entry: { html: "main", reading: "main" },
       },
-      endReference: "../章 @!|.md#終点",
-      template: "<em><slot></slot></em>",
+      template: "<em>@!|(){}\\<slot></slot></em>|x",
     },
   );
 });
 
-void test("reads a cross-reference target up to the template", () => {
-  assert.deepStrictEqual(parseInstruction("group!main|->tg!tm|<em><slot></slot></em>"), {
+void test("rejects unescaped metasyntax throughout an instruction", () => {
+  for (const token of ["@", "!", "|", "|(", "|)", "|see{", "|seealso{", "}"]) {
+    assert.throws(
+      () => parseInstruction(`group!main|prefix${token}suffix`),
+      InstructionSyntaxError,
+      token,
+    );
+  }
+  for (const instruction of ["group@display}value!main", "group!main|see{target!entry|template}"]) {
+    assert.throws(() => parseInstruction(instruction), InstructionSyntaxError, instruction);
+  }
+  assert.deepStrictEqual(parseInstruction("group\\}name!main"), {
+    type: "page",
+    address: {
+      group: { html: "group}name", reading: "group}name" },
+      entry: { html: "main", reading: "main" },
+    },
+    template: identityTemplate,
+  });
+});
+
+void test("reads a cross-reference target inside braces", () => {
+  assert.deepStrictEqual(parseInstruction("group!main|see{tg!tm}<em><slot></slot></em>"), {
     type: "preferred",
     address: {
       group: { html: "group", reading: "group" },
@@ -314,7 +301,7 @@ void test("reads a cross-reference target up to the template", () => {
     },
     template: "<em><slot></slot></em>",
   });
-  assert.deepStrictEqual(parseInstruction("group!main|=>tg!tm\\|x"), {
+  assert.deepStrictEqual(parseInstruction("group!main|seealso{tg!tm\\|x}"), {
     type: "related",
     address: {
       group: { html: "group", reading: "group" },
@@ -355,21 +342,14 @@ void test("rejects incomplete and structurally invalid instructions", () => {
     "group@!main",
     "group@display@again!main",
     "group!main!subentry!fourth",
-    "group!main|",
-    "group!main|(",
-    "group!main|!unexpected",
-    "group!main|->group",
-    "group!main|=>group!",
-    "group!main|-",
-    "group!main|->",
-    "group!main|=",
-    "group!main|=>",
-    "group!main|unknown",
-    "group!main|!(",
+    "group!main|)余分",
+    "group!main|see{group",
+    "group!main|see{}",
+    "group!main|seealso{group!}",
     "group\\",
     "group\\x!main",
-    "group!main||<em><slot></slot></em>\\",
-    "group!main|(#end\\",
+    "group!main|<em><slot></slot></em>\\",
+    "group!main|(<em>\\",
   ];
 
   for (const instruction of invalidInstructions) {
@@ -377,7 +357,7 @@ void test("rejects incomplete and structurally invalid instructions", () => {
   }
 });
 
-void test("reports the exact grapheme offset of a forbidden reference character", () => {
+void test("reports the exact grapheme offset of a forbidden template character", () => {
   assert.throws(
     () => parseInstruction("g!m|(👨‍👩‍👧‍👦a\u0000#x"),
     (error: unknown) => error instanceof InstructionSyntaxError && error.offset === 7,
@@ -391,8 +371,8 @@ void test("rejects blank values and forbidden control characters", () => {
     "group@   !main",
     "group\nname!main",
     "group!main\u0000",
-    "group!main|(path\u0000#end",
-    "group!main||<em>\u0000<slot></slot></em>",
+    "group!main|(<em>\u0000</em>",
+    "group!main|<em>\u0000<slot></slot></em>",
   ];
 
   for (const instruction of invalidInstructions) {
@@ -402,7 +382,7 @@ void test("rejects blank values and forbidden control characters", () => {
 
 void test("applies page instructions", () => {
   const index: Index = { children: [] };
-  const instruction = parseInstruction("し!じゆうりよう@自由利用||<strong><slot></slot></strong>");
+  const instruction = parseInstruction("し!じゆうりよう@自由利用|<strong><slot></slot></strong>");
   assert.strictEqual(instruction.type, "page");
 
   applyPageInstruction(index, instruction, "chapter.html#fair-use");
@@ -432,8 +412,8 @@ void test("applies page instructions", () => {
 
 void test("applies range instructions", () => {
   const index: Index = { children: [] };
-  const instruction = parseInstruction("し!じゆうりよう@自由利用|(#end");
-  assert.strictEqual(instruction.type, "range");
+  const instruction = parseInstruction("し!じゆうりよう@自由利用|(");
+  assert.strictEqual(instruction.type, "range-start");
 
   applyRangeInstruction(index, instruction, "chapter.html#start", "chapter.html#end");
 
@@ -462,8 +442,8 @@ void test("applies range instructions", () => {
 
 void test("applies the template of a range instruction", () => {
   const index: Index = { children: [] };
-  const instruction = parseInstruction("し!じゆうりよう@自由利用|(#end|<em><slot></slot></em>");
-  assert.strictEqual(instruction.type, "range");
+  const instruction = parseInstruction("し!じゆうりよう@自由利用|(<em><slot></slot></em>");
+  assert.strictEqual(instruction.type, "range-start");
 
   applyRangeInstruction(index, instruction, "chapter.html#start", "chapter.html#end");
 
@@ -477,7 +457,9 @@ void test("applies the template of a range instruction", () => {
 
 void test("applies cross-reference instructions", () => {
   const index: Index = { children: [] };
-  const instruction = parseInstruction("ち!ちょさくけん@著作権|=>ち!ちてきざいさんけん@知的財産権");
+  const instruction = parseInstruction(
+    "ち!ちょさくけん@著作権|seealso{ち!ちてきざいさんけん@知的財産権}",
+  );
   assert.ok(instruction.type === "preferred" || instruction.type === "related");
 
   applyXrefInstruction(index, instruction);
@@ -511,7 +493,7 @@ void test("applies cross-reference instructions", () => {
 void test("applies the template of a cross-reference instruction", () => {
   const index: Index = { children: [] };
   const instruction = parseInstruction(
-    "ち!ちょさくけん@著作権|->ち!ちてきざいさんけん@知的財産権|<em><slot></slot></em>",
+    "ち!ちょさくけん@著作権|see{ち!ちてきざいさんけん@知的財産権}<em><slot></slot></em>",
   );
   assert.ok(instruction.type === "preferred" || instruction.type === "related");
 

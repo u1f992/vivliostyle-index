@@ -16,11 +16,17 @@ void test("builds range locators from ordered source snapshots", () => {
     [
       chapterPath,
       collectSourceSnapshot(
-        fromHtml('<span id="start" data-index="index.md?q=a!Apple|(end.md%23end#index"></span>'),
+        fromHtml('<span id="start" data-index="index.md?q=a!Apple|(#index"></span>'),
         chapterPath,
       ),
     ],
-    [endPath, collectSourceSnapshot(fromHtml('<span id="end"></span>'), endPath)],
+    [
+      endPath,
+      collectSourceSnapshot(
+        fromHtml('<span id="end" data-index="index.md?q=a!Apple|)#index"></span>'),
+        endPath,
+      ),
+    ],
     [indexPath, collectSourceSnapshot(fromHtml('<nav id="index"></nav>'), indexPath)],
   ]);
 
@@ -56,18 +62,24 @@ void test("builds range locators from ordered source snapshots", () => {
   assert.deepStrictEqual([...messages.values()], [[], [], []]);
 });
 
-void test("revokes reversed ranges while preserving source messages", () => {
+void test("reports range ends that precede their starts", () => {
   const endPath = "/publication/001.md";
   const chapterPath = "/publication/100.md";
   const indexPath = "/publication/index.md";
   const chapter = collectSourceSnapshot(
     fromHtml(
-      '<span data-index="index.md?q=a!Apple|(001.md%23end#index"></span><span data-index="index.md?q=%5B#index"></span>',
+      '<span data-index="index.md?q=a!Apple|(#index"></span><span data-index="index.md?q=%5B#index"></span>',
     ),
     chapterPath,
   );
   const sources = new Map([
-    [endPath, collectSourceSnapshot(fromHtml('<span id="end"></span>'), endPath)],
+    [
+      endPath,
+      collectSourceSnapshot(
+        fromHtml('<span id="end" data-index="index.md?q=a!Apple|)#index"></span>'),
+        endPath,
+      ),
+    ],
     [chapterPath, chapter],
     [indexPath, collectSourceSnapshot(fromHtml('<nav id="index"></nav>'), indexPath)],
   ]);
@@ -79,7 +91,11 @@ void test("revokes reversed ranges while preserving source messages", () => {
   assert.deepStrictEqual(builtIndex.index.children, []);
   assert.deepStrictEqual(
     messages.get(chapterPath)?.map((message) => message[2]?.split(":")[1]),
-    ["instruction-parse-error", "range-end-order"],
+    ["instruction-parse-error", "unmatched-range-start"],
+  );
+  assert.deepStrictEqual(
+    messages.get(endPath)?.map((message) => message[2]?.split(":")[1]),
+    ["unmatched-range-end"],
   );
 });
 
@@ -89,7 +105,7 @@ void test("reports unresolved cross-references and targets outside the entry lis
     [
       chapterPath,
       collectSourceSnapshot(
-        fromHtml('<span data-index="outside.md?q=a!Apple|->b!Banana#index"></span>'),
+        fromHtml('<span data-index="outside.md?q=a!Apple|see{b!Banana}#index"></span>'),
         chapterPath,
       ),
     ],
@@ -111,11 +127,17 @@ void test("revokes a range whose end lies outside the entry list", () => {
     [
       chapterPath,
       collectSourceSnapshot(
-        fromHtml('<span id="start" data-index="index.md?q=a!Apple|(end.md%23end#index"></span>'),
+        fromHtml('<span id="start" data-index="index.md?q=a!Apple|(#index"></span>'),
         chapterPath,
       ),
     ],
-    [endPath, collectSourceSnapshot(fromHtml('<span id="end"></span>'), endPath)],
+    [
+      endPath,
+      collectSourceSnapshot(
+        fromHtml('<span id="end" data-index="index.md?q=a!Apple|)#index"></span>'),
+        endPath,
+      ),
+    ],
     [indexPath, collectSourceSnapshot(fromHtml('<nav id="index"></nav>'), indexPath)],
   ]);
 
@@ -126,11 +148,12 @@ void test("revokes a range whose end lies outside the entry list", () => {
   assert.deepStrictEqual(builtIndex.index.children, []);
   assert.deepStrictEqual(
     messages.get(chapterPath)?.map((message) => message[2]?.split(":")[1]),
-    ["range-end-not-in-entries"],
+    ["unmatched-range-start"],
   );
+  assert.deepStrictEqual(messages.get(indexPath), []);
   assert.deepStrictEqual(
-    messages.get(indexPath)?.map((message) => message[2]?.split(":")[1]),
-    ["vacant-entry"],
+    messages.get(endPath)?.map((message) => message[2]?.split(":")[1]),
+    ["document-not-in-entries"],
   );
 });
 
@@ -141,7 +164,7 @@ void test("names the entry list when a range ends in an unprocessed document", (
     [
       chapterPath,
       collectSourceSnapshot(
-        fromHtml('<span id="start" data-index="index.md?q=a!Apple|(end.md%23end#index"></span>'),
+        fromHtml('<span id="start" data-index="index.md?q=a!Apple|(#index"></span>'),
         chapterPath,
       ),
     ],
@@ -155,7 +178,7 @@ void test("names the entry list when a range ends in an unprocessed document", (
   assert.deepStrictEqual(builtIndex.index.children, []);
   assert.deepStrictEqual(
     messages.get(chapterPath)?.map((message) => message[2]?.split(":")[1]),
-    ["range-end-not-in-entries"],
+    ["unmatched-range-start"],
   );
 });
 
@@ -196,7 +219,7 @@ void test("reports index-wide diagnostics to every document naming a target outs
     [
       brokenPath,
       collectSourceSnapshot(
-        fromHtml('<span data-index="index.md?q=b!Banana|->c!Cherry#index"></span>'),
+        fromHtml('<span data-index="index.md?q=b!Banana|see{c!Cherry}#index"></span>'),
         brokenPath,
       ),
     ],
@@ -225,8 +248,8 @@ void test("builds locators and cross-references in the order the sources list th
           [
             '<span id="second" data-index="index.md?q=a!Apple#index"></span>',
             '<span id="first" data-index="index.md?q=a!Apple#index"></span>',
-            '<span data-index="index.md?q=a!Apple|=>z!Zebra#index"></span>',
-            '<span data-index="index.md?q=a!Apple|=>b!Banana#index"></span>',
+            '<span data-index="index.md?q=a!Apple|seealso{z!Zebra}#index"></span>',
+            '<span data-index="index.md?q=a!Apple|seealso{b!Banana}#index"></span>',
             '<span data-index="index.md?q=z!Zebra#index"></span>',
             '<span data-index="index.md?q=b!Banana#index"></span>',
           ].join(""),

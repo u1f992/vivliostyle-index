@@ -7,13 +7,7 @@ import { parseInstruction, type ParsedInstruction } from "./instruction.ts";
 import { createLocationHref } from "./location.ts";
 import { messages, type MessageArguments } from "./messages.ts";
 import { documentUrl } from "./platform.ts";
-import {
-  createTarget,
-  createTargetKey,
-  resolveTarget,
-  type Target,
-  type TargetKey,
-} from "./target.ts";
+import { createTarget, createTargetKey, type Target, type TargetKey } from "./target.ts";
 
 type AttachmentBase = Readonly<{
   sourcePath: string;
@@ -23,15 +17,7 @@ type AttachmentBase = Readonly<{
   locationHref: string;
 }>;
 
-export type RangeAttachment = AttachmentBase &
-  Readonly<{
-    instruction: Extract<ParsedInstruction, { type: "range" }>;
-    rangeEnd: Target;
-  }>;
-
-export type Attachment =
-  | (AttachmentBase & Readonly<{ instruction: Exclude<ParsedInstruction, { type: "range" }> }>)
-  | RangeAttachment;
+export type Attachment = AttachmentBase & Readonly<{ instruction: ParsedInstruction }>;
 
 export type SourceSnapshot = Readonly<{
   attachments: readonly Attachment[];
@@ -105,21 +91,7 @@ export function collectSourceSnapshot(root: hast.Root, sourcePath: string): Sour
       targetKey: createTargetKey(target),
       locationHref: createLocationHref(sourcePath, target.path, sourceId),
     };
-    if (instruction.type === "range") {
-      let rangeEnd: Target;
-      try {
-        rangeEnd = resolveTarget(instruction.endReference, baseUrl);
-        if (rangeEnd.id === "") {
-          throw new TypeError();
-        }
-      } catch {
-        documentMessages.push(messages.invalidRangeEndReference(instruction.endReference));
-        continue;
-      }
-      attachments.push({ ...base, instruction, rangeEnd });
-    } else {
-      attachments.push({ ...base, instruction });
-    }
+    attachments.push({ ...base, instruction });
   }
 
   const ids = selectAll("[id]", root).flatMap((element) => {

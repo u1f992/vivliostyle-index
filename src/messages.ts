@@ -59,25 +59,15 @@ export const messages = {
     undefined,
     rule("duplicate-id"),
   ],
-  invalidRangeEndReference: (reference: string): MessageArguments => [
-    `invalid range end reference: ${reference}`,
+  unmatchedRangeStart: (target: Target, address: EntryAddress): MessageArguments => [
+    `range start for entry ${formatEntryAddress(address)} of index target ${formatTarget(target)} has no matching range end. the range is revoked.`,
     undefined,
-    rule("invalid-range-end-reference"),
+    rule("unmatched-range-start"),
   ],
-  missingRangeEnd: (target: Target): MessageArguments => [
-    `range end target ${formatTarget(target)} does not exist. the range is revoked.`,
+  unmatchedRangeEnd: (target: Target, address: EntryAddress): MessageArguments => [
+    `range end for entry ${formatEntryAddress(address)} of index target ${formatTarget(target)} has no matching range start. the range end is ignored.`,
     undefined,
-    rule("missing-range-end"),
-  ],
-  rangeEndNotInEntries: (target: Target): MessageArguments => [
-    `range end target ${formatTarget(target)} is in a document not included in entries. the range is revoked.`,
-    undefined,
-    rule("range-end-not-in-entries"),
-  ],
-  rangeEndOrder: (target: Target): MessageArguments => [
-    `range end target ${formatTarget(target)} does not follow its start. the range is revoked.`,
-    undefined,
-    rule("range-end-order"),
+    rule("unmatched-range-end"),
   ],
   invalidXref: (xref: UnresolvedXref): MessageArguments => [
     `index does not contain ${formatUnresolvedXref(xref)}. the cross-reference is revoked.`,

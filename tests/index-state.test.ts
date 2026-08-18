@@ -99,8 +99,8 @@ void test("marks range sources and index targets after an end document changes",
   const endPath = "/publication/end.md";
   const indexPath = "/publication/index.md";
   const files = {
-    [chapterPath]: '<span data-index="index.md?q=a!Apple|(end.md%23end#index"></span>',
-    [endPath]: '<span id="end"></span>',
+    [chapterPath]: '<span data-index="index.md?q=a!Apple|(#index"></span>',
+    [endPath]: '<span id="end" data-index="index.md?q=a!Apple|)#index"></span>',
     [indexPath]: '<nav id="index"></nav>',
   };
   const fileSystem: FileSystem = {
@@ -116,10 +116,10 @@ void test("marks range sources and index targets after an end document changes",
   const first = updateIndexState(created, endPath, fromHtml(files[endPath]));
   const affected = updateIndexState(first.state, endPath, fromHtml(""));
 
-  assert.deepStrictEqual([...affected.affectedPaths], [chapterPath, indexPath]);
+  assert.deepStrictEqual([...affected.affectedPaths], [indexPath, chapterPath]);
   assert.deepStrictEqual(
     messagesFor(affected.state, chapterPath).map((message) => message[2]?.split(":")[1]),
-    ["missing-range-end"],
+    ["unmatched-range-start"],
   );
 });
 
@@ -162,7 +162,7 @@ void test("marks documents whose diagnostics change after another source updates
   const bananaPath = "/publication/banana.md";
   const files = {
     [applePath]: '<span data-index="outside.md?q=a!Apple#index"></span>',
-    [bananaPath]: '<span data-index="outside.md?q=b!Banana|->a!Apple#index"></span>',
+    [bananaPath]: '<span data-index="outside.md?q=b!Banana|see{a!Apple}#index"></span>',
   };
   const fileSystem: FileSystem = {
     readFileSync: (path) => files[path as keyof typeof files],

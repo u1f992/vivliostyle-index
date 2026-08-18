@@ -31,7 +31,7 @@
 `自由利用`の112を`<strong>`で包む指示。
 
 ```
-index.md?q=し!じゆうりよう@自由利用||<strong><slot></slot></strong>#index
+index.md?q=し!じゆうりよう@自由利用|<strong><slot></slot></strong>#index
 ```
 
 </details>

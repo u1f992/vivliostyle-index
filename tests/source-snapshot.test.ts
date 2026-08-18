@@ -10,29 +10,41 @@ import { identityTemplate } from "../src/template.ts";
 
 void test("extracts instructions, targets, locations, and element IDs", () => {
   const root = fromHtml(
-    '<span data-index="index.md?q=a%5C%40b!Apple|(end.md%3Fx%3D1%23end#index"></span><i id="end"></i>',
+    '<span data-index="index.md?q=a%5C%40b!Apple|(#index"></span><i id="end" data-index="index.md?q=a%5C%40b!Apple|)#index"></i>',
   );
 
   const snapshot = collectSourceSnapshot(root, "/publication/chapter.md");
 
   assert.strictEqual(snapshot.messages.length, 0);
-  assert.strictEqual(snapshot.attachments.length, 1);
+  assert.strictEqual(snapshot.attachments.length, 2);
   assert.deepStrictEqual(snapshot.attachments[0], {
     sourcePath: "/publication/chapter.md",
     sourceId: "/html/body/span",
     target: { path: "/publication/index.md", id: "index" },
     targetKey: '["/publication/index.md","index"]',
     instruction: {
-      type: "range",
+      type: "range-start",
       address: {
         group: { html: "a@b", reading: "a@b" },
         entry: { html: "Apple", reading: "Apple" },
       },
-      endReference: "end.md?x=1#end",
       template: identityTemplate,
     },
     locationHref: "chapter.html#%2Fhtml%2Fbody%2Fspan",
-    rangeEnd: { path: "/publication/end.md", id: "end" },
+  });
+  assert.deepStrictEqual(snapshot.attachments[1], {
+    sourcePath: "/publication/chapter.md",
+    sourceId: "end",
+    target: { path: "/publication/index.md", id: "index" },
+    targetKey: '["/publication/index.md","index"]',
+    instruction: {
+      type: "range-end",
+      address: {
+        group: { html: "a@b", reading: "a@b" },
+        entry: { html: "Apple", reading: "Apple" },
+      },
+    },
+    locationHref: "chapter.html#end",
   });
   assert.deepStrictEqual(snapshot.ids, ["/html/body/span", "end"]);
   const source = select("[data-index]", root);
@@ -58,7 +70,7 @@ void test("reports invalid references and instructions", () => {
     [
       '<span data-index="https://example.test/index.md?q=a!Apple#index"></span>',
       '<span data-index="index.md?q=%5B#index"></span>',
-      '<span data-index="index.md?q=a!Apple|(end.md#index"></span>',
+      '<span data-index="index.md?q=a!Apple|see{b!Banana#index"></span>',
       '<span data-index="index.md?q=a!Apple"></span>',
       '<span data-index="index.md#index"></span>',
     ].join(""),
@@ -71,7 +83,7 @@ void test("reports invalid references and instructions", () => {
     [
       "invalid-index-reference",
       "instruction-parse-error",
-      "invalid-range-end-reference",
+      "instruction-parse-error",
       "missing-target-fragment",
       "missing-instruction",
     ],

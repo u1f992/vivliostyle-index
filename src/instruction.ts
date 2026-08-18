@@ -17,10 +17,13 @@ export type ParsedInstruction =
       template: string;
     }>
   | Readonly<{
-      type: "range";
+      type: "range-start";
       address: EntryAddress;
-      endReference: string;
       template: string;
+    }>
+  | Readonly<{
+      type: "range-end";
+      address: EntryAddress;
     }>
   | Readonly<{
       type: XrefType;
@@ -44,9 +47,38 @@ type ParserInput = Readonly<{
   graphemes: readonly string[];
 }>;
 
+type MetaTokenType =
+  | "display"
+  | "heading"
+  | "template"
+  | "range-start"
+  | "range-end"
+  | "preferred"
+  | "related"
+  | "xref-end";
+
+type MetaToken = Readonly<{
+  type: MetaTokenType;
+  offset: number;
+}>;
+
+type TextToken = Readonly<{
+  type: "text";
+  value: string;
+  offset: number;
+}>;
+
+type Token = MetaToken | TextToken;
+
+type ParserState = {
+  input: ParserInput;
+  tokens: readonly Token[];
+  position: number;
+};
+
 type HierarchyResult = Readonly<{
   address: EntryAddress;
-  offset: number;
+  terminator: MetaToken | undefined;
 }>;
 
 type MutableEntryAddress = {
@@ -59,16 +91,35 @@ const graphemeSegmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
 // Unicode general categories Cc (control) and Cs (surrogate)
 const forbiddenCharacter = /[\p{Cc}\p{Cs}]/u;
 const permittedHtmlControlCharacters = new Set(["\t", "\n", "\r", "\r\n"]);
-const escapableCharacters = new Set(["\\", "@", "!", "|"]);
-
-function containsForbiddenHtmlCharacter(value: string): boolean {
-  for (const { segment } of graphemeSegmenter.segment(value)) {
-    if (forbiddenCharacter.test(segment) && !permittedHtmlControlCharacters.has(segment)) {
-      return true;
-    }
-  }
-  return false;
-}
+const escapableCharacters = new Set(["\\", "@", "!", "|", "(", ")", "{", "}"]);
+const tokenLexemes = {
+  related: ["|", "s", "e", "e", "a", "l", "s", "o", "{"],
+  preferred: ["|", "s", "e", "e", "{"],
+  "range-start": ["|", "("],
+  "range-end": ["|", ")"],
+  display: ["@"],
+  heading: ["!"],
+  template: ["|"],
+  "xref-end": ["}"],
+} as const satisfies Record<MetaTokenType, readonly string[]>;
+const tokenTypes = [
+  "related",
+  "preferred",
+  "range-start",
+  "range-end",
+  "display",
+  "heading",
+  "template",
+  "xref-end",
+] as const satisfies readonly MetaTokenType[];
+const instructionTerminators = new Set<MetaTokenType>([
+  "template",
+  "range-start",
+  "range-end",
+  "preferred",
+  "related",
+]);
+const xrefTerminators = new Set<MetaTokenType>(["xref-end"]);
 
 function createParserInput(source: string): ParserInput {
   return {
@@ -84,9 +135,70 @@ function syntaxError(input: ParserInput, offset: number, reason: string): never 
 function unescapeAt(input: ParserInput, offset: number): string {
   const escapedCharacter = input.graphemes[offset + 1];
   if (escapedCharacter === undefined || !escapableCharacters.has(escapedCharacter)) {
-    syntaxError(input, offset, "an escape must be followed by \\, @, !, or |");
+    syntaxError(input, offset, "an escape must be followed by \\, @, !, |, (, ), {, or }");
   }
   return escapedCharacter;
+}
+
+function startsWith(input: ParserInput, offset: number, expected: readonly string[]): boolean {
+  return expected.every((character, index) => input.graphemes[offset + index] === character);
+}
+
+function metaTokenAt(input: ParserInput, offset: number): MetaToken | undefined {
+  const type = tokenTypes.find((candidate) => startsWith(input, offset, tokenLexemes[candidate]));
+  return type === undefined ? undefined : { type, offset };
+}
+
+function tokenize(input: ParserInput): Token[] {
+  const tokens: Token[] = [];
+  let offset = 0;
+  let textStart = 0;
+  const emitText = (end: number) => {
+    if (textStart !== end) {
+      tokens.push({
+        type: "text",
+        value: input.graphemes.slice(textStart, end).join(""),
+        offset: textStart,
+      });
+    }
+  };
+
+  while (offset < input.graphemes.length) {
+    if (input.graphemes[offset] === "\\") {
+      emitText(offset);
+      tokens.push({ type: "text", value: unescapeAt(input, offset), offset });
+      offset += 2;
+      textStart = offset;
+      continue;
+    }
+    const token = metaTokenAt(input, offset);
+    if (token === undefined) {
+      offset++;
+      continue;
+    }
+    emitText(offset);
+    tokens.push(token);
+    offset += tokenLexemes[token.type].length;
+    textStart = offset;
+  }
+  emitText(offset);
+  return tokens;
+}
+
+function currentToken(state: ParserState): Token | undefined {
+  return state.tokens[state.position];
+}
+
+function consumeToken(state: ParserState): Token | undefined {
+  const token = currentToken(state);
+  if (token !== undefined) {
+    state.position++;
+  }
+  return token;
+}
+
+function tokenLabel(token: MetaToken): string {
+  return tokenLexemes[token.type].join("");
 }
 
 function completeAddress(
@@ -102,24 +214,36 @@ function completeAddress(
     : { group: address.group, entry: address.entry, subentry: address.subentry };
 }
 
-function parseHierarchy(input: ParserInput, start: number): HierarchyResult {
+function parseHierarchy(
+  state: ParserState,
+  terminators: ReadonlySet<MetaTokenType>,
+): HierarchyResult {
+  const { input } = state;
   const address: MutableEntryAddress = {};
   let reading = "";
   let html = "";
   let hasHtml = false;
-  let offset = start;
+  let offset = currentToken(state)?.offset ?? input.graphemes.length;
 
-  const append = (value: string) => {
-    if (hasHtml) {
-      if (containsForbiddenHtmlCharacter(value)) {
-        syntaxError(input, offset, "a display value contains a forbidden control character");
+  const append = (token: TextToken) => {
+    const segments = [...graphemeSegmenter.segment(token.value)];
+    for (const [index, { segment }] of segments.entries()) {
+      const segmentOffset = token.offset + index;
+      if (hasHtml) {
+        if (forbiddenCharacter.test(segment) && !permittedHtmlControlCharacters.has(segment)) {
+          syntaxError(
+            input,
+            segmentOffset,
+            "a display value contains a forbidden control character",
+          );
+        }
+        html += segment;
+      } else {
+        if (forbiddenCharacter.test(segment)) {
+          syntaxError(input, segmentOffset, "a reading contains a forbidden control character");
+        }
+        reading += segment;
       }
-      html += value;
-    } else {
-      if (forbiddenCharacter.test(value)) {
-        syntaxError(input, offset, "a reading contains a forbidden control character");
-      }
-      reading += value;
     }
   };
 
@@ -149,151 +273,120 @@ function parseHierarchy(input: ParserInput, start: number): HierarchyResult {
     hasHtml = false;
   };
 
-  while (offset < input.graphemes.length) {
-    const character = input.graphemes[offset]!;
-
-    if (character === "\\") {
-      append(unescapeAt(input, offset));
-      offset += 2;
+  for (;;) {
+    const token = currentToken(state);
+    if (token === undefined) {
+      offset = input.graphemes.length;
+      finishKey();
+      return { address: completeAddress(input, address, offset), terminator: undefined };
+    }
+    offset = token.offset;
+    if (token.type === "text") {
+      append(token);
+      consumeToken(state);
       continue;
     }
-
-    if (character === "@") {
+    if (token.type === "display") {
       if (hasHtml || reading === "") {
         syntaxError(input, offset, "an unescaped @ must separate a reading and display value");
       }
       hasHtml = true;
-      offset++;
+      consumeToken(state);
       continue;
     }
-
-    if (character === "!") {
+    if (token.type === "heading") {
       finishKey();
-      offset++;
+      consumeToken(state);
       continue;
     }
-
-    if (character === "|") {
+    if (terminators.has(token.type)) {
       finishKey();
-      return { address: completeAddress(input, address, offset), offset };
+      consumeToken(state);
+      return { address: completeAddress(input, address, offset), terminator: token };
     }
-
-    append(character);
-    offset++;
+    syntaxError(input, offset, `unexpected ${JSON.stringify(tokenLabel(token))}`);
   }
-
-  finishKey();
-  return { address: completeAddress(input, address, offset), offset };
 }
 
-function parseTemplate(input: ParserInput, start: number): string {
+function parseTemplate(state: ParserState): string {
+  const { input } = state;
   let template = "";
-  let offset = start;
-
-  while (offset < input.graphemes.length) {
-    const character = input.graphemes[offset]!;
-
-    if (character === "\\") {
-      template += unescapeAt(input, offset);
-      offset += 2;
-      continue;
+  for (;;) {
+    const token = consumeToken(state);
+    if (token === undefined) {
+      return template;
     }
-
-    if (containsForbiddenHtmlCharacter(character)) {
-      syntaxError(input, offset, "a template contains a forbidden control character");
+    if (token.type !== "text") {
+      syntaxError(
+        input,
+        token.offset,
+        `an unescaped ${JSON.stringify(tokenLabel(token))} is not allowed in a template`,
+      );
     }
-
-    template += character;
-    offset++;
+    const segments = [...graphemeSegmenter.segment(token.value)];
+    for (const [index, { segment }] of segments.entries()) {
+      if (forbiddenCharacter.test(segment) && !permittedHtmlControlCharacters.has(segment)) {
+        syntaxError(
+          input,
+          token.offset + index,
+          "a template contains a forbidden control character",
+        );
+      }
+      template += segment;
+    }
   }
-
-  return template;
 }
 
-type EndReferenceResult = Readonly<{
-  endReference: string;
-  offset: number;
-}>;
-
-function parseEndReference(input: ParserInput, start: number): EndReferenceResult {
-  let endReference = "";
-  let offset = start;
-
-  while (offset < input.graphemes.length) {
-    const character = input.graphemes[offset]!;
-
-    if (character === "\\") {
-      endReference += unescapeAt(input, offset);
-      offset += 2;
-      continue;
-    }
-
-    if (character === "|") {
-      break;
-    }
-
-    if (forbiddenCharacter.test(character)) {
-      syntaxError(input, offset, "a range end reference contains a control character");
-    }
-
-    endReference += character;
-    offset++;
+function parseXref(state: ParserState, address: EntryAddress, type: XrefType): ParsedInstruction {
+  const { address: target, terminator } = parseHierarchy(state, xrefTerminators);
+  if (terminator?.type !== "xref-end") {
+    syntaxError(
+      state.input,
+      state.input.graphemes.length,
+      "a cross-reference target must end with }",
+    );
   }
-
-  if (endReference.trim() === "") {
-    syntaxError(input, start, "a range end reference must not be blank");
-  }
-  return { endReference, offset };
-}
-
-function parseRange(input: ParserInput, address: EntryAddress, start: number): ParsedInstruction {
-  const { endReference, offset } = parseEndReference(input, start);
-  return offset === input.graphemes.length
-    ? { type: "range", address, endReference, template: identityTemplate }
-    : { type: "range", address, endReference, template: parseTemplate(input, offset + 1) };
-}
-
-function parseXref(
-  input: ParserInput,
-  address: EntryAddress,
-  targetOffset: number,
-  type: XrefType,
-): ParsedInstruction {
-  const { address: target, offset } = parseHierarchy(input, targetOffset);
-  return offset === input.graphemes.length
-    ? { type, address, target, template: identityTemplate }
-    : { type, address, target, template: parseTemplate(input, offset + 1) };
-}
-
-function startsWith(input: ParserInput, offset: number, expected: readonly string[]): boolean {
-  return expected.every((character, index) => input.graphemes[offset + index] === character);
+  const template = currentToken(state) === undefined ? identityTemplate : parseTemplate(state);
+  return { type, address, target, template };
 }
 
 export function parseInstruction(source: string): ParsedInstruction {
   const input = createParserInput(source);
-  const { address, offset } = parseHierarchy(input, 0);
-  if (offset === input.graphemes.length) {
+  const state: ParserState = { input, tokens: tokenize(input), position: 0 };
+  const { address, terminator } = parseHierarchy(state, instructionTerminators);
+  if (terminator === undefined) {
     return { type: "page", address, template: identityTemplate };
   }
-
-  const operatorOffset = offset + 1;
-  if (startsWith(input, operatorOffset, ["|"])) {
-    return { type: "page", address, template: parseTemplate(input, operatorOffset + 1) };
+  switch (terminator.type) {
+    case "template":
+      return { type: "page", address, template: parseTemplate(state) };
+    case "range-start":
+      return {
+        type: "range-start",
+        address,
+        template: currentToken(state) === undefined ? identityTemplate : parseTemplate(state),
+      };
+    case "range-end":
+      const trailingToken = currentToken(state);
+      if (trailingToken !== undefined) {
+        syntaxError(input, trailingToken.offset, "a range end must end the instruction");
+      }
+      return { type: "range-end", address };
+    case "preferred":
+      return parseXref(state, address, "preferred");
+    case "related":
+      return parseXref(state, address, "related");
+    default:
+      return syntaxError(
+        input,
+        terminator.offset,
+        `unexpected ${JSON.stringify(tokenLabel(terminator))}`,
+      );
   }
-  if (startsWith(input, operatorOffset, ["("])) {
-    return parseRange(input, address, operatorOffset + 1);
-  }
-  if (startsWith(input, operatorOffset, ["-", ">"])) {
-    return parseXref(input, address, operatorOffset + 2, "preferred");
-  }
-  if (startsWith(input, operatorOffset, ["=", ">"])) {
-    return parseXref(input, address, operatorOffset + 2, "related");
-  }
-  return syntaxError(input, operatorOffset, "unknown index instruction operator");
 }
 
 type PageInstruction = Extract<ParsedInstruction, { type: "page" }>;
-type RangeInstruction = Extract<ParsedInstruction, { type: "range" }>;
+type RangeInstruction = Extract<ParsedInstruction, { type: "range-start" }>;
 type XrefInstruction = Extract<ParsedInstruction, { type: XrefType }>;
 
 export function applyPageInstruction(
