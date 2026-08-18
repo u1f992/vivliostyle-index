@@ -554,6 +554,10 @@ void test("links a cross-reference to a later subentry", () => {
     selectAll("span", xref).map((part) => toText(part)),
     ["Beta", "", "Gamma"],
   );
+  assert.deepStrictEqual(
+    selectAll("span", xref).map((part) => getAttribute(part, "data-index-role")),
+    ["xref-preferred-entry", "xref-preferred-subentry-separator", "xref-preferred-subentry"],
+  );
 });
 
 void test("revokes a heading left without content by an unresolved cross-reference", () => {

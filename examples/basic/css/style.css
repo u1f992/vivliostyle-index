@@ -90,7 +90,8 @@
       content: "";
     }
 
-    > a > span:nth-child(2):not(:last-child)::before {
+    [data-index-role="xref-preferred-subentry-separator"]::before,
+    [data-index-role="xref-related-subentry-separator"]::before {
       content: "：";
     }
   }

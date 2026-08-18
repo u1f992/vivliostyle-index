@@ -216,6 +216,18 @@ void test("gives every entry the same lists in the same order", () => {
     ["C"],
   );
   assert.deepStrictEqual(
+    selectAll(`${XREF_PREFERRED} > li > a > span`, root).map((element) =>
+      getAttribute(element, "data-index-role"),
+    ),
+    ["xref-preferred-entry"],
+  );
+  assert.deepStrictEqual(
+    selectAll(`${XREF_RELATED} > li > a > span`, root).map((element) =>
+      getAttribute(element, "data-index-role"),
+    ),
+    ["xref-related-entry"],
+  );
+  assert.deepStrictEqual(
     selectAll(`${SUBENTRY} > span`, root).map((key) => toText(key)),
     ["D"],
   );
