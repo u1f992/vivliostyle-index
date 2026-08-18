@@ -58,6 +58,8 @@ export type {
   XrefRelatedListRenderer,
   XrefRelatedRenderer,
   XrefRelatedTargetRenderer,
+  XrefRenderer,
+  XrefTargetRenderer,
 } from "./render.ts";
 export type { Settings, TargetSettings } from "./settings.ts";
 export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";
