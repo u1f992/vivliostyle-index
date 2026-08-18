@@ -366,12 +366,13 @@ export function parseInstruction(source: string): ParsedInstruction {
         address,
         template: currentToken(state) === undefined ? identityTemplate : parseTemplate(state),
       };
-    case "range-end":
+    case "range-end": {
       const trailingToken = currentToken(state);
       if (trailingToken !== undefined) {
         syntaxError(input, trailingToken.offset, "a range end must end the instruction");
       }
       return { type: "range-end", address };
+    }
     case "preferred":
       return parseXref(state, address, "preferred");
     case "related":
