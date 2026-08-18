@@ -325,17 +325,17 @@ void test("keeps the receiver of every renderer method", () => {
   const target = createTarget();
   const leafCalls: string[] = [];
   const locatorRenderer: LocatorRenderer = {
-    compose({ properties, href }) {
+    compose({ properties }) {
       assert.strictEqual(this, locatorRenderer);
       assert.ok(properties.dataIndexRole === "page" || properties.dataIndexRole === "range");
-      assert.strictEqual(href.length > 0, true);
+      assert.strictEqual(properties.href.length > 0, true);
       leafCalls.push("locator-compose");
       return [];
     },
-    pageNumber({ properties, target }) {
+    pageNumber({ properties }) {
       assert.strictEqual(this, locatorRenderer);
       assert.strictEqual(properties.dataIndexRole, "page-number");
-      assert.strictEqual(properties.dataIndexPageTarget, target);
+      assert.strictEqual(properties.dataIndexPageTarget.length > 0, true);
       leafCalls.push("page-number");
       return [];
     },
@@ -570,9 +570,12 @@ void test("applies a locator template after the nested locator renderer", () => 
                 return locator.location.type === "page"
                   ? {}
                   : {
-                      compose: ({ properties, contents }) => [h("span", properties, contents)],
-                      pageNumber: ({ properties, target }) => [
-                        h("a", { ...properties, href: target }),
+                      compose: ({ properties: { href, ...properties }, contents }) => {
+                        assert.strictEqual(href, "104.html#a");
+                        return [h("span", properties, contents)];
+                      },
+                      pageNumber: ({ properties }) => [
+                        h("a", { ...properties, href: properties.dataIndexPageTarget }),
                       ],
                       rangeSeparator: ({ properties }) => [h("span", properties, "から")],
                     };
@@ -592,6 +595,10 @@ void test("applies a locator template after the nested locator renderer", () => 
       (element) => element.tagName,
     ),
     ["a", "span", "a"],
+  );
+  assert.strictEqual(
+    getAttribute(selectAll(`${LOCATORS} > li > strong > span`, root)[0]!, "href"),
+    null,
   );
   assert.deepStrictEqual(
     selectAll(`${LOCATORS} > li > strong > span[data-index-role="range"] > a`, root).map((link) =>
@@ -688,8 +695,8 @@ void test("uses the same leaf and list contracts for subentries", () => {
                 locatorList: {
                   compose: ({ properties, locators }) => [h("ol", properties, locators.flat())],
                   locator: () => ({
-                    compose: ({ properties, href, contents }) => [
-                      h("a", { ...properties, href, dataItem: subentry.reading }, contents),
+                    compose: ({ properties, contents }) => [
+                      h("a", { ...properties, dataItem: subentry.reading }, contents),
                     ],
                   }),
                 },

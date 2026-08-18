@@ -26,8 +26,12 @@ const index = createIndexPlugin({
         renderer: ({ h }) => {
           const locatorList: LocatorListRenderer = {
             locator: () => ({
-              compose: ({ properties, contents }) => [h("span", properties, contents)],
-              pageNumber: ({ properties, target }) => [h("a", { ...properties, href: target })],
+              compose: ({ properties: { href: _href, ...properties }, contents }) => [
+                h("span", properties, contents),
+              ],
+              pageNumber: ({ properties }) => [
+                h("a", { ...properties, href: properties.dataIndexPageTarget }),
+              ],
             }),
           };
           return {

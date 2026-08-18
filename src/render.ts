@@ -29,12 +29,10 @@ export type HeadingRenderer = (parts: {
 
 export type LocatorRenderer = Readonly<{
   compose?(parts: {
-    properties: RoleProperties<"page" | "range">;
-    href: string;
+    properties: Readonly<hast.Properties & { dataIndexRole: "page" | "range"; href: string }>;
     contents: Content;
   }): Content;
   pageNumber?(context: {
-    target: string;
     properties: RoleProperties<"page-number"> & Readonly<{ dataIndexPageTarget: string }>;
   }): Content;
   rangeSeparator?(context: { properties: RoleProperties<"range-separator"> }): Content;
@@ -287,7 +285,7 @@ const renderLocatorList = (
 
 const renderPageNumber = (target: string, renderer: LocatorRenderer): Content => {
   const properties = { dataIndexRole: "page-number", dataIndexPageTarget: target } as const;
-  return renderer.pageNumber?.({ target, properties }) ?? [h("span", properties)];
+  return renderer.pageNumber?.({ properties }) ?? [h("span", properties)];
 };
 
 const renderLocatorContents = ({ location }: Locator, renderer: LocatorRenderer): Content => {
@@ -306,13 +304,13 @@ const renderLocatorContents = ({ location }: Locator, renderer: LocatorRenderer)
 
 const renderLocator = (locator: Locator, listRenderer: LocatorListRenderer): Content => {
   const { location } = locator;
-  const properties = { dataIndexRole: location.type } as const;
+  const properties = {
+    dataIndexRole: location.type,
+    href: location.type === "page" ? location.href : location.start,
+  } as const;
   const renderer = listRenderer.locator?.({ locator }) ?? {};
-  const href = location.type === "page" ? location.href : location.start;
   const contents = renderLocatorContents(locator, renderer);
-  const content = renderer.compose?.({ properties, href, contents }) ?? [
-    h("a", { ...properties, href }, contents),
-  ];
+  const content = renderer.compose?.({ properties, contents }) ?? [h("a", properties, contents)];
   const children = fillSlot(locator.template, content);
   return children.length === 0 ? [] : [h("li", children)];
 };
