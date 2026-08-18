@@ -11,13 +11,13 @@ import { renderIndex } from "../src/render.ts";
 import { identityTemplate } from "../src/template.ts";
 
 const index: Index = {
-  children: [
+  groups: [
     {
       key: { html: "ち", reading: "ち" },
-      children: [
+      entries: [
         {
           key: { html: "著作権", reading: "ちょさくけん" },
-          children: [],
+          subentries: [],
           locators: [
             { location: { type: "page", href: "003.html#a" }, template: identityTemplate },
           ],
@@ -28,10 +28,10 @@ const index: Index = {
     },
     {
       key: { html: "そ", reading: "そ" },
-      children: [
+      entries: [
         {
           key: { html: "相続", reading: "そうぞく" },
-          children: [],
+          subentries: [],
           locators: [
             { location: { type: "page", href: "088.html#b" }, template: identityTemplate },
           ],
@@ -81,13 +81,13 @@ void test("renders an index into the target element", () => {
 void test("wraps every key in an element of its own", () => {
   const target = createTarget();
   const indexWithSubentry: Index = {
-    children: [
+    groups: [
       {
         key: { html: "そ", reading: "そ" },
-        children: [
+        entries: [
           {
             key: { html: "相続", reading: "そうぞく" },
-            children: [
+            subentries: [
               {
                 key: { html: "一身専属", reading: "いっしんせんぞく" },
                 locators: [
@@ -135,10 +135,10 @@ function listRoles(element: hast.Element): string[] {
 void test("gives every entry the same lists in the same order", () => {
   const target = createTarget();
   const indexWithEveryList: Index = {
-    children: [
+    groups: [
       {
         key: { html: "あ", reading: "あ" },
-        children: [
+        entries: [
           {
             key: { html: "A", reading: "あ" },
             locators: [
@@ -162,7 +162,7 @@ void test("gives every entry the same lists in the same order", () => {
                 template: identityTemplate,
               },
             ],
-            children: [
+            subentries: [
               {
                 key: { html: "D", reading: "でぃ" },
                 locators: [],
@@ -175,7 +175,7 @@ void test("gives every entry the same lists in the same order", () => {
       },
       {
         key: { html: "え", reading: "え" },
-        children: [
+        entries: [
           {
             key: { html: "E", reading: "い" },
             locators: [
@@ -183,7 +183,7 @@ void test("gives every entry the same lists in the same order", () => {
             ],
             xrefPreferred: [],
             xrefRelated: [],
-            children: [],
+            subentries: [],
           },
         ],
       },
@@ -236,10 +236,10 @@ void test("gives every entry the same lists in the same order", () => {
 void test("wraps a locator in the template of its instruction", () => {
   const target = createTarget();
   const indexWithTemplate: Index = {
-    children: [
+    groups: [
       {
         key: { html: "し", reading: "し" },
-        children: [
+        entries: [
           {
             key: { html: "自由利用", reading: "じゆうりよう" },
             locators: [
@@ -251,7 +251,7 @@ void test("wraps a locator in the template of its instruction", () => {
             ],
             xrefPreferred: [],
             xrefRelated: [],
-            children: [
+            subentries: [
               {
                 key: { html: "私的複製", reading: "してきふくせい" },
                 locators: [
@@ -293,10 +293,10 @@ void test("wraps a locator in the template of its instruction", () => {
 void test("wraps a cross-reference in the template of its instruction", () => {
   const target = createTarget();
   const indexWithTemplate: Index = {
-    children: [
+    groups: [
       {
         key: { html: "ち", reading: "ち" },
-        children: [
+        entries: [
           {
             key: { html: "著作権", reading: "ちょさくけん" },
             locators: [],
@@ -318,7 +318,7 @@ void test("wraps a cross-reference in the template of its instruction", () => {
                 template: identityTemplate,
               },
             ],
-            children: [],
+            subentries: [],
           },
         ],
       },
@@ -351,10 +351,10 @@ void test("exposes the rendered index as node data on the target element", () =>
 void test("names the keys of the exposed index", () => {
   const target = createTarget();
   const indexWithEveryKey: Index = {
-    children: [
+    groups: [
       {
         key: { html: "あ", reading: "あ" },
-        children: [
+        entries: [
           {
             key: { html: "A", reading: "あ" },
             locators: [
@@ -374,7 +374,7 @@ void test("names the keys of the exposed index", () => {
               },
             ],
             xrefRelated: [],
-            children: [],
+            subentries: [],
           },
         ],
       },
@@ -383,14 +383,14 @@ void test("names the keys of the exposed index", () => {
 
   renderIndex(indexWithEveryKey, target, "index", {});
   const exposed = target.data?.indexResult as Index;
-  const entry = exposed.children[0]!.children[0]!;
+  const entry = exposed.groups[0]!.entries[0]!;
 
   assert.deepStrictEqual(Object.keys(entry), [
     "key",
     "locators",
     "xrefPreferred",
     "xrefRelated",
-    "children",
+    "subentries",
   ]);
   assert.deepStrictEqual(Object.keys(entry.locators[0]!), ["location", "template"]);
   assert.deepStrictEqual(Object.keys(entry.xrefPreferred[0]!.target), [
@@ -413,13 +413,13 @@ void test("keeps an index instruction carried by the target element itself", () 
 void test("exposes an emptied index on the target element", () => {
   const target = createTarget();
 
-  renderIndex({ children: [] }, target, "index", {});
+  renderIndex({ groups: [] }, target, "index", {});
 
   assert.strictEqual(target.children.length, 1);
   const groupList = select(roleOf("group-list"), target);
   assert.ok(groupList);
   assert.strictEqual(groupList.tagName, "div");
-  assert.deepStrictEqual(target.data?.indexResult, { children: [] });
+  assert.deepStrictEqual(target.data?.indexResult, { groups: [] });
 });
 
 void test("renders a page locator as a page link containing one page number", () => {
@@ -444,10 +444,10 @@ void test("renders a page locator as a page link containing one page number", ()
 void test("renders a range locator as one start link containing two page numbers", () => {
   const target = createTarget();
   const indexWithRange: Index = {
-    children: [
+    groups: [
       {
         key: { html: "し", reading: "し" },
-        children: [
+        entries: [
           {
             key: { html: "自由利用", reading: "じゆうりよう" },
             locators: [
@@ -458,7 +458,7 @@ void test("renders a range locator as one start link containing two page numbers
             ],
             xrefPreferred: [],
             xrefRelated: [],
-            children: [],
+            subentries: [],
           },
         ],
       },

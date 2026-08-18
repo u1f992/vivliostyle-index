@@ -35,13 +35,13 @@ void test("builds range locators from ordered source snapshots", () => {
 
   assert.ok(builtIndex);
   assert.deepStrictEqual(builtIndex.index, {
-    children: [
+    groups: [
       {
         key: { html: "a", reading: "a" },
-        children: [
+        entries: [
           {
             key: { html: "Apple", reading: "Apple" },
-            children: [],
+            subentries: [],
             locators: [
               {
                 location: {
@@ -89,7 +89,7 @@ void test("degrades range markers that precede their starts to page locators", (
 
   assert.ok(builtIndex);
   assert.deepStrictEqual(
-    builtIndex.index.children[0]?.children[0]?.locators.map(({ location }) => location),
+    builtIndex.index.groups[0]?.entries[0]?.locators.map(({ location }) => location),
     [
       { type: "page", href: "001.html#end" },
       { type: "page", href: "100.html#index.source.L2h0bWwvYm9keS9zcGFuWzFd" },
@@ -120,9 +120,9 @@ void test("reports unresolved cross-references and targets outside the entry lis
   const { indexes, messages } = buildIndexes([chapterPath], sources);
   const builtIndex = indexes.get(createTargetKey({ path: "/publication/outside.md", id: "index" }));
 
-  assert.strictEqual(builtIndex?.index.children[0]?.children[0]?.xrefPreferred.length, 1);
+  assert.strictEqual(builtIndex?.index.groups[0]?.entries[0]?.xrefPreferred.length, 1);
   assert.strictEqual(
-    builtIndex?.index.children[0]?.children[0]?.xrefPreferred[0]?.error,
+    builtIndex?.index.groups[0]?.entries[0]?.xrefPreferred[0]?.error,
     "invalid-xref",
   );
   assert.deepStrictEqual(
@@ -158,7 +158,7 @@ void test("degrades a range start whose end lies outside the entry list", () => 
 
   assert.ok(builtIndex);
   assert.deepStrictEqual(
-    builtIndex.index.children[0]?.children[0]?.locators.map(({ location }) => location),
+    builtIndex.index.groups[0]?.entries[0]?.locators.map(({ location }) => location),
     [{ type: "page", href: "chapter.html#start" }],
   );
   assert.deepStrictEqual(
@@ -191,7 +191,7 @@ void test("degrades a range start when its end is in an unprocessed document", (
 
   assert.ok(builtIndex);
   assert.deepStrictEqual(
-    builtIndex.index.children[0]?.children[0]?.locators.map(({ location }) => location),
+    builtIndex.index.groups[0]?.entries[0]?.locators.map(({ location }) => location),
     [{ type: "page", href: "chapter.html#start" }],
   );
   assert.deepStrictEqual(
@@ -280,7 +280,7 @@ void test("builds locators and cross-references in the order the sources list th
 
   const { indexes } = buildIndexes([indexPath, chapterPath], sources);
   const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
-  const apple = builtIndex?.index.children[0]?.children[0];
+  const apple = builtIndex?.index.groups[0]?.entries[0];
 
   assert.deepStrictEqual(
     apple?.locators.map(({ location }) => location),

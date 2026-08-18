@@ -68,7 +68,7 @@ void test("returns a new state and leaves the given one unchanged", () => {
   };
   const groupReadings = (state: IndexState) =>
     [...state.indexes.values()].flatMap(({ index }) =>
-      index.children.map((group) => group.key.reading),
+      index.groups.map((group) => group.key.reading),
     );
 
   const created = createIndexState(
@@ -209,7 +209,7 @@ void test("applies an entry listed twice once", () => {
 
   assert.deepStrictEqual(state.entryPaths, [chapterPath, indexPath]);
   assert.deepStrictEqual(reads, [chapterPath, indexPath]);
-  assert.strictEqual(builtIndex?.index.children[0]?.children[0]?.locators.length, 1);
+  assert.strictEqual(builtIndex?.index.groups[0]?.entries[0]?.locators.length, 1);
 });
 
 void test("rejects an entry processor that reaches the index plugin", () => {

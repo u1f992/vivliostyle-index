@@ -97,14 +97,14 @@ export function byListedOrder(
 
 export function sort(index: Index, comparator: IndexComparator) {
   const sorted = structuredClone(index);
-  sorted.children.sort(comparator.group);
-  for (const group of sorted.children) {
-    group.children.sort(comparator.entry);
-    for (const entry of group.children) {
+  sorted.groups.sort(comparator.group);
+  for (const group of sorted.groups) {
+    group.entries.sort(comparator.entry);
+    for (const entry of group.entries) {
       entry.xrefPreferred.sort(comparator.entryXrefPreferred);
       entry.xrefRelated.sort(comparator.entryXrefRelated);
-      entry.children.sort(comparator.subentry);
-      for (const subentry of entry.children) {
+      entry.subentries.sort(comparator.subentry);
+      for (const subentry of entry.subentries) {
         subentry.xrefPreferred.sort(comparator.subentryXrefPreferred);
         subentry.xrefRelated.sort(comparator.subentryXrefRelated);
       }

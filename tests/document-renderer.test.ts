@@ -15,12 +15,12 @@ import { createTargetKey } from "../src/target.ts";
 
 function createIndex(): Index {
   return {
-    children: ["z", "a"].map((reading) => ({
+    groups: ["z", "a"].map((reading) => ({
       key: { html: reading, reading },
-      children: [
+      entries: [
         {
           key: { html: reading.toUpperCase(), reading },
-          children: [],
+          subentries: [],
           locators: [],
           xrefPreferred: [],
           xrefRelated: [],
@@ -81,7 +81,7 @@ void test("uses a comparator configured for the target", () => {
   const comparator = defaultComparator("en");
   const reverseComparator = {
     ...comparator,
-    group: (left: Index["children"][number], right: Index["children"][number]) =>
+    group: (left: Index["groups"][number], right: Index["groups"][number]) =>
       -comparator.group(left, right),
   };
   const root = fromHtml('<nav id="index" role="doc-index"></nav>');
@@ -242,7 +242,7 @@ void test("exposes the sorted index on the target element", () => {
   assert.ok(element);
   const payload = element.data?.indexResult as Index;
   assert.deepStrictEqual(
-    payload.children.map(({ key }) => key.reading),
+    payload.groups.map(({ key }) => key.reading),
     ["a", "z"],
   );
 });

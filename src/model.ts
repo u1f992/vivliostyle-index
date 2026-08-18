@@ -65,11 +65,10 @@ export function insertXref(
 
 export type EntryBase = HasLocators & HasXrefs;
 export type Subentry = HasKey & EntryBase;
-export type ParentOf<T> = { children: T[] };
-export type Entry = HasKey & EntryBase & ParentOf<Subentry>;
-export type Group = HasKey & ParentOf<Entry>;
+export type Entry = HasKey & EntryBase & { subentries: Subentry[] };
+export type Group = HasKey & { entries: Entry[] };
 
-export type Index = ParentOf<Group>;
+export type Index = { groups: Group[] };
 
 export type ReadonlySubentry = Readonly<{
   key: Key;
@@ -77,60 +76,61 @@ export type ReadonlySubentry = Readonly<{
   xrefPreferred: readonly Xref[];
   xrefRelated: readonly Xref[];
 }>;
-export type ReadonlyEntry = ReadonlySubentry & Readonly<{ children: readonly ReadonlySubentry[] }>;
-export type ReadonlyGroup = Readonly<{ key: Key; children: readonly ReadonlyEntry[] }>;
-export type ReadonlyIndex = Readonly<{ children: readonly ReadonlyGroup[] }>;
+export type ReadonlyEntry = ReadonlySubentry &
+  Readonly<{ subentries: readonly ReadonlySubentry[] }>;
+export type ReadonlyGroup = Readonly<{ key: Key; entries: readonly ReadonlyEntry[] }>;
+export type ReadonlyIndex = Readonly<{ groups: readonly ReadonlyGroup[] }>;
 
 const childLookups = new WeakMap<object, Map<string, HasKey>>();
 
 const childKey = (key: Key): string => JSON.stringify([key.html, key.reading]);
 
-function childLookup<TChild extends HasKey>(parent: ParentOf<TChild>): Map<string, TChild> {
-  const cached = childLookups.get(parent);
+function childLookup<TChild extends HasKey>(children: TChild[]): Map<string, TChild> {
+  const cached = childLookups.get(children);
   if (cached !== undefined) {
     return cached as Map<string, TChild>;
   }
   const built = new Map<string, TChild>();
-  for (const child of parent.children) {
+  for (const child of children) {
     if (!built.has(childKey(child.key))) {
       built.set(childKey(child.key), child);
     }
   }
-  childLookups.set(parent, built);
+  childLookups.set(children, built);
   return built;
 }
 
-export function getChild<TChild extends HasKey>(parent: ParentOf<TChild>, key: Key) {
-  return childLookup(parent).get(childKey(key));
+export function getChild<TChild extends HasKey>(children: TChild[], key: Key) {
+  return childLookup(children).get(childKey(key));
 }
 
 export function ensureChild<TChild extends HasKey>(
-  parent: ParentOf<TChild>,
+  children: TChild[],
   key: Key,
   init: Omit<TChild, "key">,
 ) {
-  const lookup = childLookup(parent);
+  const lookup = childLookup(children);
   const existing = lookup.get(childKey(key));
   if (existing !== undefined) {
     return existing;
   }
   const created = { key, ...init } as TChild;
-  parent.children.push(created);
+  children.push(created);
   lookup.set(childKey(key), created);
   return created;
 }
 
 export function ensureEntry(index: Index, address: EntryAddress): EntryBase {
-  const group = ensureChild(index, address.group, { children: [] });
-  const entry = ensureChild(group, address.entry, {
-    children: [],
+  const group = ensureChild(index.groups, address.group, { entries: [] });
+  const entry = ensureChild(group.entries, address.entry, {
+    subentries: [],
     locators: [],
     xrefPreferred: [],
     xrefRelated: [],
   });
   return address.subentry === undefined
     ? entry
-    : ensureChild(entry, address.subentry, {
+    : ensureChild(entry.subentries, address.subentry, {
         locators: [],
         xrefPreferred: [],
         xrefRelated: [],
@@ -138,15 +138,15 @@ export function ensureEntry(index: Index, address: EntryAddress): EntryBase {
 }
 
 export function findUnresolvedXref(index: Index, target: EntryAddress): UnresolvedXref | undefined {
-  const group = getChild(index, target.group);
+  const group = getChild(index.groups, target.group);
   if (!group) {
     return { target, missing: "group" };
   }
-  const entry = getChild(group, target.entry);
+  const entry = getChild(group.entries, target.entry);
   if (!entry) {
     return { target, missing: "entry" };
   }
-  if (target.subentry !== undefined && !getChild(entry, target.subentry)) {
+  if (target.subentry !== undefined && !getChild(entry.subentries, target.subentry)) {
     return { target, missing: "subentry" };
   }
   return undefined;
@@ -177,11 +177,11 @@ export function labelInvalidXrefs(index: Index): ReadonlyMap<string, UnresolvedX
     template: xref.template,
     ...(resolve(xref.target) === undefined ? {} : { error: "invalid-xref" }),
   });
-  for (const group of index.children) {
-    for (const entry of group.children) {
+  for (const group of index.groups) {
+    for (const entry of group.entries) {
       entry.xrefPreferred = entry.xrefPreferred.map(label);
       entry.xrefRelated = entry.xrefRelated.map(label);
-      for (const subentry of entry.children) {
+      for (const subentry of entry.subentries) {
         subentry.xrefPreferred = subentry.xrefPreferred.map(label);
         subentry.xrefRelated = subentry.xrefRelated.map(label);
       }

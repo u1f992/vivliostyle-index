@@ -269,7 +269,7 @@ void test("composes index content separately from rendering model nodes", () => 
         { path: "index.md", id: "index" },
         {
           renderer: ({ h, index }) => {
-            const groupReadings = index.children.map(({ key }) => key.reading).join(",");
+            const groupReadings = index.groups.map(({ key }) => key.reading).join(",");
             return {
               compose: ({ groupList }) => [h("p", "索引"), ...groupList],
               groupList: {

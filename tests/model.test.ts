@@ -9,20 +9,20 @@ const intellectualProperty = { html: "知的財産権", reading: "ちてきざ�
 
 function createIndex(): Index {
   return {
-    children: [
+    groups: [
       {
         key: group,
-        children: [
+        entries: [
           {
             key: intellectualProperty,
-            children: [],
+            subentries: [],
             locators: [],
             xrefPreferred: [],
             xrefRelated: [],
           },
           {
             key: { html: "著作権", reading: "ちょさくけん" },
-            children: [],
+            subentries: [],
             locators: [],
             xrefPreferred: [],
             xrefRelated: [
@@ -82,7 +82,7 @@ void test("reports a missing subentry of a registered heading", () => {
 });
 
 void test("distinguishes headings that share HTML but not their reading", () => {
-  const index: Index = { children: [] };
+  const index: Index = { groups: [] };
   const first = { html: "One", reading: "ichi" };
   const second = { html: "One", reading: "hitotsu" };
 
@@ -90,8 +90,11 @@ void test("distinguishes headings that share HTML but not their reading", () => 
   ensureEntry(index, { group, entry: second });
 
   assert.deepStrictEqual(
-    index.children[0]?.children.map(({ key }) => key.reading),
+    index.groups[0]?.entries.map(({ key }) => key.reading),
     ["ichi", "hitotsu"],
   );
-  assert.strictEqual(getChild(index.children[0]!, { html: "One", reading: "san" }), undefined);
+  assert.strictEqual(
+    getChild(index.groups[0]!.entries, { html: "One", reading: "san" }),
+    undefined,
+  );
 });

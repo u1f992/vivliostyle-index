@@ -381,20 +381,20 @@ void test("rejects blank values and forbidden control characters", () => {
 });
 
 void test("applies page instructions", () => {
-  const index: Index = { children: [] };
+  const index: Index = { groups: [] };
   const instruction = parseInstruction("し!じゆうりよう@自由利用|<strong><slot></slot></strong>");
   assert.strictEqual(instruction.type, "page");
 
   applyPageInstruction(index, instruction, "chapter.html#fair-use");
 
   assert.deepStrictEqual(index, {
-    children: [
+    groups: [
       {
         key: { html: "し", reading: "し" },
-        children: [
+        entries: [
           {
             key: { html: "自由利用", reading: "じゆうりよう" },
-            children: [],
+            subentries: [],
             locators: [
               {
                 location: { type: "page", href: "chapter.html#fair-use" },
@@ -411,20 +411,20 @@ void test("applies page instructions", () => {
 });
 
 void test("applies range instructions", () => {
-  const index: Index = { children: [] };
+  const index: Index = { groups: [] };
   const instruction = parseInstruction("し!じゆうりよう@自由利用|(");
   assert.strictEqual(instruction.type, "range-start");
 
   applyRangeInstruction(index, instruction, "chapter.html#start", "chapter.html#end");
 
   assert.deepStrictEqual(index, {
-    children: [
+    groups: [
       {
         key: { html: "し", reading: "し" },
-        children: [
+        entries: [
           {
             key: { html: "自由利用", reading: "じゆうりよう" },
-            children: [],
+            subentries: [],
             locators: [
               {
                 location: { type: "range", start: "chapter.html#start", end: "chapter.html#end" },
@@ -441,13 +441,13 @@ void test("applies range instructions", () => {
 });
 
 void test("applies the template of a range instruction", () => {
-  const index: Index = { children: [] };
+  const index: Index = { groups: [] };
   const instruction = parseInstruction("し!じゆうりよう@自由利用|(<em><slot></slot></em>");
   assert.strictEqual(instruction.type, "range-start");
 
   applyRangeInstruction(index, instruction, "chapter.html#start", "chapter.html#end");
 
-  assert.deepStrictEqual(index.children[0]?.children[0]?.locators, [
+  assert.deepStrictEqual(index.groups[0]?.entries[0]?.locators, [
     {
       location: { type: "range", start: "chapter.html#start", end: "chapter.html#end" },
       template: "<em><slot></slot></em>",
@@ -456,7 +456,7 @@ void test("applies the template of a range instruction", () => {
 });
 
 void test("applies cross-reference instructions", () => {
-  const index: Index = { children: [] };
+  const index: Index = { groups: [] };
   const instruction = parseInstruction(
     "ち!ちょさくけん@著作権|seealso{ち!ちてきざいさんけん@知的財産権}",
   );
@@ -465,13 +465,13 @@ void test("applies cross-reference instructions", () => {
   applyXrefInstruction(index, instruction);
 
   assert.deepStrictEqual(index, {
-    children: [
+    groups: [
       {
         key: { html: "ち", reading: "ち" },
-        children: [
+        entries: [
           {
             key: { html: "著作権", reading: "ちょさくけん" },
-            children: [],
+            subentries: [],
             locators: [],
             xrefPreferred: [],
             xrefRelated: [
@@ -491,7 +491,7 @@ void test("applies cross-reference instructions", () => {
 });
 
 void test("applies the template of a cross-reference instruction", () => {
-  const index: Index = { children: [] };
+  const index: Index = { groups: [] };
   const instruction = parseInstruction(
     "ち!ちょさくけん@著作権|see{ち!ちてきざいさんけん@知的財産権}<em><slot></slot></em>",
   );
@@ -499,7 +499,7 @@ void test("applies the template of a cross-reference instruction", () => {
 
   applyXrefInstruction(index, instruction);
 
-  assert.deepStrictEqual(index.children[0]?.children[0]?.xrefPreferred, [
+  assert.deepStrictEqual(index.groups[0]?.entries[0]?.xrefPreferred, [
     {
       target: {
         group: { html: "ち", reading: "ち" },

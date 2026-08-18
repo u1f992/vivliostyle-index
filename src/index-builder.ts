@@ -57,7 +57,7 @@ function ensurePendingIndex(
   }
   const created: PendingIndex = {
     target: attachment.target,
-    index: { children: [] },
+    index: { groups: [] },
     sourcePaths: new Set([attachment.sourcePath]),
     attachments: [attachment],
     xrefValidations: [],

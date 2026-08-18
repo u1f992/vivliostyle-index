@@ -22,7 +22,7 @@ const plainKey = (name: string): Key => ({ html: name, reading: name });
 const createXref = (target: EntryAddress): Xref => ({ target, template: identityTemplate });
 
 function createGroups(...keys: readonly Key[]): Group[] {
-  return keys.map((key) => ({ key, children: [] }));
+  return keys.map((key) => ({ key, entries: [] }));
 }
 
 function keysOf(groups: readonly Group[]): [string, string][] {
@@ -34,7 +34,7 @@ function createSubentry(key: Key): Subentry {
 }
 
 function createEntry(key: Key): Entry {
-  return { key, children: [], locators: [], xrefPreferred: [], xrefRelated: [] };
+  return { key, subentries: [], locators: [], xrefPreferred: [], xrefRelated: [] };
 }
 
 void test("creates comparators for every index collection", () => {
@@ -192,25 +192,25 @@ void test("hands the locale to every collection of the default comparator", () =
     return created;
   };
   const entry = createEntry(umlaut);
-  entry.children.push(subentry(umlaut), subentry(z));
+  entry.subentries.push(subentry(umlaut), subentry(z));
   entry.xrefPreferred.push(xref(umlaut), xref(z));
   entry.xrefRelated.push(xref(umlaut), xref(z));
   const index: Index = {
-    children: [{ key: plainKey("a"), children: [entry, createEntry(z)] }],
+    groups: [{ key: plainKey("a"), entries: [entry, createEntry(z)] }],
   };
 
   const sorted = sort(index, defaultComparator("sv"));
-  const sortedEntry = sorted.children[0]?.children[1];
-  const sortedSubentry = sortedEntry?.children[0];
+  const sortedEntry = sorted.groups[0]?.entries[1];
+  const sortedSubentry = sortedEntry?.subentries[0];
   const targetsOf = (xrefs: readonly { target: { entry: Key } }[]) =>
     xrefs.map(({ target }) => target.entry.html);
 
   assert.deepStrictEqual(
-    sorted.children[0]?.children.map(({ key }) => key.html),
+    sorted.groups[0]?.entries.map(({ key }) => key.html),
     ["z", "ä"],
   );
   assert.deepStrictEqual(
-    sortedEntry?.children.map(({ key }) => key.html),
+    sortedEntry?.subentries.map(({ key }) => key.html),
     ["z", "ä"],
   );
   assert.deepStrictEqual(targetsOf(sortedEntry?.xrefPreferred ?? []), ["z", "ä"]);
@@ -225,7 +225,7 @@ void test("orders cross-references by the listed order of their targets", () => 
     createXref({ group: aRow, entry: { html: "著作", reading: "ちょさく" } }),
     createXref({ group: kaRow, entry: { html: "権利", reading: "けんり" } }),
   );
-  const index: Index = { children: [{ key: aRow, children: [entry] }] };
+  const index: Index = { groups: [{ key: aRow, entries: [entry] }] };
 
   const sorted = sort(index, {
     ...defaultComparator("ja"),
@@ -233,7 +233,7 @@ void test("orders cross-references by the listed order of their targets", () => 
   });
 
   assert.deepStrictEqual(
-    sorted.children[0]?.children[0]?.xrefRelated.map(({ target }) => target.group.html),
+    sorted.groups[0]?.entries[0]?.xrefRelated.map(({ target }) => target.group.html),
     ["か行", "あ行"],
   );
 });
@@ -244,12 +244,12 @@ void test("orders cross-references by their group before their entry", () => {
     createXref({ group: plainKey("z-group"), entry: plainKey("a-entry") }),
     createXref({ group: plainKey("a-group"), entry: plainKey("z-entry") }),
   );
-  const index: Index = { children: [{ key: plainKey("a"), children: [entry] }] };
+  const index: Index = { groups: [{ key: plainKey("a"), entries: [entry] }] };
 
   const sorted = sort(index, defaultComparator("en"));
 
   assert.deepStrictEqual(
-    sorted.children[0]?.children[0]?.xrefPreferred.map(({ target }) => target.group.html),
+    sorted.groups[0]?.entries[0]?.xrefPreferred.map(({ target }) => target.group.html),
     ["a-group", "z-group"],
   );
 });
@@ -263,7 +263,7 @@ void test("orders cross-references by their subentry when the listed headings ag
     createXref({ ...target, subentry: exclusive }),
     createXref({ ...target, subentry: inheritor }),
   );
-  const index: Index = { children: [{ key: aRow, children: [entry] }] };
+  const index: Index = { groups: [{ key: aRow, entries: [entry] }] };
 
   const sorted = sort(index, {
     ...defaultComparator("ja"),
@@ -271,7 +271,7 @@ void test("orders cross-references by their subentry when the listed headings ag
   });
 
   assert.deepStrictEqual(
-    sorted.children[0]?.children[0]?.xrefRelated.map(({ target: { subentry } }) => subentry?.html),
+    sorted.groups[0]?.entries[0]?.xrefRelated.map(({ target: { subentry } }) => subentry?.html),
     ["相続人", "一身専属"],
   );
 });
@@ -284,14 +284,12 @@ void test("orders a cross-reference to an entry before one to its subentry", () 
     createXref(target),
     createXref({ ...target, subentry: plainKey("heir") }),
   );
-  const index: Index = { children: [{ key: plainKey("a"), children: [entry] }] };
+  const index: Index = { groups: [{ key: plainKey("a"), entries: [entry] }] };
 
   const sorted = sort(index, defaultComparator("en"));
 
   assert.deepStrictEqual(
-    sorted.children[0]?.children[0]?.xrefPreferred.map(
-      ({ target: { subentry } }) => subentry?.html,
-    ),
+    sorted.groups[0]?.entries[0]?.xrefPreferred.map(({ target: { subentry } }) => subentry?.html),
     [undefined, "exclusive", "heir"],
   );
 });
@@ -310,7 +308,7 @@ void test("sorts every collection of the index with its own comparator", () => {
     return created;
   };
   const entry = createEntry(plainKey("a-entry"));
-  entry.children.push(subentry("z-sub"), subentry("a-sub"));
+  entry.subentries.push(subentry("z-sub"), subentry("a-sub"));
   entry.xrefPreferred.push(
     createXref({ group: plainKey("a"), entry: plainKey("z-preferred") }),
     createXref({ group: plainKey("a"), entry: plainKey("a-preferred") }),
@@ -320,23 +318,23 @@ void test("sorts every collection of the index with its own comparator", () => {
     createXref({ group: plainKey("a"), entry: plainKey("a-related") }),
   );
   const index: Index = {
-    children: [
-      { key: plainKey("z-group"), children: [] },
-      { key: plainKey("a-group"), children: [createEntry(plainKey("z-entry")), entry] },
+    groups: [
+      { key: plainKey("z-group"), entries: [] },
+      { key: plainKey("a-group"), entries: [createEntry(plainKey("z-entry")), entry] },
     ],
   };
 
   const sorted = sort(index, defaultComparator("en"));
-  const group = sorted.children[0];
-  const sortedEntry = group?.children[0];
-  const sortedSubentry = sortedEntry?.children[0];
+  const group = sorted.groups[0];
+  const sortedEntry = group?.entries[0];
+  const sortedSubentry = sortedEntry?.subentries[0];
 
   assert.deepStrictEqual(
-    sorted.children.map(({ key }) => key.html),
+    sorted.groups.map(({ key }) => key.html),
     ["a-group", "z-group"],
   );
   assert.deepStrictEqual(
-    sorted.children[0]?.children.map(({ key }) => key.html),
+    sorted.groups[0]?.entries.map(({ key }) => key.html),
     ["a-entry", "z-entry"],
   );
   assert.deepStrictEqual(
@@ -348,7 +346,7 @@ void test("sorts every collection of the index with its own comparator", () => {
     ["a-related", "z-related"],
   );
   assert.deepStrictEqual(
-    sortedEntry?.children.map(({ key }) => key.html),
+    sortedEntry?.subentries.map(({ key }) => key.html),
     ["a-sub", "z-sub"],
   );
   assert.deepStrictEqual(
@@ -363,15 +361,15 @@ void test("sorts every collection of the index with its own comparator", () => {
 
 void test("leaves the given index untouched", () => {
   const entry = createEntry(plainKey("z-entry"));
-  entry.children.push(createSubentry(plainKey("z-sub")), createSubentry(plainKey("a-sub")));
+  entry.subentries.push(createSubentry(plainKey("z-sub")), createSubentry(plainKey("a-sub")));
   entry.xrefPreferred.push(
     createXref({ group: plainKey("a"), entry: plainKey("z-preferred") }),
     createXref({ group: plainKey("a"), entry: plainKey("a-preferred") }),
   );
   const index: Index = {
-    children: [
-      { key: plainKey("z-group"), children: [entry] },
-      { key: plainKey("a-group"), children: [] },
+    groups: [
+      { key: plainKey("z-group"), entries: [entry] },
+      { key: plainKey("a-group"), entries: [] },
     ],
   };
   const original = structuredClone(index);

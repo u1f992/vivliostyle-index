@@ -304,7 +304,7 @@ export function renderIndex(
 ): void {
   const groupListProperties = { dataIndexRole: "group-list" } as const;
   const groupListRenderer = renderer.groupList ?? {};
-  const groups = index.children.map((group) =>
+  const groups = index.groups.map((group) =>
     renderGroup(
       group,
       { dataIndexRole: "group" },
@@ -338,7 +338,7 @@ const renderGroup = (
   const heading = renderHeading(group.key, renderer);
   const entryListProperties = { dataIndexRole: "entry-list" } as const;
   const entryListRenderer = renderer.entryList ?? {};
-  const entries = group.children.map((entry) =>
+  const entries = group.entries.map((entry) =>
     renderEntry(
       entry,
       { id: createEntryId(indexId, group.key, entry.key) },
@@ -367,7 +367,7 @@ const renderEntry = (
   const xrefRelatedList = renderRelatedXrefList(entry.xrefRelated, indexId, renderer);
   const subentryListProperties = { dataIndexRole: "subentry-list" } as const;
   const subentryListRenderer = renderer.subentryList ?? {};
-  const subentries = entry.children.map((subentry) =>
+  const subentries = entry.subentries.map((subentry) =>
     renderSubentry(
       subentry,
       { id: createSubentryId(indexId, groupKey, entry.key, subentry.key) },

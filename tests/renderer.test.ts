@@ -26,13 +26,13 @@ import {
 import { identityTemplate } from "../src/template.ts";
 
 const index: Index = {
-  children: [
+  groups: [
     {
       key: { html: "ち", reading: "ち" },
-      children: [
+      entries: [
         {
           key: { html: "著作権", reading: "ちょさくけん" },
-          children: [],
+          subentries: [],
           locators: [
             { location: { type: "page", href: "003.html#a" }, template: identityTemplate },
           ],
@@ -43,10 +43,10 @@ const index: Index = {
     },
     {
       key: { html: "そ", reading: "そ" },
-      children: [
+      entries: [
         {
           key: { html: "相続", reading: "そうぞく" },
-          children: [],
+          subentries: [],
           locators: [
             { location: { type: "page", href: "088.html#b" }, template: identityTemplate },
           ],
@@ -59,13 +59,13 @@ const index: Index = {
 };
 
 const indexWithSubentry: Index = {
-  children: [
+  groups: [
     {
       key: { html: "そ", reading: "そ" },
-      children: [
+      entries: [
         {
           key: { html: "相続", reading: "そうぞく" },
-          children: [
+          subentries: [
             {
               key: { html: "一身専属", reading: "いっしんせんぞく" },
               locators: [
@@ -127,7 +127,7 @@ void test("composes content with and without groups", () => {
   };
 
   renderIndex(index, populated, "index", renderer);
-  renderIndex({ children: [] }, empty, "index", renderer);
+  renderIndex({ groups: [] }, empty, "index", renderer);
 
   assert.deepStrictEqual(childTagNames(populated), ["p", "hr", "div"]);
   assert.deepStrictEqual(childTagNames(empty), ["p", "hr", "div"]);
@@ -155,7 +155,7 @@ void test("calls group list compose for an index without groups", () => {
     },
   };
 
-  renderIndex({ children: [] }, target, "index", renderer);
+  renderIndex({ groups: [] }, target, "index", renderer);
 
   assert.deepStrictEqual(childTagNames(target), ["p"]);
   assert.strictEqual(toText(target.children[0]!), "該当なし");
@@ -556,16 +556,16 @@ void test("calls every nested list compose function for an empty list", () => {
     },
   };
   const emptyLists: Index = {
-    children: [
+    groups: [
       {
         key: { html: "あ", reading: "あ" },
-        children: [
+        entries: [
           {
             key: { html: "A", reading: "あ" },
             locators: [],
             xrefPreferred: [],
             xrefRelated: [],
-            children: [],
+            subentries: [],
           },
         ],
       },
@@ -583,10 +583,10 @@ void test("calls every nested list compose function for an empty list", () => {
 void test("applies a locator template after the nested locator renderer", () => {
   const target = createTarget();
   const rangeIndex: Index = {
-    children: [
+    groups: [
       {
         key: { html: "し", reading: "し" },
-        children: [
+        entries: [
           {
             key: { html: "自由利用", reading: "じゆうりよう" },
             locators: [
@@ -597,7 +597,7 @@ void test("applies a locator template after the nested locator renderer", () => 
             ],
             xrefPreferred: [],
             xrefRelated: [],
-            children: [],
+            subentries: [],
           },
         ],
       },
@@ -663,10 +663,10 @@ void test("applies a locator template after the nested locator renderer", () => 
 void test("applies xref templates after their distinct nested renderers", () => {
   const target = createTarget();
   const xrefIndex: Index = {
-    children: [
+    groups: [
       {
         key: { html: "し", reading: "し" },
-        children: [
+        entries: [
           {
             key: { html: "自由利用", reading: "じゆうりよう" },
             locators: [],
@@ -690,7 +690,7 @@ void test("applies xref templates after their distinct nested renderers", () => 
                 template: "<strong><slot></slot></strong>",
               },
             ],
-            children: [],
+            subentries: [],
           },
         ],
       },
