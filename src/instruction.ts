@@ -337,6 +337,18 @@ function parseTemplate(state: ParserState): string {
   }
 }
 
+function parseTemplateSection(state: ParserState): string {
+  const token = currentToken(state);
+  if (token === undefined) {
+    return identityTemplate;
+  }
+  if (token.type !== "template") {
+    syntaxError(state.input, token.offset, "a template must be introduced by |");
+  }
+  consumeToken(state);
+  return parseTemplate(state);
+}
+
 function parseXref(state: ParserState, address: EntryAddress, type: XrefType): ParsedInstruction {
   const { address: target, terminator } = parseHierarchy(state, xrefTerminators);
   if (terminator?.type !== "xref-end") {
@@ -346,8 +358,7 @@ function parseXref(state: ParserState, address: EntryAddress, type: XrefType): P
       "a cross-reference target must end with }",
     );
   }
-  const template = currentToken(state) === undefined ? identityTemplate : parseTemplate(state);
-  return { type, address, target, template };
+  return { type, address, target, template: parseTemplateSection(state) };
 }
 
 export function parseInstruction(source: string): ParsedInstruction {
@@ -361,11 +372,7 @@ export function parseInstruction(source: string): ParsedInstruction {
     case "template":
       return { type: "page", address, template: parseTemplate(state) };
     case "range-start":
-      return {
-        type: "range-start",
-        address,
-        template: currentToken(state) === undefined ? identityTemplate : parseTemplate(state),
-      };
+      return { type: "range-start", address, template: parseTemplateSection(state) };
     case "range-end": {
       const trailingToken = currentToken(state);
       if (trailingToken !== undefined) {

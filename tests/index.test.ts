@@ -461,7 +461,7 @@ void test("decodes a URL-encoded DSL query value", () => {
 void test("wraps page and range locators in the template of their instruction", () => {
   const files = {
     "/publication/chapter.md": [
-      '<span id="range-start" data-index="index.md?q=そ!そうぞく@相続|(<em><slot></slot></em>#index">相続</span>',
+      '<span id="range-start" data-index="index.md?q=そ!そうぞく@相続|(|<em><slot></slot></em>#index">相続</span>',
       '<span id="page" data-index="index.md?q=し!じゆうりよう@自由利用|<strong><slot></slot></strong>#index">自由利用</span>',
       '<span id="range-end" data-index="index.md?q=そ!そうぞく@相続|)#index">おわり</span>',
     ].join(""),

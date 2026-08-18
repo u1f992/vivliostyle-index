@@ -40,12 +40,20 @@ void test("parses range start and end instructions", () => {
   );
   assert.deepStrictEqual(
     parseInstruction(
-      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|(<em><slot></slot></em>",
+      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|(|<em><slot></slot></em>",
     ),
     {
       type: "range-start",
       address,
       template: "<em><slot></slot></em>",
+    },
+  );
+  assert.deepStrictEqual(
+    parseInstruction("ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|(|"),
+    {
+      type: "range-start",
+      address,
+      template: "",
     },
   );
   assert.deepStrictEqual(
@@ -73,6 +81,18 @@ void test("parses preferred and related cross-reference instructions", () => {
       "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|seealso{べつぐるーぷ@別グループ!みだしご@見出し語}",
     ),
     { type: "related", address, target, template: identityTemplate },
+  );
+  assert.deepStrictEqual(
+    parseInstruction(
+      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|see{べつぐるーぷ@別グループ!みだしご@見出し語}|",
+    ),
+    { type: "preferred", address, target, template: "" },
+  );
+  assert.deepStrictEqual(
+    parseInstruction(
+      "ぐるーぷ@グループ!しゅみだし@主見出し!ふくみだし@副見出し|seealso{べつぐるーぷ@別グループ!みだしご@見出し語}|",
+    ),
+    { type: "related", address, target, template: "" },
   );
   assert.deepStrictEqual(
     parseInstruction("group!main|see{target-group!target-main!target-subentry}"),
@@ -267,6 +287,41 @@ void test("requires metasyntax characters in templates to be escaped", () => {
   );
 });
 
+void test("requires metasyntax at the start of an introduced template to be escaped", () => {
+  for (const lexeme of ["(", ")", "see{", "seealso{"]) {
+    assert.throws(
+      () => parseInstruction(`group!main|(|${lexeme}x`),
+      InstructionSyntaxError,
+      lexeme,
+    );
+    assert.throws(
+      () => parseInstruction(`group!main|see{tg!tm}|${lexeme}x`),
+      InstructionSyntaxError,
+      lexeme,
+    );
+  }
+  assert.deepStrictEqual(parseInstruction("group!main|(|\\(x)"), {
+    type: "range-start",
+    address: {
+      group: { html: "group", reading: "group" },
+      entry: { html: "main", reading: "main" },
+    },
+    template: "(x)",
+  });
+  assert.deepStrictEqual(parseInstruction("group!main|see{tg!tm}|see\\{x\\}"), {
+    type: "preferred",
+    address: {
+      group: { html: "group", reading: "group" },
+      entry: { html: "main", reading: "main" },
+    },
+    target: {
+      group: { html: "tg", reading: "tg" },
+      entry: { html: "tm", reading: "tm" },
+    },
+    template: "see{x}",
+  });
+});
+
 void test("rejects unescaped metasyntax throughout an instruction", () => {
   for (const token of ["@", "!", "|", "|(", "|)", "|see{", "|seealso{", "}"]) {
     assert.throws(
@@ -289,7 +344,7 @@ void test("rejects unescaped metasyntax throughout an instruction", () => {
 });
 
 void test("reads a cross-reference target inside braces", () => {
-  assert.deepStrictEqual(parseInstruction("group!main|see{tg!tm}<em><slot></slot></em>"), {
+  assert.deepStrictEqual(parseInstruction("group!main|see{tg!tm}|<em><slot></slot></em>"), {
     type: "preferred",
     address: {
       group: { html: "group", reading: "group" },
@@ -349,7 +404,11 @@ void test("rejects incomplete and structurally invalid instructions", () => {
     "group\\",
     "group\\x!main",
     "group!main|<em><slot></slot></em>\\",
-    "group!main|(<em>\\",
+    "group!main|(|<em>\\",
+    "group!main|(<em><slot></slot></em>",
+    "group!main|see{tg!tm}<em><slot></slot></em>",
+    "group!main|(@x",
+    "group!main|see{tg!tm}!x",
   ];
 
   for (const instruction of invalidInstructions) {
@@ -359,8 +418,8 @@ void test("rejects incomplete and structurally invalid instructions", () => {
 
 void test("reports the exact grapheme offset of a forbidden template character", () => {
   assert.throws(
-    () => parseInstruction("g!m|(👨‍👩‍👧‍👦a\u0000#x"),
-    (error: unknown) => error instanceof InstructionSyntaxError && error.offset === 7,
+    () => parseInstruction("g!m|(|👨‍👩‍👧‍👦a\u0000#x"),
+    (error: unknown) => error instanceof InstructionSyntaxError && error.offset === 8,
   );
 });
 
@@ -371,7 +430,7 @@ void test("rejects blank values and forbidden control characters", () => {
     "group@   !main",
     "group\nname!main",
     "group!main\u0000",
-    "group!main|(<em>\u0000</em>",
+    "group!main|(|<em>\u0000</em>",
     "group!main|<em>\u0000<slot></slot></em>",
   ];
 
@@ -442,7 +501,7 @@ void test("applies range instructions", () => {
 
 void test("applies the template of a range instruction", () => {
   const builder = createIndexBuilder();
-  const instruction = parseInstruction("し!じゆうりよう@自由利用|(<em><slot></slot></em>");
+  const instruction = parseInstruction("し!じゆうりよう@自由利用|(|<em><slot></slot></em>");
   assert.strictEqual(instruction.type, "range-start");
 
   applyRangeInstruction(builder, instruction, "chapter.html#start", "chapter.html#end");
@@ -493,7 +552,7 @@ void test("applies cross-reference instructions", () => {
 void test("applies the template of a cross-reference instruction", () => {
   const builder = createIndexBuilder();
   const instruction = parseInstruction(
-    "ち!ちょさくけん@著作権|see{ち!ちてきざいさんけん@知的財産権}<em><slot></slot></em>",
+    "ち!ちょさくけん@著作権|see{ち!ちてきざいさんけん@知的財産権}|<em><slot></slot></em>",
   );
   assert.ok(instruction.type === "preferred" || instruction.type === "related");
 
