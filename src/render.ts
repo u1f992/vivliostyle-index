@@ -156,20 +156,17 @@ export type GroupListRenderer = Readonly<{
 }>;
 
 export type IndexRenderer = Readonly<{
+  compose?(parts: { groupList: Content }): Content;
   groupList?: GroupListRenderer;
 }>;
 
 export type CreateRenderer = (context: { h: typeof h; index: ReadonlyIndex }) => IndexRenderer;
-export type IndexCompose = (context: { h: typeof h }) => (parts: { groupList: Content }) => Content;
-
-const defaultCompose: ReturnType<IndexCompose> = ({ groupList }) => groupList;
 
 export function renderIndex(
   index: ReadonlyIndex,
   target: Elem,
   indexId: string,
   renderer: IndexRenderer,
-  compose: ReturnType<IndexCompose> = defaultCompose,
 ): void {
   const groupListProperties = { dataIndexRole: "group-list" } as const;
   const groupListRenderer = renderer.groupList ?? {};
@@ -182,7 +179,7 @@ export function renderIndex(
     groupListRenderer.compose?.({ properties: groupListProperties, groups }) ??
     (groups.length === 0 ? [] : [h("div", groupListProperties, groups.flat())]);
   target.properties = { ...target.properties, dataIndexResult: JSON.stringify(index) };
-  target.children = compose({ groupList });
+  target.children = renderer.compose?.({ groupList }) ?? groupList;
 }
 
 const idSegmentEncoder = new TextEncoder();

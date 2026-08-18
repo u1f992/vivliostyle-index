@@ -13,7 +13,6 @@ import {
   type EntryRenderer,
   type GroupRenderer,
   type HeadingRenderer,
-  type IndexCompose,
   type IndexRenderer,
   type LocatorListRenderer,
   type LocatorRenderer,
@@ -121,14 +120,12 @@ function childTagNames(element: hast.Element): string[] {
 void test("composes content with and without groups", () => {
   const populated = createTarget();
   const empty = createTarget();
-  const compose: ReturnType<IndexCompose> = ({ groupList }) => [
-    h("p", "凡例"),
-    h("hr"),
-    ...groupList,
-  ];
+  const renderer: IndexRenderer = {
+    compose: ({ groupList }) => [h("p", "凡例"), h("hr"), ...groupList],
+  };
 
-  renderIndex(index, populated, "index", {}, compose);
-  renderIndex({ children: [] }, empty, "index", {}, compose);
+  renderIndex(index, populated, "index", renderer);
+  renderIndex({ children: [] }, empty, "index", renderer);
 
   assert.deepStrictEqual(childTagNames(populated), ["p", "hr", "div"]);
   assert.deepStrictEqual(childTagNames(empty), ["p", "hr"]);
@@ -138,10 +135,10 @@ void test("accepts arbitrary content and empty output from compose", () => {
   const textTarget = createTarget();
   const emptyTarget = createTarget();
 
-  renderIndex(index, textTarget, "index", {}, ({ groupList }) => [
-    { type: "text", value: String(groupList.length) },
-  ]);
-  renderIndex(index, emptyTarget, "index", {}, () => []);
+  renderIndex(index, textTarget, "index", {
+    compose: ({ groupList }) => [{ type: "text", value: String(groupList.length) }],
+  });
+  renderIndex(index, emptyTarget, "index", { compose: () => [] });
 
   assert.deepStrictEqual(textTarget.children, [{ type: "text", value: "1" }]);
   assert.deepStrictEqual(emptyTarget.children, []);
@@ -840,9 +837,11 @@ void test("uses the same leaf and list contracts for subentries", () => {
 void test("composes target children while preserving internally managed properties", () => {
   const target = createTarget();
   target.properties = { ...target.properties, dataIndex: "kept" };
-  const compose: ReturnType<IndexCompose> = ({ groupList }) => [h("main", groupList)];
+  const renderer: IndexRenderer = {
+    compose: ({ groupList }) => [h("main", groupList)],
+  };
 
-  renderIndex(index, target, "index", {}, compose);
+  renderIndex(index, target, "index", renderer);
 
   assert.strictEqual(getAttribute(target, "data-index-result"), JSON.stringify(index));
   assert.strictEqual(getAttribute(target, "data-index"), "kept");

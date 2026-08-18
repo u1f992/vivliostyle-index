@@ -43,7 +43,6 @@ export type {
   GroupListRenderer,
   GroupRenderer,
   HeadingRenderer,
-  IndexCompose,
   IndexRenderer,
   LocatorListRenderer,
   LocatorRenderer,

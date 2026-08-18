@@ -12,17 +12,6 @@ const index = createIndexPlugin({
     [
       { path: "index.md", id: "index" },
       {
-        compose:
-          ({ h }) =>
-          ({ groupList }) => [
-            h("dl", { className: "index-legend" }, [
-              h("dt", "→"),
-              h("dd", "を見よ参照"),
-              h("dt", "⇒"),
-              h("dd", "をも見よ参照"),
-            ]),
-            ...groupList,
-          ],
         renderer: ({ h }) => {
           const locatorList: LocatorListRenderer = {
             locator: () => ({
@@ -35,6 +24,15 @@ const index = createIndexPlugin({
             }),
           };
           return {
+            compose: ({ groupList }) => [
+              h("dl", { className: "index-legend" }, [
+                h("dt", "→"),
+                h("dd", "を見よ参照"),
+                h("dt", "⇒"),
+                h("dd", "をも見よ参照"),
+              ]),
+              ...groupList,
+            ],
             groupList: {
               compose: ({ properties, groups }) => [h("ul", properties, groups.flat())],
               group: () => ({

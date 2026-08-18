@@ -89,7 +89,6 @@ export function renderDocumentIndexes(
     const comparator = createComparator(resolveLocales(root, element, file));
     const sorted = sort(index, comparator);
     const renderer = targetSettings?.renderer?.({ h, index: sorted }) ?? {};
-    const compose = targetSettings?.compose?.({ h });
-    renderIndex(sorted, element, target.id, renderer, compose);
+    renderIndex(sorted, element, target.id, renderer);
   }
 }

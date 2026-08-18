@@ -185,25 +185,25 @@ void test("composes configured content into the index it names", () => {
       [
         { path: "index.md", id: "subject" },
         {
-          compose:
-            ({ h }) =>
-            ({ groupList }) => [h("p", "事項"), ...groupList],
+          renderer: ({ h }) => ({
+            compose: ({ groupList }) => [h("p", "事項"), ...groupList],
+          }),
         },
       ],
       [
         { path: "index.md", id: "person" },
         {
-          compose:
-            ({ h }) =>
-            ({ groupList }) => [h("p", "人名"), ...groupList],
+          renderer: ({ h }) => ({
+            compose: ({ groupList }) => [h("p", "人名"), ...groupList],
+          }),
         },
       ],
       [
         { path: "index.md", id: "unnamed" },
         {
-          compose:
-            ({ h }) =>
-            ({ groupList }) => [h("p", "出ない"), ...groupList],
+          renderer: ({ h }) => ({
+            compose: ({ groupList }) => [h("p", "出ない"), ...groupList],
+          }),
         },
       ],
     ],
@@ -262,12 +262,10 @@ void test("composes index content separately from rendering model nodes", () => 
       [
         { path: "index.md", id: "index" },
         {
-          compose:
-            ({ h }) =>
-            ({ groupList }) => [h("p", "索引"), ...groupList],
           renderer: ({ h, index }) => {
             const groupReadings = index.children.map(({ key }) => key.reading).join(",");
             return {
+              compose: ({ groupList }) => [h("p", "索引"), ...groupList],
               groupList: {
                 group: () => ({
                   heading: ({ contents }) => [
