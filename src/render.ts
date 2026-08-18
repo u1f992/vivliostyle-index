@@ -21,7 +21,6 @@ type Content = ElemContent[];
 type ElementProperties = Readonly<hast.Properties>;
 type RoleProperties<Role extends string> = Readonly<hast.Properties & { dataIndexRole: Role }>;
 type IdProperties = Readonly<hast.Properties & { id: string }>;
-type IndexProperties = Readonly<hast.Properties & { dataIndexResult: string }>;
 
 export type RenderedGroup = Readonly<{ group: Key; content: Content }>;
 export type RenderedEntry = Readonly<{ entry: Key; content: Content }>;
@@ -29,20 +28,18 @@ export type RenderedSubentry = Readonly<{ subentry: Key; content: Content }>;
 export type RenderedLocator = Readonly<{ locator: Locator; content: Content }>;
 export type RenderedXref = Readonly<{ xref: Xref; content: Content }>;
 
-export type PreambleRenderer = () => Content;
-
 export type HeadingRenderer = (parts: {
   properties: ElementProperties;
   contents: Content;
 }) => Content;
 
 export type LocatorRenderer = Readonly<{
+  self?(parts: { href: string; contents: Content }): Content;
   pageNumber?(context: {
     target: string;
     properties: RoleProperties<"page-number"> & Readonly<{ dataIndexPageTarget: string }>;
   }): Content;
   rangeSeparator?(context: { properties: RoleProperties<"range-separator"> }): Content;
-  self?(parts: { href: string; contents: Content }): Content;
 }>;
 
 export type XrefRenderer = (parts: {
@@ -53,19 +50,25 @@ export type XrefRenderer = (parts: {
 }) => Content;
 
 export type LocatorListRenderer = Readonly<{
+  self?(parts: { locators: readonly RenderedLocator[] }): Content;
   locator?(context: {
     locator: Locator;
     properties: RoleProperties<"page" | "range">;
   }): LocatorRenderer;
-  self?(parts: { locators: readonly RenderedLocator[] }): Content;
 }>;
 
 export type XrefListRenderer = Readonly<{
-  xref?: XrefRenderer;
   self?(parts: { xrefs: readonly RenderedXref[] }): Content;
+  xref?: XrefRenderer;
 }>;
 
 export type SubentryRenderer = Readonly<{
+  self?(parts: {
+    heading: Content;
+    locatorList: Content;
+    xrefPreferredList: Content;
+    xrefRelatedList: Content;
+  }): Content;
   heading?: HeadingRenderer;
   locatorList?(context: { properties: RoleProperties<"locator-list"> }): LocatorListRenderer;
   xrefPreferredList?(context: {
@@ -76,20 +79,21 @@ export type SubentryRenderer = Readonly<{
     type: "related";
     properties: RoleProperties<"xref-related">;
   }): XrefListRenderer;
+}>;
+
+export type SubentryListRenderer = Readonly<{
+  self?(parts: { subentries: readonly RenderedSubentry[] }): Content;
+  subentry?(context: { subentry: Key; properties: IdProperties }): SubentryRenderer;
+}>;
+
+export type EntryRenderer = Readonly<{
   self?(parts: {
     heading: Content;
     locatorList: Content;
     xrefPreferredList: Content;
     xrefRelatedList: Content;
+    subentryList: Content;
   }): Content;
-}>;
-
-export type SubentryListRenderer = Readonly<{
-  subentry?(context: { subentry: Key; properties: IdProperties }): SubentryRenderer;
-  self?(parts: { subentries: readonly RenderedSubentry[] }): Content;
-}>;
-
-export type EntryRenderer = Readonly<{
   heading?: HeadingRenderer;
   locatorList?(context: { properties: RoleProperties<"locator-list"> }): LocatorListRenderer;
   xrefPreferredList?(context: {
@@ -101,49 +105,40 @@ export type EntryRenderer = Readonly<{
     properties: RoleProperties<"xref-related">;
   }): XrefListRenderer;
   subentryList?(context: { properties: RoleProperties<"subentry-list"> }): SubentryListRenderer;
-  self?(parts: {
-    heading: Content;
-    locatorList: Content;
-    xrefPreferredList: Content;
-    xrefRelatedList: Content;
-    subentryList: Content;
-  }): Content;
 }>;
 
 export type EntryListRenderer = Readonly<{
-  entry?(context: { entry: Key; properties: IdProperties }): EntryRenderer;
   self?(parts: { entries: readonly RenderedEntry[] }): Content;
+  entry?(context: { entry: Key; properties: IdProperties }): EntryRenderer;
 }>;
 
 export type GroupRenderer = Readonly<{
+  self?(parts: { heading: Content; entryList: Content }): Content;
   heading?: HeadingRenderer;
   entryList?(context: { properties: RoleProperties<"entry-list"> }): EntryListRenderer;
-  self?(parts: { heading: Content; entryList: Content }): Content;
 }>;
 
 export type GroupListRenderer = Readonly<{
-  group?(context: { group: Key; properties: RoleProperties<"group"> }): GroupRenderer;
   self?(parts: { groups: readonly RenderedGroup[] }): Content;
+  group?(context: { group: Key; properties: RoleProperties<"group"> }): GroupRenderer;
 }>;
 
 export type IndexRenderer = Readonly<{
-  preamble?: PreambleRenderer;
   groupList?(context: { properties: RoleProperties<"group-list"> }): GroupListRenderer;
-  self?(parts: { properties: IndexProperties; preamble: Content; groupList: Content }): {
-    properties: hast.Properties;
-    children: Content;
-  };
 }>;
 
 export type CreateRenderer = (context: { h: typeof h; index: ReadonlyIndex }) => IndexRenderer;
+export type IndexCompose = (context: { h: typeof h }) => (parts: { groupList: Content }) => Content;
+
+const defaultCompose: ReturnType<IndexCompose> = ({ groupList }) => groupList;
 
 export function renderIndex(
   index: ReadonlyIndex,
   target: Elem,
   indexId: string,
   renderer: IndexRenderer,
+  compose: ReturnType<IndexCompose> = defaultCompose,
 ): void {
-  const preamble = renderer.preamble?.() ?? [];
   const groupListProperties = { dataIndexRole: "group-list" } as const;
   const groupListRenderer = renderer.groupList?.({ properties: groupListProperties }) ?? {};
   const groups = index.children.map((group) => {
@@ -165,17 +160,8 @@ export function renderIndex(
             groups.flatMap(({ content }) => content),
           ),
         ]);
-  const indexProperties = { ...target.properties, dataIndexResult: JSON.stringify(index) };
-  const { properties, children } = renderer.self?.({
-    properties: indexProperties,
-    preamble,
-    groupList,
-  }) ?? {
-    properties: indexProperties,
-    children: [...preamble, ...groupList],
-  };
-  target.properties = properties;
-  target.children = children;
+  target.properties = { ...target.properties, dataIndexResult: JSON.stringify(index) };
+  target.children = compose({ groupList });
 }
 
 const idSegmentEncoder = new TextEncoder();

@@ -12,24 +12,35 @@ const index = createIndexPlugin({
     [
       { path: "index.md", id: "index" },
       {
+        compose:
+          ({ h }) =>
+          ({ groupList }) => [
+            h("dl", { className: "index-legend" }, [
+              h("dt", "→"),
+              h("dd", "を見よ参照"),
+              h("dt", "⇒"),
+              h("dd", "をも見よ参照"),
+            ]),
+            ...groupList,
+          ],
         renderer: ({ h }) => {
           const locatorList = (): LocatorListRenderer => ({
             locator: ({ properties }) => ({
-              pageNumber: ({ properties, target }) => [h("a", { ...properties, href: target })],
               self: ({ contents }) => [h("span", properties, contents)],
+              pageNumber: ({ properties, target }) => [h("a", { ...properties, href: target })],
             }),
           });
           return {
-            preamble: () => [
-              h("dl", { className: "index-legend" }, [
-                h("dt", "→"),
-                h("dd", "を見よ参照"),
-                h("dt", "⇒"),
-                h("dd", "をも見よ参照"),
-              ]),
-            ],
             groupList: ({ properties }) => ({
+              self: ({ groups }) => [
+                h(
+                  "ul",
+                  properties,
+                  groups.flatMap(({ content }) => content),
+                ),
+              ],
               group: ({ properties }) => ({
+                self: ({ heading, entryList }) => [h("li", properties, [...heading, ...entryList])],
                 entryList: () => ({
                   entry: () => ({
                     locatorList,
@@ -38,15 +49,7 @@ const index = createIndexPlugin({
                     }),
                   }),
                 }),
-                self: ({ heading, entryList }) => [h("li", properties, [...heading, ...entryList])],
               }),
-              self: ({ groups }) => [
-                h(
-                  "ul",
-                  properties,
-                  groups.flatMap(({ content }) => content),
-                ),
-              ],
             }),
           };
         },

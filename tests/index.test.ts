@@ -169,7 +169,7 @@ void test("renders an index after source entries that follow it in the document"
   assert.deepStrictEqual(locatorLinks(root), ["#%2Fhtml%2Fbody%2Fspan"]);
 });
 
-void test("puts a configured preamble into the index it names", () => {
+void test("composes configured content into the index it names", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=a!Apple#subject">Apple</span>',
@@ -184,15 +184,27 @@ void test("puts a configured preamble into the index it names", () => {
     settings: [
       [
         { path: "index.md", id: "subject" },
-        { renderer: ({ h }) => ({ preamble: () => [h("p", "事項")] }) },
+        {
+          compose:
+            ({ h }) =>
+            ({ groupList }) => [h("p", "事項"), ...groupList],
+        },
       ],
       [
         { path: "index.md", id: "person" },
-        { renderer: ({ h }) => ({ preamble: () => [h("p", "人名")] }) },
+        {
+          compose:
+            ({ h }) =>
+            ({ groupList }) => [h("p", "人名"), ...groupList],
+        },
       ],
       [
         { path: "index.md", id: "unnamed" },
-        { renderer: ({ h }) => ({ preamble: () => [h("p", "出ない")] }) },
+        {
+          compose:
+            ({ h }) =>
+            ({ groupList }) => [h("p", "出ない"), ...groupList],
+        },
       ],
     ],
   });
@@ -201,11 +213,11 @@ void test("puts a configured preamble into the index it names", () => {
   processor.runSync(root, { path: "/publication/index.md" });
 
   assert.deepStrictEqual(
-    selectAll("#subject > p", root).map((preamble) => toText(preamble)),
+    selectAll("#subject > p", root).map((element) => toText(element)),
     ["事項"],
   );
   assert.deepStrictEqual(
-    selectAll("#person > p", root).map((preamble) => toText(preamble)),
+    selectAll("#person > p", root).map((element) => toText(element)),
     ["人名"],
   );
   assert.deepStrictEqual(selectAll("#unnamed > p", root), []);
@@ -235,7 +247,7 @@ void test("keeps a target without the doc-index role and warns", () => {
   assert.strictEqual(getAttribute(target, "data-index-result"), null);
 });
 
-void test("renders the preamble and headings through one renderer factory", () => {
+void test("composes index content separately from rendering model nodes", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=z!Zebra#index">Zebra</span>',
@@ -250,12 +262,21 @@ void test("renders the preamble and headings through one renderer factory", () =
       [
         { path: "index.md", id: "index" },
         {
-          renderer: ({ h, index }) => ({
-            preamble: () => [h("p", index.children.map(({ key }) => key.reading).join(","))],
-            groupList: () => ({
-              group: () => ({ heading: ({ contents }) => [h("h2", contents)] }),
-            }),
-          }),
+          compose:
+            ({ h }) =>
+            ({ groupList }) => [h("p", "索引"), ...groupList],
+          renderer: ({ h, index }) => {
+            const groupReadings = index.children.map(({ key }) => key.reading).join(",");
+            return {
+              groupList: () => ({
+                group: () => ({
+                  heading: ({ contents }) => [
+                    h("h2", { dataGroupReadings: groupReadings }, contents),
+                  ],
+                }),
+              }),
+            };
+          },
         },
       ],
     ],
@@ -265,12 +286,16 @@ void test("renders the preamble and headings through one renderer factory", () =
   processor.runSync(root, { path: "/publication/index.md" });
 
   assert.deepStrictEqual(
-    selectAll("#index > p", root).map((preamble) => toText(preamble)),
-    ["a,z"],
+    selectAll("#index > p", root).map((element) => toText(element)),
+    ["索引"],
   );
   assert.deepStrictEqual(
     selectAll(`${GROUP} > h2`, root).map((heading) => toText(heading)),
     ["a", "z"],
+  );
+  assert.deepStrictEqual(
+    selectAll(`${GROUP} > h2`, root).map((heading) => getAttribute(heading, "data-group-readings")),
+    ["a,z", "a,z"],
   );
   assert.deepStrictEqual(
     selectAll(ENTRY_KEY, root).map((heading) => toText(heading)),
