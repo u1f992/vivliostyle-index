@@ -307,10 +307,10 @@ export function renderIndex(
 const idSegmentEncoder = new TextEncoder();
 
 const encodeIdSegment = (value: string): string => {
-  let binary = "";
-  for (const byte of idSegmentEncoder.encode(value)) {
-    binary += String.fromCharCode(byte);
-  }
+  const binary = [...idSegmentEncoder.encode(value)].reduce(
+    (binary, byte) => binary + String.fromCharCode(byte),
+    "",
+  );
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 };
 
