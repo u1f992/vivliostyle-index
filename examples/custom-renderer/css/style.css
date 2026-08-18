@@ -59,6 +59,10 @@
     content: "–";
   }
 
+  > [data-index-role="locator-list"] > li [data-index-role="range-separator"]::before {
+    content: "–";
+  }
+
   > [data-index-role="xref-related"] > li:first-child::before {
     content: "⇒";
   }
