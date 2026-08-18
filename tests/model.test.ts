@@ -1,46 +1,27 @@
 import assert from "node:assert";
 import test from "node:test";
 
-import { ensureEntry, findUnresolvedXref, getChild, type Index } from "../src/model.ts";
-import { identityTemplate } from "../src/template.ts";
+import {
+  createIndexBuilder,
+  ensureEntry,
+  finalizeIndex,
+  findUnresolvedXref,
+  type IndexBuilder,
+} from "../src/model.ts";
 
 const group = { html: "ち", reading: "ち" };
 const intellectualProperty = { html: "知的財産権", reading: "ちてきざいさんけん" };
 
-function createIndex(): Index {
-  return {
-    groups: [
-      {
-        key: group,
-        entries: [
-          {
-            key: intellectualProperty,
-            subentries: [],
-            locators: [],
-            xrefPreferred: [],
-            xrefRelated: [],
-          },
-          {
-            key: { html: "著作権", reading: "ちょさくけん" },
-            subentries: [],
-            locators: [],
-            xrefPreferred: [],
-            xrefRelated: [
-              {
-                target: { group, entry: intellectualProperty },
-                template: identityTemplate,
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  };
+function createBuilder(): IndexBuilder {
+  const builder = createIndexBuilder();
+  ensureEntry(builder, { group, entry: intellectualProperty });
+  ensureEntry(builder, { group, entry: { html: "著作権", reading: "ちょさくけん" } });
+  return builder;
 }
 
 void test("accepts cross-references to registered entries", () => {
   assert.strictEqual(
-    findUnresolvedXref(createIndex(), { group, entry: intellectualProperty }),
+    findUnresolvedXref(createBuilder(), { group, entry: intellectualProperty }),
     undefined,
   );
 });
@@ -48,7 +29,7 @@ void test("accepts cross-references to registered entries", () => {
 void test("reports cross-references to unregistered entries", () => {
   const entry = { html: "工業所有権", reading: "こうぎょうしょゆうけん" };
 
-  assert.deepStrictEqual(findUnresolvedXref(createIndex(), { group, entry }), {
+  assert.deepStrictEqual(findUnresolvedXref(createBuilder(), { group, entry }), {
     target: { group, entry },
     missing: "entry",
   });
@@ -57,12 +38,12 @@ void test("reports cross-references to unregistered entries", () => {
 void test("reports a cross-reference that uses different inner HTML", () => {
   const entry = { html: "<em>知的財産権</em>", reading: "ちてきざいさんけん" };
 
-  assert.strictEqual(findUnresolvedXref(createIndex(), { group, entry })?.missing, "entry");
+  assert.strictEqual(findUnresolvedXref(createBuilder(), { group, entry })?.missing, "entry");
 });
 
 void test("reports a missing group before a missing heading", () => {
   assert.strictEqual(
-    findUnresolvedXref(createIndex(), {
+    findUnresolvedXref(createBuilder(), {
       group: { html: "こ", reading: "こ" },
       entry: intellectualProperty,
     })?.missing,
@@ -72,7 +53,7 @@ void test("reports a missing group before a missing heading", () => {
 
 void test("reports a missing subentry of a registered heading", () => {
   assert.strictEqual(
-    findUnresolvedXref(createIndex(), {
+    findUnresolvedXref(createBuilder(), {
       group,
       entry: intellectualProperty,
       subentry: { html: "特許権", reading: "とっきょけん" },
@@ -82,19 +63,19 @@ void test("reports a missing subentry of a registered heading", () => {
 });
 
 void test("distinguishes headings that share HTML but not their reading", () => {
-  const index: Index = { groups: [] };
+  const builder = createIndexBuilder();
   const first = { html: "One", reading: "ichi" };
   const second = { html: "One", reading: "hitotsu" };
 
-  ensureEntry(index, { group, entry: first });
-  ensureEntry(index, { group, entry: second });
+  ensureEntry(builder, { group, entry: first });
+  ensureEntry(builder, { group, entry: second });
 
   assert.deepStrictEqual(
-    index.groups[0]?.entries.map(({ key }) => key.reading),
+    finalizeIndex(builder).groups[0]?.entries.map(({ key }) => key.reading),
     ["ichi", "hitotsu"],
   );
   assert.strictEqual(
-    getChild(index.groups[0]!.entries, { html: "One", reading: "san" }),
-    undefined,
+    findUnresolvedXref(builder, { group, entry: { html: "One", reading: "san" } })?.missing,
+    "entry",
   );
 });

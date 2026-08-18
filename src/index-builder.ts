@@ -4,7 +4,14 @@ import {
   applyXrefInstruction,
 } from "./instruction.ts";
 import { addMessage, messages, type MessageArguments } from "./messages.ts";
-import { labelInvalidXrefs, type EntryAddress, type Index } from "./model.ts";
+import {
+  createIndexBuilder,
+  finalizeIndex,
+  labelInvalidXrefs,
+  type EntryAddress,
+  type Index,
+  type IndexBuilder,
+} from "./model.ts";
 import type { Attachment, SourceSnapshot } from "./source-snapshot.ts";
 import type { Target, TargetKey } from "./target.ts";
 import { identityTemplate } from "./template.ts";
@@ -22,7 +29,7 @@ export type BuiltIndexes = Readonly<{
 
 type PendingIndex = Readonly<{
   target: Target;
-  index: Index;
+  builder: IndexBuilder;
   sourcePaths: Set<string>;
   attachments: Attachment[];
   xrefValidations: XrefValidation[];
@@ -57,7 +64,7 @@ function ensurePendingIndex(
   }
   const created: PendingIndex = {
     target: attachment.target,
-    index: { groups: [] },
+    builder: createIndexBuilder(),
     sourcePaths: new Set([attachment.sourcePath]),
     attachments: [attachment],
     xrefValidations: [],
@@ -67,24 +74,24 @@ function ensurePendingIndex(
 }
 
 function applyAttachment(
-  index: Index,
+  builder: IndexBuilder,
   attachment: Attachment,
   rangePairings: RangePairings,
 ): XrefValidation | undefined {
   const { instruction } = attachment;
 
   if (instruction.type === "page") {
-    applyPageInstruction(index, instruction, attachment.locationHref);
+    applyPageInstruction(builder, instruction, attachment.locationHref);
     return undefined;
   }
 
   if (instruction.type === "range-start") {
     const rangeEnd = rangePairings.endsByStart.get(attachment as RangeStartAttachment);
     if (rangeEnd !== undefined) {
-      applyRangeInstruction(index, instruction, attachment.locationHref, rangeEnd.locationHref);
+      applyRangeInstruction(builder, instruction, attachment.locationHref, rangeEnd.locationHref);
     } else {
       applyPageInstruction(
-        index,
+        builder,
         { type: "page", address: instruction.address, template: instruction.template },
         attachment.locationHref,
         "unmatched-range-start",
@@ -96,7 +103,7 @@ function applyAttachment(
   if (instruction.type === "range-end") {
     if (!rangePairings.pairedEnds.has(attachment as RangeEndAttachment)) {
       applyPageInstruction(
-        index,
+        builder,
         { type: "page", address: instruction.address, template: identityTemplate },
         attachment.locationHref,
         "unmatched-range-end",
@@ -105,7 +112,7 @@ function applyAttachment(
     return undefined;
   }
 
-  applyXrefInstruction(index, instruction);
+  applyXrefInstruction(builder, instruction);
   return {
     reportingPath: attachment.sourcePath,
     target: instruction.target,
@@ -113,11 +120,11 @@ function applyAttachment(
 }
 
 function validateXrefs(
-  index: Index,
+  builder: IndexBuilder,
   validations: readonly XrefValidation[],
   messagesByDocument: Map<string, MessageArguments[]>,
 ): void {
-  const unresolvedXrefs = labelInvalidXrefs(index);
+  const unresolvedXrefs = labelInvalidXrefs(builder);
   for (const { reportingPath, target } of validations) {
     const unresolvedXref = unresolvedXrefs.get(JSON.stringify(target));
     if (unresolvedXref !== undefined) {
@@ -196,16 +203,20 @@ export function buildIndexes(
 
   const indexes = new Map<TargetKey, BuiltIndex>();
   for (const [targetKey, pendingIndex] of pendingIndexes) {
-    const { target, index, sourcePaths, attachments, xrefValidations } = pendingIndex;
+    const { target, builder, sourcePaths, attachments, xrefValidations } = pendingIndex;
     const rangePairings = pairRanges(pendingIndex, messagesByDocument);
     for (const attachment of attachments) {
-      const validation = applyAttachment(index, attachment, rangePairings);
+      const validation = applyAttachment(builder, attachment, rangePairings);
       if (validation) {
         xrefValidations.push(validation);
       }
     }
-    validateXrefs(index, xrefValidations, messagesByDocument);
-    const builtIndex: BuiltIndex = { target, index, sourcePaths: [...sourcePaths] };
+    validateXrefs(builder, xrefValidations, messagesByDocument);
+    const builtIndex: BuiltIndex = {
+      target,
+      index: finalizeIndex(builder),
+      sourcePaths: [...sourcePaths],
+    };
     indexes.set(targetKey, builtIndex);
   }
 

@@ -8,7 +8,7 @@ import {
   InstructionSyntaxError,
   parseInstruction,
 } from "../src/instruction.ts";
-import type { Index } from "../src/model.ts";
+import { createIndexBuilder, finalizeIndex } from "../src/model.ts";
 import { identityTemplate } from "../src/template.ts";
 
 const group = { html: "グループ", reading: "ぐるーぷ" };
@@ -381,13 +381,13 @@ void test("rejects blank values and forbidden control characters", () => {
 });
 
 void test("applies page instructions", () => {
-  const index: Index = { groups: [] };
+  const builder = createIndexBuilder();
   const instruction = parseInstruction("し!じゆうりよう@自由利用|<strong><slot></slot></strong>");
   assert.strictEqual(instruction.type, "page");
 
-  applyPageInstruction(index, instruction, "chapter.html#fair-use");
+  applyPageInstruction(builder, instruction, "chapter.html#fair-use");
 
-  assert.deepStrictEqual(index, {
+  assert.deepStrictEqual(finalizeIndex(builder), {
     groups: [
       {
         key: { html: "し", reading: "し" },
@@ -411,13 +411,13 @@ void test("applies page instructions", () => {
 });
 
 void test("applies range instructions", () => {
-  const index: Index = { groups: [] };
+  const builder = createIndexBuilder();
   const instruction = parseInstruction("し!じゆうりよう@自由利用|(");
   assert.strictEqual(instruction.type, "range-start");
 
-  applyRangeInstruction(index, instruction, "chapter.html#start", "chapter.html#end");
+  applyRangeInstruction(builder, instruction, "chapter.html#start", "chapter.html#end");
 
-  assert.deepStrictEqual(index, {
+  assert.deepStrictEqual(finalizeIndex(builder), {
     groups: [
       {
         key: { html: "し", reading: "し" },
@@ -441,13 +441,13 @@ void test("applies range instructions", () => {
 });
 
 void test("applies the template of a range instruction", () => {
-  const index: Index = { groups: [] };
+  const builder = createIndexBuilder();
   const instruction = parseInstruction("し!じゆうりよう@自由利用|(<em><slot></slot></em>");
   assert.strictEqual(instruction.type, "range-start");
 
-  applyRangeInstruction(index, instruction, "chapter.html#start", "chapter.html#end");
+  applyRangeInstruction(builder, instruction, "chapter.html#start", "chapter.html#end");
 
-  assert.deepStrictEqual(index.groups[0]?.entries[0]?.locators, [
+  assert.deepStrictEqual(finalizeIndex(builder).groups[0]?.entries[0]?.locators, [
     {
       location: { type: "range", start: "chapter.html#start", end: "chapter.html#end" },
       template: "<em><slot></slot></em>",
@@ -456,15 +456,15 @@ void test("applies the template of a range instruction", () => {
 });
 
 void test("applies cross-reference instructions", () => {
-  const index: Index = { groups: [] };
+  const builder = createIndexBuilder();
   const instruction = parseInstruction(
     "ち!ちょさくけん@著作権|seealso{ち!ちてきざいさんけん@知的財産権}",
   );
   assert.ok(instruction.type === "preferred" || instruction.type === "related");
 
-  applyXrefInstruction(index, instruction);
+  applyXrefInstruction(builder, instruction);
 
-  assert.deepStrictEqual(index, {
+  assert.deepStrictEqual(finalizeIndex(builder), {
     groups: [
       {
         key: { html: "ち", reading: "ち" },
@@ -491,15 +491,15 @@ void test("applies cross-reference instructions", () => {
 });
 
 void test("applies the template of a cross-reference instruction", () => {
-  const index: Index = { groups: [] };
+  const builder = createIndexBuilder();
   const instruction = parseInstruction(
     "ち!ちょさくけん@著作権|see{ち!ちてきざいさんけん@知的財産権}<em><slot></slot></em>",
   );
   assert.ok(instruction.type === "preferred" || instruction.type === "related");
 
-  applyXrefInstruction(index, instruction);
+  applyXrefInstruction(builder, instruction);
 
-  assert.deepStrictEqual(index.groups[0]?.entries[0]?.xrefPreferred, [
+  assert.deepStrictEqual(finalizeIndex(builder).groups[0]?.entries[0]?.xrefPreferred, [
     {
       target: {
         group: { html: "ち", reading: "ち" },

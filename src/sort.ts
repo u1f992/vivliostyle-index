@@ -95,22 +95,24 @@ export function byListedOrder(
   };
 }
 
-export function sort(index: Index, comparator: IndexComparator) {
-  const sorted = structuredClone(index);
-  sorted.groups.sort(comparator.group);
-  for (const group of sorted.groups) {
-    group.entries.sort(comparator.entry);
-    for (const entry of group.entries) {
-      entry.xrefPreferred.sort(comparator.entryXrefPreferred);
-      entry.xrefRelated.sort(comparator.entryXrefRelated);
-      entry.subentries.sort(comparator.subentry);
-      for (const subentry of entry.subentries) {
-        subentry.xrefPreferred.sort(comparator.subentryXrefPreferred);
-        subentry.xrefRelated.sort(comparator.subentryXrefRelated);
-      }
-    }
-  }
-  return sorted;
+export function sort(index: Index, comparator: IndexComparator): Index {
+  return {
+    groups: index.groups.toSorted(comparator.group).map((group) => ({
+      key: group.key,
+      entries: group.entries.toSorted(comparator.entry).map((entry) => ({
+        key: entry.key,
+        locators: entry.locators,
+        xrefPreferred: entry.xrefPreferred.toSorted(comparator.entryXrefPreferred),
+        xrefRelated: entry.xrefRelated.toSorted(comparator.entryXrefRelated),
+        subentries: entry.subentries.toSorted(comparator.subentry).map((subentry) => ({
+          key: subentry.key,
+          locators: subentry.locators,
+          xrefPreferred: subentry.xrefPreferred.toSorted(comparator.subentryXrefPreferred),
+          xrefRelated: subentry.xrefRelated.toSorted(comparator.subentryXrefRelated),
+        })),
+      })),
+    })),
+  };
 }
 
 export function defaultComparator(locales: Intl.LocalesArgument): IndexComparator {

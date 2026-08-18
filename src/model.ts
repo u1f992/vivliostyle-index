@@ -34,6 +34,7 @@ export type Locator = Readonly<{
   template: string;
   error?: LocatorError;
 }>;
+
 export type Xref = Readonly<{
   target: EntryAddress;
   template: string;
@@ -41,117 +42,106 @@ export type Xref = Readonly<{
 }>;
 export type XrefType = "preferred" | "related";
 
-export type Subentry = HasKey & {
+export type Subentry = Readonly<{
+  key: Key;
+  locators: readonly Locator[];
+  xrefPreferred: readonly Xref[];
+  xrefRelated: readonly Xref[];
+}>;
+export type Entry = Subentry & Readonly<{ subentries: readonly Subentry[] }>;
+export type Group = Readonly<{ key: Key; entries: readonly Entry[] }>;
+export type Index = Readonly<{ groups: readonly Group[] }>;
+
+export type SubentryBuilder = {
+  key: Key;
   locators: Locator[];
   xrefPreferred: Xref[];
   xrefRelated: Xref[];
 };
-export type Entry = Subentry & { subentries: Subentry[] };
+export type EntryBuilder = SubentryBuilder & { subentries: Map<string, SubentryBuilder> };
+export type GroupBuilder = { key: Key; entries: Map<string, EntryBuilder> };
+export type IndexBuilder = { groups: Map<string, GroupBuilder> };
 
-export function insertLocator(entry: Entry | Subentry, locator: Locator): void {
+export function createIndexBuilder(): IndexBuilder {
+  return { groups: new Map() };
+}
+
+const childKey = (key: Key): string => JSON.stringify([key.html, key.reading]);
+
+function ensureChild<TChild extends HasKey>(
+  children: Map<string, TChild>,
+  key: Key,
+  create: (key: Key) => TChild,
+): TChild {
+  const existing = children.get(childKey(key));
+  if (existing !== undefined) {
+    return existing;
+  }
+  const created = create(key);
+  children.set(childKey(key), created);
+  return created;
+}
+
+const createSubentryBuilder = (key: Key): SubentryBuilder => ({
+  key,
+  locators: [],
+  xrefPreferred: [],
+  xrefRelated: [],
+});
+const createEntryBuilder = (key: Key): EntryBuilder => ({
+  ...createSubentryBuilder(key),
+  subentries: new Map(),
+});
+const createGroupBuilder = (key: Key): GroupBuilder => ({ key, entries: new Map() });
+
+export function ensureEntry(
+  builder: IndexBuilder,
+  address: EntryAddress,
+): EntryBuilder | SubentryBuilder {
+  const group = ensureChild(builder.groups, address.group, createGroupBuilder);
+  const entry = ensureChild(group.entries, address.entry, createEntryBuilder);
+  return address.subentry === undefined
+    ? entry
+    : ensureChild(entry.subentries, address.subentry, createSubentryBuilder);
+}
+
+export function insertLocator(entry: EntryBuilder | SubentryBuilder, locator: Locator): void {
   entry.locators.push(locator);
 }
 
 const xrefListKey = {
   preferred: "xrefPreferred",
   related: "xrefRelated",
-} as const satisfies Record<XrefType, keyof (Entry | Subentry)>;
+} as const satisfies Record<XrefType, keyof SubentryBuilder>;
 
 export function insertXref(
-  entry: Entry | Subentry,
+  entry: EntryBuilder | SubentryBuilder,
   type: XrefType,
   target: EntryAddress,
   template: string,
 ): void {
   entry[xrefListKey[type]].push({ target, template });
 }
-export type Group = HasKey & { entries: Entry[] };
 
-export type Index = { groups: Group[] };
-
-export type ReadonlySubentry = Readonly<{
-  key: Key;
-  locators: readonly Locator[];
-  xrefPreferred: readonly Xref[];
-  xrefRelated: readonly Xref[];
-}>;
-export type ReadonlyEntry = ReadonlySubentry &
-  Readonly<{ subentries: readonly ReadonlySubentry[] }>;
-export type ReadonlyGroup = Readonly<{ key: Key; entries: readonly ReadonlyEntry[] }>;
-export type ReadonlyIndex = Readonly<{ groups: readonly ReadonlyGroup[] }>;
-
-const childLookups = new WeakMap<object, Map<string, HasKey>>();
-
-const childKey = (key: Key): string => JSON.stringify([key.html, key.reading]);
-
-function childLookup<TChild extends HasKey>(children: TChild[]): Map<string, TChild> {
-  const cached = childLookups.get(children);
-  if (cached !== undefined) {
-    return cached as Map<string, TChild>;
-  }
-  const built = new Map<string, TChild>();
-  for (const child of children) {
-    if (!built.has(childKey(child.key))) {
-      built.set(childKey(child.key), child);
-    }
-  }
-  childLookups.set(children, built);
-  return built;
-}
-
-export function getChild<TChild extends HasKey>(children: TChild[], key: Key) {
-  return childLookup(children).get(childKey(key));
-}
-
-export function ensureChild<TChild extends HasKey>(
-  children: TChild[],
-  key: Key,
-  init: Omit<TChild, "key">,
-) {
-  const lookup = childLookup(children);
-  const existing = lookup.get(childKey(key));
-  if (existing !== undefined) {
-    return existing;
-  }
-  const created = { key, ...init } as TChild;
-  children.push(created);
-  lookup.set(childKey(key), created);
-  return created;
-}
-
-export function ensureEntry(index: Index, address: EntryAddress): Entry | Subentry {
-  const group = ensureChild(index.groups, address.group, { entries: [] });
-  const entry = ensureChild(group.entries, address.entry, {
-    subentries: [],
-    locators: [],
-    xrefPreferred: [],
-    xrefRelated: [],
-  });
-  return address.subentry === undefined
-    ? entry
-    : ensureChild(entry.subentries, address.subentry, {
-        locators: [],
-        xrefPreferred: [],
-        xrefRelated: [],
-      });
-}
-
-export function findUnresolvedXref(index: Index, target: EntryAddress): UnresolvedXref | undefined {
-  const group = getChild(index.groups, target.group);
+export function findUnresolvedXref(
+  builder: IndexBuilder,
+  target: EntryAddress,
+): UnresolvedXref | undefined {
+  const group = builder.groups.get(childKey(target.group));
   if (!group) {
     return { target, missing: "group" };
   }
-  const entry = getChild(group.entries, target.entry);
+  const entry = group.entries.get(childKey(target.entry));
   if (!entry) {
     return { target, missing: "entry" };
   }
-  if (target.subentry !== undefined && !getChild(entry.subentries, target.subentry)) {
+  if (target.subentry !== undefined && !entry.subentries.has(childKey(target.subentry))) {
     return { target, missing: "subentry" };
   }
   return undefined;
 }
 
-export function labelInvalidXrefs(index: Index): ReadonlyMap<string, UnresolvedXref> {
+export function labelInvalidXrefs(builder: IndexBuilder): ReadonlyMap<string, UnresolvedXref> {
   const unresolvedByTarget = new Map<string, UnresolvedXref>();
   const resolvedTargets = new Set<string>();
   const resolve = (target: EntryAddress): UnresolvedXref | undefined => {
@@ -163,7 +153,7 @@ export function labelInvalidXrefs(index: Index): ReadonlyMap<string, UnresolvedX
     if (known !== undefined) {
       return known;
     }
-    const unresolvedXref = findUnresolvedXref(index, target);
+    const unresolvedXref = findUnresolvedXref(builder, target);
     if (unresolvedXref === undefined) {
       resolvedTargets.add(targetKey);
     } else {
@@ -176,15 +166,34 @@ export function labelInvalidXrefs(index: Index): ReadonlyMap<string, UnresolvedX
     template: xref.template,
     ...(resolve(xref.target) === undefined ? {} : { error: "invalid-xref" }),
   });
-  for (const group of index.groups) {
-    for (const entry of group.entries) {
+  for (const group of builder.groups.values()) {
+    for (const entry of group.entries.values()) {
       entry.xrefPreferred = entry.xrefPreferred.map(label);
       entry.xrefRelated = entry.xrefRelated.map(label);
-      for (const subentry of entry.subentries) {
+      for (const subentry of entry.subentries.values()) {
         subentry.xrefPreferred = subentry.xrefPreferred.map(label);
         subentry.xrefRelated = subentry.xrefRelated.map(label);
       }
     }
   }
   return unresolvedByTarget;
+}
+
+const finalizeSubentry = (subentry: SubentryBuilder): Subentry => ({
+  key: subentry.key,
+  locators: [...subentry.locators],
+  xrefPreferred: [...subentry.xrefPreferred],
+  xrefRelated: [...subentry.xrefRelated],
+});
+
+export function finalizeIndex(builder: IndexBuilder): Index {
+  return {
+    groups: [...builder.groups.values()].map((group) => ({
+      key: group.key,
+      entries: [...group.entries.values()].map((entry) => ({
+        ...finalizeSubentry(entry),
+        subentries: [...entry.subentries.values()].map(finalizeSubentry),
+      })),
+    })),
+  };
 }

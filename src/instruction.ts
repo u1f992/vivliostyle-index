@@ -3,7 +3,7 @@ import {
   insertLocator,
   insertXref,
   type EntryAddress,
-  type Index,
+  type IndexBuilder,
   type Key,
   type LocatorError,
   type XrefType,
@@ -391,12 +391,12 @@ type RangeInstruction = Extract<ParsedInstruction, { type: "range-start" }>;
 type XrefInstruction = Extract<ParsedInstruction, { type: XrefType }>;
 
 export function applyPageInstruction(
-  index: Index,
+  builder: IndexBuilder,
   instruction: PageInstruction,
   locationHref: string,
   error?: LocatorError,
 ): void {
-  insertLocator(ensureEntry(index, instruction.address), {
+  insertLocator(ensureEntry(builder, instruction.address), {
     location: { type: "page", href: locationHref },
     template: instruction.template,
     ...(error === undefined ? {} : { error }),
@@ -404,20 +404,20 @@ export function applyPageInstruction(
 }
 
 export function applyRangeInstruction(
-  index: Index,
+  builder: IndexBuilder,
   instruction: RangeInstruction,
   startHref: string,
   endHref: string,
 ): void {
-  insertLocator(ensureEntry(index, instruction.address), {
+  insertLocator(ensureEntry(builder, instruction.address), {
     location: { type: "range", start: startHref, end: endHref },
     template: instruction.template,
   });
 }
 
-export function applyXrefInstruction(index: Index, instruction: XrefInstruction): void {
+export function applyXrefInstruction(builder: IndexBuilder, instruction: XrefInstruction): void {
   insertXref(
-    ensureEntry(index, instruction.address),
+    ensureEntry(builder, instruction.address),
     instruction.type,
     instruction.target,
     instruction.template,

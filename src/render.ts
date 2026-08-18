@@ -6,10 +6,10 @@ import type {
   Key,
   Locator,
   LocatorError,
-  ReadonlyEntry,
-  ReadonlyGroup,
-  ReadonlyIndex,
-  ReadonlySubentry,
+  Entry,
+  Group,
+  Index,
+  Subentry,
   Xref,
   XrefError,
   XrefType,
@@ -294,10 +294,10 @@ export type IndexRenderer = Readonly<{
 
 const defaultIndexCompose: NonNullable<IndexRenderer["compose"]> = ({ groupList }) => groupList;
 
-export type CreateRenderer = (context: { h: typeof h; index: ReadonlyIndex }) => IndexRenderer;
+export type CreateRenderer = (context: { h: typeof h; index: Index }) => IndexRenderer;
 
 export function renderIndex(
-  index: ReadonlyIndex,
+  index: Index,
   target: hast.Element,
   indexId: string,
   renderer: IndexRenderer,
@@ -330,7 +330,7 @@ const renderHeading = (key: Key, renderer: HeadingOwner): hast.ElementContent[] 
 };
 
 const renderGroup = (
-  group: ReadonlyGroup,
+  group: Group,
   properties: RoleProperties<"group">,
   indexId: string,
   renderer: GroupRenderer,
@@ -355,7 +355,7 @@ const renderGroup = (
 };
 
 const renderEntry = (
-  entry: ReadonlyEntry,
+  entry: Entry,
   properties: IdProperties,
   indexId: string,
   groupKey: Key,
@@ -394,7 +394,7 @@ const renderEntry = (
 };
 
 const renderSubentry = (
-  subentry: ReadonlySubentry,
+  subentry: Subentry,
   properties: IdProperties,
   indexId: string,
   renderer: SubentryRenderer,

@@ -29,12 +29,12 @@ function keysOf(groups: readonly Group[]): [string, string][] {
   return groups.map(({ key }) => [key.html, key.reading]);
 }
 
-function createSubentry(key: Key): Subentry {
-  return { key, locators: [], xrefPreferred: [], xrefRelated: [] };
+function createSubentry(key: Key, parts?: Partial<Subentry>): Subentry {
+  return { key, locators: [], xrefPreferred: [], xrefRelated: [], ...parts };
 }
 
-function createEntry(key: Key): Entry {
-  return { key, subentries: [], locators: [], xrefPreferred: [], xrefRelated: [] };
+function createEntry(key: Key, parts?: Partial<Entry>): Entry {
+  return { key, subentries: [], locators: [], xrefPreferred: [], xrefRelated: [], ...parts };
 }
 
 void test("creates comparators for every index collection", () => {
@@ -185,16 +185,16 @@ void test("distinguishes listed keys that share the concatenation of their field
 
 void test("hands the locale to every collection of the default comparator", () => {
   const xref = (key: Key) => createXref({ group: plainKey("a"), entry: key });
-  const subentry = (key: Key): Subentry => {
-    const created = createSubentry(key);
-    created.xrefPreferred.push(xref(umlaut), xref(z));
-    created.xrefRelated.push(xref(umlaut), xref(z));
-    return created;
-  };
-  const entry = createEntry(umlaut);
-  entry.subentries.push(subentry(umlaut), subentry(z));
-  entry.xrefPreferred.push(xref(umlaut), xref(z));
-  entry.xrefRelated.push(xref(umlaut), xref(z));
+  const subentry = (key: Key): Subentry =>
+    createSubentry(key, {
+      xrefPreferred: [xref(umlaut), xref(z)],
+      xrefRelated: [xref(umlaut), xref(z)],
+    });
+  const entry = createEntry(umlaut, {
+    subentries: [subentry(umlaut), subentry(z)],
+    xrefPreferred: [xref(umlaut), xref(z)],
+    xrefRelated: [xref(umlaut), xref(z)],
+  });
   const index: Index = {
     groups: [{ key: plainKey("a"), entries: [entry, createEntry(z)] }],
   };
@@ -220,10 +220,14 @@ void test("hands the locale to every collection of the default comparator", () =
 });
 
 void test("orders cross-references by the listed order of their targets", () => {
-  const entry = createEntry({ html: "著作権", reading: "ちょさくけん" });
-  entry.xrefRelated.push(
-    createXref({ group: aRow, entry: { html: "著作", reading: "ちょさく" } }),
-    createXref({ group: kaRow, entry: { html: "権利", reading: "けんり" } }),
+  const entry = createEntry(
+    { html: "著作権", reading: "ちょさくけん" },
+    {
+      xrefRelated: [
+        createXref({ group: aRow, entry: { html: "著作", reading: "ちょさく" } }),
+        createXref({ group: kaRow, entry: { html: "権利", reading: "けんり" } }),
+      ],
+    },
   );
   const index: Index = { groups: [{ key: aRow, entries: [entry] }] };
 
@@ -239,11 +243,12 @@ void test("orders cross-references by the listed order of their targets", () => 
 });
 
 void test("orders cross-references by their group before their entry", () => {
-  const entry = createEntry(plainKey("copyright"));
-  entry.xrefPreferred.push(
-    createXref({ group: plainKey("z-group"), entry: plainKey("a-entry") }),
-    createXref({ group: plainKey("a-group"), entry: plainKey("z-entry") }),
-  );
+  const entry = createEntry(plainKey("copyright"), {
+    xrefPreferred: [
+      createXref({ group: plainKey("z-group"), entry: plainKey("a-entry") }),
+      createXref({ group: plainKey("a-group"), entry: plainKey("z-entry") }),
+    ],
+  });
   const index: Index = { groups: [{ key: plainKey("a"), entries: [entry] }] };
 
   const sorted = sort(index, defaultComparator("en"));
@@ -255,13 +260,17 @@ void test("orders cross-references by their group before their entry", () => {
 });
 
 void test("orders cross-references by their subentry when the listed headings agree", () => {
-  const entry = createEntry({ html: "著作権", reading: "ちょさくけん" });
   const target = { group: aRow, entry: { html: "相続", reading: "そうぞく" } };
   const inheritor = { html: "相続人", reading: "そうぞくにん" };
   const exclusive = { html: "一身専属", reading: "いっしんせんぞく" };
-  entry.xrefRelated.push(
-    createXref({ ...target, subentry: exclusive }),
-    createXref({ ...target, subentry: inheritor }),
+  const entry = createEntry(
+    { html: "著作権", reading: "ちょさくけん" },
+    {
+      xrefRelated: [
+        createXref({ ...target, subentry: exclusive }),
+        createXref({ ...target, subentry: inheritor }),
+      ],
+    },
   );
   const index: Index = { groups: [{ key: aRow, entries: [entry] }] };
 
@@ -277,13 +286,14 @@ void test("orders cross-references by their subentry when the listed headings ag
 });
 
 void test("orders a cross-reference to an entry before one to its subentry", () => {
-  const entry = createEntry(plainKey("copyright"));
   const target = { group: plainKey("a"), entry: plainKey("inheritance") };
-  entry.xrefPreferred.push(
-    createXref({ ...target, subentry: plainKey("exclusive") }),
-    createXref(target),
-    createXref({ ...target, subentry: plainKey("heir") }),
-  );
+  const entry = createEntry(plainKey("copyright"), {
+    xrefPreferred: [
+      createXref({ ...target, subentry: plainKey("exclusive") }),
+      createXref(target),
+      createXref({ ...target, subentry: plainKey("heir") }),
+    ],
+  });
   const index: Index = { groups: [{ key: plainKey("a"), entries: [entry] }] };
 
   const sorted = sort(index, defaultComparator("en"));
@@ -295,28 +305,28 @@ void test("orders a cross-reference to an entry before one to its subentry", () 
 });
 
 void test("sorts every collection of the index with its own comparator", () => {
-  const subentry = (name: string): Subentry => {
-    const created = createSubentry(plainKey(name));
-    created.xrefPreferred.push(
-      createXref({ group: plainKey("a"), entry: plainKey("z-sub-preferred") }),
-      createXref({ group: plainKey("a"), entry: plainKey("a-sub-preferred") }),
-    );
-    created.xrefRelated.push(
-      createXref({ group: plainKey("a"), entry: plainKey("z-sub-related") }),
-      createXref({ group: plainKey("a"), entry: plainKey("a-sub-related") }),
-    );
-    return created;
-  };
-  const entry = createEntry(plainKey("a-entry"));
-  entry.subentries.push(subentry("z-sub"), subentry("a-sub"));
-  entry.xrefPreferred.push(
-    createXref({ group: plainKey("a"), entry: plainKey("z-preferred") }),
-    createXref({ group: plainKey("a"), entry: plainKey("a-preferred") }),
-  );
-  entry.xrefRelated.push(
-    createXref({ group: plainKey("a"), entry: plainKey("z-related") }),
-    createXref({ group: plainKey("a"), entry: plainKey("a-related") }),
-  );
+  const subentry = (name: string): Subentry =>
+    createSubentry(plainKey(name), {
+      xrefPreferred: [
+        createXref({ group: plainKey("a"), entry: plainKey("z-sub-preferred") }),
+        createXref({ group: plainKey("a"), entry: plainKey("a-sub-preferred") }),
+      ],
+      xrefRelated: [
+        createXref({ group: plainKey("a"), entry: plainKey("z-sub-related") }),
+        createXref({ group: plainKey("a"), entry: plainKey("a-sub-related") }),
+      ],
+    });
+  const entry = createEntry(plainKey("a-entry"), {
+    subentries: [subentry("z-sub"), subentry("a-sub")],
+    xrefPreferred: [
+      createXref({ group: plainKey("a"), entry: plainKey("z-preferred") }),
+      createXref({ group: plainKey("a"), entry: plainKey("a-preferred") }),
+    ],
+    xrefRelated: [
+      createXref({ group: plainKey("a"), entry: plainKey("z-related") }),
+      createXref({ group: plainKey("a"), entry: plainKey("a-related") }),
+    ],
+  });
   const index: Index = {
     groups: [
       { key: plainKey("z-group"), entries: [] },
@@ -360,12 +370,13 @@ void test("sorts every collection of the index with its own comparator", () => {
 });
 
 void test("leaves the given index untouched", () => {
-  const entry = createEntry(plainKey("z-entry"));
-  entry.subentries.push(createSubentry(plainKey("z-sub")), createSubentry(plainKey("a-sub")));
-  entry.xrefPreferred.push(
-    createXref({ group: plainKey("a"), entry: plainKey("z-preferred") }),
-    createXref({ group: plainKey("a"), entry: plainKey("a-preferred") }),
-  );
+  const entry = createEntry(plainKey("z-entry"), {
+    subentries: [createSubentry(plainKey("z-sub")), createSubentry(plainKey("a-sub"))],
+    xrefPreferred: [
+      createXref({ group: plainKey("a"), entry: plainKey("z-preferred") }),
+      createXref({ group: plainKey("a"), entry: plainKey("a-preferred") }),
+    ],
+  });
   const index: Index = {
     groups: [
       { key: plainKey("z-group"), entries: [entry] },
