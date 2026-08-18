@@ -258,10 +258,11 @@ export function startCommand(
       stopError = error;
     });
   };
-  const disposeAbort = () => {
+  let closeResult: Readonly<{ code: number | null; signal: NodeJS.Signals | null }> | undefined;
+  child.once("close", (code, signal) => {
+    closeResult = { code, signal };
     options.signal?.removeEventListener("abort", handleAbort);
-  };
-  child.once("close", disposeAbort);
+  });
   options.signal?.addEventListener("abort", handleAbort, { once: true });
   if (options.signal?.aborted) {
     handleAbort();
@@ -274,10 +275,12 @@ export function startCommand(
       new Promise((resolve, reject) => {
         const findMatch = () => {
           const match = output.match(pattern);
-          if (match) {
-            dispose();
-            resolve(match);
+          if (!match) {
+            return false;
           }
+          dispose();
+          resolve(match);
+          return true;
         };
         const handleData = () => {
           findMatch();
@@ -311,7 +314,9 @@ export function startCommand(
         child.stderr.on("data", handleData);
         child.once("error", handleError);
         child.once("close", handleExit);
-        findMatch();
+        if (!findMatch() && closeResult !== undefined) {
+          handleExit(closeResult.code, closeResult.signal);
+        }
       }),
     stop,
   };
