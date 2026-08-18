@@ -14,21 +14,15 @@ const index = createIndexPlugin({
       {
         renderer: ({ h }) => {
           const locatorList = (): LocatorListRenderer => ({
-            locator: ({ locator }) =>
+            locator: ({ locator, properties }) =>
               locator.location.type === "range"
-                ? [
-                    h("a", { href: locator.location.start }),
-                    h("span"),
-                    h("a", { href: locator.location.end }),
-                  ]
-                : [
-                    h("a", { dataIndexRole: "page", href: locator.location.href }, [
-                      h("span", {
-                        dataIndexRole: "page-number",
-                        dataIndexPageTarget: locator.location.href,
-                      }),
-                    ]),
-                  ],
+                ? {
+                    pageNumber: ({ properties, target }) => [
+                      h("a", { ...properties, href: target }),
+                    ],
+                    self: ({ contents }) => [h("span", properties, contents)],
+                  }
+                : {},
           });
           return {
             preamble: () => [

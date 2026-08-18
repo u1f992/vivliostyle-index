@@ -36,7 +36,14 @@ export type HeadingRenderer = (parts: {
   contents: Content;
 }) => Content;
 
-export type LocatorRenderer = (parts: { locator: Locator }) => Content;
+export type LocatorRenderer = Readonly<{
+  pageNumber?(context: {
+    target: string;
+    properties: RoleProperties<"page-number"> & Readonly<{ dataIndexPageTarget: string }>;
+  }): Content;
+  rangeSeparator?(context: { properties: RoleProperties<"range-separator"> }): Content;
+  self?(parts: { href: string; contents: Content }): Content;
+}>;
 
 export type XrefRenderer = (parts: {
   xref: Xref;
@@ -46,7 +53,10 @@ export type XrefRenderer = (parts: {
 }) => Content;
 
 export type LocatorListRenderer = Readonly<{
-  locator?: LocatorRenderer;
+  locator?(context: {
+    locator: Locator;
+    properties: RoleProperties<"page" | "range">;
+  }): LocatorRenderer;
   self?(parts: { locators: readonly RenderedLocator[] }): Content;
 }>;
 
@@ -315,25 +325,36 @@ const renderLocatorList = (
   );
 };
 
-const defaultPageNumber = (target: string): hast.Element =>
-  h("span", { dataIndexRole: "page-number", dataIndexPageTarget: target });
+const renderPageNumber = (target: string, renderer: LocatorRenderer): Content => {
+  const properties = { dataIndexRole: "page-number", dataIndexPageTarget: target } as const;
+  return renderer.pageNumber?.({ target, properties }) ?? [h("span", properties)];
+};
 
-const defaultLocatorAnchor = ({ location }: Locator): Content =>
-  location.type === "page"
-    ? [h("a", { dataIndexRole: "page", href: location.href }, [defaultPageNumber(location.href)])]
-    : [
-        h("a", { dataIndexRole: "range", href: location.start }, [
-          defaultPageNumber(location.start),
-          h("span", { dataIndexRole: "range-separator" }),
-          defaultPageNumber(location.end),
-        ]),
-      ];
+const renderLocatorContents = ({ location }: Locator, renderer: LocatorRenderer): Content => {
+  if (location.type === "page") {
+    return renderPageNumber(location.href, renderer);
+  }
+  const separatorProperties = { dataIndexRole: "range-separator" } as const;
+  return [
+    ...renderPageNumber(location.start, renderer),
+    ...(renderer.rangeSeparator?.({ properties: separatorProperties }) ?? [
+      h("span", separatorProperties),
+    ]),
+    ...renderPageNumber(location.end, renderer),
+  ];
+};
 
-const renderLocator = (locator: Locator, renderer: LocatorListRenderer): Content => {
-  const properties = {};
-  const content = renderer.locator?.({ locator }) ?? defaultLocatorAnchor(locator);
+const renderLocator = (locator: Locator, listRenderer: LocatorListRenderer): Content => {
+  const { location } = locator;
+  const properties = { dataIndexRole: location.type } as const;
+  const renderer = listRenderer.locator?.({ locator, properties }) ?? {};
+  const href = location.type === "page" ? location.href : location.start;
+  const contents = renderLocatorContents(locator, renderer);
+  const content = renderer.self?.({ href, contents }) ?? [
+    h("a", { ...properties, href }, contents),
+  ];
   const children = fillSlot(locator.template, content);
-  return children.length === 0 ? [] : [h("li", properties, children)];
+  return children.length === 0 ? [] : [h("li", children)];
 };
 
 const xrefId = (indexId: string, { group, entry, subentry }: EntryAddress): string =>

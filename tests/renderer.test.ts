@@ -15,6 +15,7 @@ import {
   type HeadingRenderer,
   type IndexRenderer,
   type LocatorListRenderer,
+  type LocatorRenderer,
   type SubentryRenderer,
   type XrefListRenderer,
 } from "../src/render.ts";
@@ -327,14 +328,30 @@ void test("keeps the receiver of entry and subentry list factory methods", () =>
   assert.strictEqual(subentryCalls, 3);
 });
 
-void test("keeps the receiver of every leaf renderer", () => {
+void test("keeps the receiver of every renderer method", () => {
   const target = createTarget();
   const leafCalls: string[] = [];
-  const locatorListRenderer: LocatorListRenderer = {
-    locator() {
-      assert.strictEqual(this, locatorListRenderer);
-      leafCalls.push("locator");
+  const locatorRenderer: LocatorRenderer = {
+    pageNumber({ properties, target }) {
+      assert.strictEqual(this, locatorRenderer);
+      assert.strictEqual(properties.dataIndexRole, "page-number");
+      assert.strictEqual(properties.dataIndexPageTarget, target);
+      leafCalls.push("page-number");
       return [];
+    },
+    self({ href }) {
+      assert.strictEqual(this, locatorRenderer);
+      assert.strictEqual(href.length > 0, true);
+      leafCalls.push("locator-self");
+      return [];
+    },
+  };
+  const locatorListRenderer: LocatorListRenderer = {
+    locator({ locator, properties }) {
+      assert.strictEqual(this, locatorListRenderer);
+      assert.strictEqual(properties.dataIndexRole, locator.location.type);
+      leafCalls.push("locator");
+      return locatorRenderer;
     },
   };
   const xrefListRenderer: XrefListRenderer = {
@@ -381,8 +398,12 @@ void test("keeps the receiver of every leaf renderer", () => {
     "group-heading",
     "entry-heading",
     "locator",
+    "page-number",
+    "locator-self",
     "subentry-heading",
     "locator",
+    "page-number",
+    "locator-self",
     "xref",
   ]);
   assert.strictEqual(selectAll('[data-index-role="locator-list"] > li', root).length, 0);
@@ -547,7 +568,7 @@ void test("calls every nested list self function for an empty list", () => {
   );
 });
 
-void test("applies a locator template after the locator leaf", () => {
+void test("applies a locator template after the nested locator renderer", () => {
   const target = createTarget();
   const rangeIndex: Index = {
     children: [
@@ -576,14 +597,18 @@ void test("applies a locator template after the locator leaf", () => {
         entryList: () => ({
           entry: () => ({
             locatorList: ({ properties: listProperties }) => ({
-              locator: ({ locator }) =>
-                locator.location.type === "page"
-                  ? [h("a", { href: locator.location.href })]
-                  : [
-                      h("a", { href: locator.location.start }),
-                      h("span", "から"),
-                      h("a", { href: locator.location.end }),
-                    ],
+              locator: ({ locator, properties: locatorProperties }) => {
+                assert.strictEqual(locatorProperties.dataIndexRole, locator.location.type);
+                return locator.location.type === "page"
+                  ? {}
+                  : {
+                      pageNumber: ({ properties, target }) => [
+                        h("a", { ...properties, href: target }),
+                      ],
+                      rangeSeparator: ({ properties }) => [h("span", properties, "から")],
+                      self: ({ contents }) => [h("span", locatorProperties, contents)],
+                    };
+              },
               self: ({ locators }) => [
                 h(
                   "ol",
@@ -602,11 +627,21 @@ void test("applies a locator template after the locator leaf", () => {
   const root = rootOf(target);
 
   assert.deepStrictEqual(
-    selectAll(`${LOCATORS} > li > strong > *`, root).map((element) => element.tagName),
+    selectAll(`${LOCATORS} > li > strong > span[data-index-role="range"] > *`, root).map(
+      (element) => element.tagName,
+    ),
     ["a", "span", "a"],
   );
   assert.deepStrictEqual(
-    selectAll(`${LOCATORS} > li > strong > a`, root).map((link) => getAttribute(link, "href")),
+    selectAll(`${LOCATORS} > li > strong > span[data-index-role="range"] > a`, root).map((link) =>
+      getAttribute(link, "href"),
+    ),
+    ["104.html#a", "110.html#b"],
+  );
+  assert.deepStrictEqual(
+    selectAll(`${LOCATORS} [data-index-role="page-number"]`, root).map((pageNumber) =>
+      getAttribute(pageNumber, "data-index-page-target"),
+    ),
     ["104.html#a", "110.html#b"],
   );
 });
@@ -689,10 +724,11 @@ void test("uses the same leaf and list contracts for subentries", () => {
             subentryList: ({ properties: subentryListProperties }) => ({
               subentry: ({ subentry, properties: subentryProperties }) => ({
                 locatorList: ({ properties: locatorListProperties }) => ({
-                  locator: ({ locator }) =>
-                    locator.location.type === "page"
-                      ? [h("a", { href: locator.location.href, dataItem: subentry.reading })]
-                      : [],
+                  locator: ({ properties }) => ({
+                    self: ({ href, contents }) => [
+                      h("a", { ...properties, href, dataItem: subentry.reading }, contents),
+                    ],
+                  }),
                   self: ({ locators }) => [
                     h(
                       "ol",
