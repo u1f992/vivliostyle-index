@@ -128,8 +128,12 @@ export function createIndexPlugin({
 
 export const logMessages: unified.Plugin = () => (_tree, file) => {
   for (const message of file.messages) {
+    const location = [message.file, message.line ?? 1, message.column ?? 1]
+      .filter((part) => part !== undefined && part !== "")
+      .join(":");
     const origin = [message.source, message.ruleId].filter(Boolean).join(":");
-    const output = origin === "" ? String(message) : `${String(message)} ${origin}`;
+    const report = `${location}: ${message.reason}`;
+    const output = origin === "" ? report : `${report} (${origin})`;
     if (message.fatal === true) {
       console.error(output);
     } else if (message.fatal === false) {
