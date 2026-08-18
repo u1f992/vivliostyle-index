@@ -7,7 +7,7 @@ import { selectAll } from "hast-util-select";
 import { toText } from "hast-util-to-text";
 import { h } from "hastscript";
 
-import type { Index } from "../src/model.ts";
+import { createKey, type Index } from "../src/model.ts";
 import {
   renderIndex,
   type EntryRenderer,
@@ -28,10 +28,10 @@ import { identityTemplate } from "../src/template.ts";
 const index: Index = {
   groups: [
     {
-      key: { html: "ち", reading: "ち" },
+      key: createKey("ち", "ち"),
       entries: [
         {
-          key: { html: "著作権", reading: "ちょさくけん" },
+          key: createKey("ちょさくけん", "著作権"),
           subentries: [],
           locators: [
             { location: { type: "page", href: "003.html#a" }, template: identityTemplate },
@@ -42,10 +42,10 @@ const index: Index = {
       ],
     },
     {
-      key: { html: "そ", reading: "そ" },
+      key: createKey("そ", "そ"),
       entries: [
         {
-          key: { html: "相続", reading: "そうぞく" },
+          key: createKey("そうぞく", "相続"),
           subentries: [],
           locators: [
             { location: { type: "page", href: "088.html#b" }, template: identityTemplate },
@@ -61,21 +61,21 @@ const index: Index = {
 const indexWithSubentry: Index = {
   groups: [
     {
-      key: { html: "そ", reading: "そ" },
+      key: createKey("そ", "そ"),
       entries: [
         {
-          key: { html: "相続", reading: "そうぞく" },
+          key: createKey("そうぞく", "相続"),
           subentries: [
             {
-              key: { html: "一身専属", reading: "いっしんせんぞく" },
+              key: createKey("いっしんせんぞく", "一身専属"),
               locators: [
                 { location: { type: "page", href: "076.html#c" }, template: identityTemplate },
               ],
               xrefPreferred: [
                 {
                   target: {
-                    group: { html: "そ", reading: "そ" },
-                    entry: { html: "相続", reading: "そうぞく" },
+                    group: createKey("そ", "そ"),
+                    entry: createKey("そうぞく", "相続"),
                   },
                   template: identityTemplate,
                 },
@@ -558,10 +558,10 @@ void test("calls every nested list compose function for an empty list", () => {
   const emptyLists: Index = {
     groups: [
       {
-        key: { html: "あ", reading: "あ" },
+        key: createKey("あ", "あ"),
         entries: [
           {
-            key: { html: "A", reading: "あ" },
+            key: createKey("あ", "A"),
             locators: [],
             xrefPreferred: [],
             xrefRelated: [],
@@ -585,10 +585,10 @@ void test("applies a locator template after the nested locator renderer", () => 
   const rangeIndex: Index = {
     groups: [
       {
-        key: { html: "し", reading: "し" },
+        key: createKey("し", "し"),
         entries: [
           {
-            key: { html: "自由利用", reading: "じゆうりよう" },
+            key: createKey("じゆうりよう", "自由利用"),
             locators: [
               {
                 location: { type: "range", start: "104.html#a", end: "110.html#b" },
@@ -665,17 +665,17 @@ void test("applies xref templates after their distinct nested renderers", () => 
   const xrefIndex: Index = {
     groups: [
       {
-        key: { html: "し", reading: "し" },
+        key: createKey("し", "し"),
         entries: [
           {
-            key: { html: "自由利用", reading: "じゆうりよう" },
+            key: createKey("じゆうりよう", "自由利用"),
             locators: [],
             xrefPreferred: [
               {
                 target: {
-                  group: { html: "そ", reading: "そ" },
-                  entry: { html: "相続", reading: "そうぞく" },
-                  subentry: { html: "一身専属", reading: "いっしんせんぞく" },
+                  group: createKey("そ", "そ"),
+                  entry: createKey("そうぞく", "相続"),
+                  subentry: createKey("いっしんせんぞく", "一身専属"),
                 },
                 template: "<em><slot></slot></em>",
               },
@@ -683,9 +683,9 @@ void test("applies xref templates after their distinct nested renderers", () => 
             xrefRelated: [
               {
                 target: {
-                  group: { html: "そ", reading: "そ" },
-                  entry: { html: "相続", reading: "そうぞく" },
-                  subentry: { html: "一身専属", reading: "いっしんせんぞく" },
+                  group: createKey("そ", "そ"),
+                  entry: createKey("そうぞく", "相続"),
+                  subentry: createKey("いっしんせんぞく", "一身専属"),
                 },
                 template: "<strong><slot></slot></strong>",
               },

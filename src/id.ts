@@ -1,12 +1,34 @@
 import type { Key } from "./model.ts";
 
-const idSegmentEncoder = new TextEncoder();
+// TextEncoder is not injective: WHATWG Encoding replaces lone surrogates with U+FFFD.
+const wtf8Bytes = (value: string): number[] => {
+  const bytes: number[] = [];
+  for (const character of value) {
+    const codePoint = character.codePointAt(0)!;
+    if (codePoint <= 0x7f) {
+      bytes.push(codePoint);
+    } else if (codePoint <= 0x7ff) {
+      bytes.push(0xc0 | (codePoint >> 6), 0x80 | (codePoint & 0x3f));
+    } else if (codePoint <= 0xffff) {
+      bytes.push(
+        0xe0 | (codePoint >> 12),
+        0x80 | ((codePoint >> 6) & 0x3f),
+        0x80 | (codePoint & 0x3f),
+      );
+    } else {
+      bytes.push(
+        0xf0 | (codePoint >> 18),
+        0x80 | ((codePoint >> 12) & 0x3f),
+        0x80 | ((codePoint >> 6) & 0x3f),
+        0x80 | (codePoint & 0x3f),
+      );
+    }
+  }
+  return bytes;
+};
 
 const encodeIdSegment = (value: string): string => {
-  const binary = [...idSegmentEncoder.encode(value)].reduce(
-    (binary, byte) => binary + String.fromCharCode(byte),
-    "",
-  );
+  const binary = wtf8Bytes(value).reduce((binary, byte) => binary + String.fromCharCode(byte), "");
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 };
 

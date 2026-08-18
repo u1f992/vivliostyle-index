@@ -6,17 +6,17 @@ import { getAttribute } from "hast-util-get-attribute";
 import { select, selectAll } from "hast-util-select";
 import { toText } from "hast-util-to-text";
 
-import type { Index } from "../src/model.ts";
+import { createKey, type Index } from "../src/model.ts";
 import { renderIndex } from "../src/render.ts";
 import { identityTemplate } from "../src/template.ts";
 
 const index: Index = {
   groups: [
     {
-      key: { html: "ち", reading: "ち" },
+      key: createKey("ち", "ち"),
       entries: [
         {
-          key: { html: "著作権", reading: "ちょさくけん" },
+          key: createKey("ちょさくけん", "著作権"),
           subentries: [],
           locators: [
             { location: { type: "page", href: "003.html#a" }, template: identityTemplate },
@@ -27,10 +27,10 @@ const index: Index = {
       ],
     },
     {
-      key: { html: "そ", reading: "そ" },
+      key: createKey("そ", "そ"),
       entries: [
         {
-          key: { html: "相続", reading: "そうぞく" },
+          key: createKey("そうぞく", "相続"),
           subentries: [],
           locators: [
             { location: { type: "page", href: "088.html#b" }, template: identityTemplate },
@@ -83,13 +83,13 @@ void test("wraps every key in an element of its own", () => {
   const indexWithSubentry: Index = {
     groups: [
       {
-        key: { html: "そ", reading: "そ" },
+        key: createKey("そ", "そ"),
         entries: [
           {
-            key: { html: "相続", reading: "そうぞく" },
+            key: createKey("そうぞく", "相続"),
             subentries: [
               {
-                key: { html: "一身専属", reading: "いっしんせんぞく" },
+                key: createKey("いっしんせんぞく", "一身専属"),
                 locators: [
                   { location: { type: "page", href: "076.html#c" }, template: identityTemplate },
                 ],
@@ -137,18 +137,18 @@ void test("gives every entry the same lists in the same order", () => {
   const indexWithEveryList: Index = {
     groups: [
       {
-        key: { html: "あ", reading: "あ" },
+        key: createKey("あ", "あ"),
         entries: [
           {
-            key: { html: "A", reading: "あ" },
+            key: createKey("あ", "A"),
             locators: [
               { location: { type: "page", href: "001.html#a" }, template: identityTemplate },
             ],
             xrefPreferred: [
               {
                 target: {
-                  group: { html: "い", reading: "い" },
-                  entry: { html: "B", reading: "び" },
+                  group: createKey("い", "い"),
+                  entry: createKey("び", "B"),
                 },
                 template: identityTemplate,
               },
@@ -156,15 +156,15 @@ void test("gives every entry the same lists in the same order", () => {
             xrefRelated: [
               {
                 target: {
-                  group: { html: "う", reading: "う" },
-                  entry: { html: "C", reading: "し" },
+                  group: createKey("う", "う"),
+                  entry: createKey("し", "C"),
                 },
                 template: identityTemplate,
               },
             ],
             subentries: [
               {
-                key: { html: "D", reading: "でぃ" },
+                key: createKey("でぃ", "D"),
                 locators: [],
                 xrefPreferred: [],
                 xrefRelated: [],
@@ -174,10 +174,10 @@ void test("gives every entry the same lists in the same order", () => {
         ],
       },
       {
-        key: { html: "え", reading: "え" },
+        key: createKey("え", "え"),
         entries: [
           {
-            key: { html: "E", reading: "い" },
+            key: createKey("い", "E"),
             locators: [
               { location: { type: "page", href: "002.html#b" }, template: identityTemplate },
             ],
@@ -238,10 +238,10 @@ void test("wraps a locator in the template of its instruction", () => {
   const indexWithTemplate: Index = {
     groups: [
       {
-        key: { html: "し", reading: "し" },
+        key: createKey("し", "し"),
         entries: [
           {
-            key: { html: "自由利用", reading: "じゆうりよう" },
+            key: createKey("じゆうりよう", "自由利用"),
             locators: [
               {
                 location: { type: "page", href: "104.html#a" },
@@ -253,7 +253,7 @@ void test("wraps a locator in the template of its instruction", () => {
             xrefRelated: [],
             subentries: [
               {
-                key: { html: "私的複製", reading: "してきふくせい" },
+                key: createKey("してきふくせい", "私的複製"),
                 locators: [
                   {
                     location: { type: "page", href: "106.html#c" },
@@ -295,16 +295,16 @@ void test("wraps a cross-reference in the template of its instruction", () => {
   const indexWithTemplate: Index = {
     groups: [
       {
-        key: { html: "ち", reading: "ち" },
+        key: createKey("ち", "ち"),
         entries: [
           {
-            key: { html: "著作権", reading: "ちょさくけん" },
+            key: createKey("ちょさくけん", "著作権"),
             locators: [],
             xrefPreferred: [
               {
                 target: {
-                  group: { html: "ち", reading: "ち" },
-                  entry: { html: "知的財産権", reading: "ちてきざいさんけん" },
+                  group: createKey("ち", "ち"),
+                  entry: createKey("ちてきざいさんけん", "知的財産権"),
                 },
                 template: "<strong>→<slot></slot></strong>",
               },
@@ -312,8 +312,8 @@ void test("wraps a cross-reference in the template of its instruction", () => {
             xrefRelated: [
               {
                 target: {
-                  group: { html: "は", reading: "は" },
-                  entry: { html: "パブリックドメイン", reading: "ぱぶりっくどめいん" },
+                  group: createKey("は", "は"),
+                  entry: createKey("ぱぶりっくどめいん", "パブリックドメイン"),
                 },
                 template: identityTemplate,
               },
@@ -353,10 +353,10 @@ void test("names the keys of the exposed index", () => {
   const indexWithEveryKey: Index = {
     groups: [
       {
-        key: { html: "あ", reading: "あ" },
+        key: createKey("あ", "あ"),
         entries: [
           {
-            key: { html: "A", reading: "あ" },
+            key: createKey("あ", "A"),
             locators: [
               {
                 location: { type: "page", href: "001.html#a" },
@@ -366,9 +366,9 @@ void test("names the keys of the exposed index", () => {
             xrefPreferred: [
               {
                 target: {
-                  group: { html: "い", reading: "い" },
-                  entry: { html: "B", reading: "び" },
-                  subentry: { html: "C", reading: "し" },
+                  group: createKey("い", "い"),
+                  entry: createKey("び", "B"),
+                  subentry: createKey("し", "C"),
                 },
                 template: identityTemplate,
               },
@@ -446,10 +446,10 @@ void test("renders a range locator as one start link containing two page numbers
   const indexWithRange: Index = {
     groups: [
       {
-        key: { html: "し", reading: "し" },
+        key: createKey("し", "し"),
         entries: [
           {
-            key: { html: "自由利用", reading: "じゆうりよう" },
+            key: createKey("じゆうりよう", "自由利用"),
             locators: [
               {
                 location: { type: "range", start: "104.html#a", end: "110.html#b" },

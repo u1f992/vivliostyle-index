@@ -1,4 +1,5 @@
 import {
+  createKey,
   ensureEntry,
   insertLocator,
   insertXref,
@@ -88,9 +89,6 @@ type MutableEntryAddress = {
 };
 
 const graphemeSegmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
-// Unicode general categories Cc (control) and Cs (surrogate)
-const forbiddenCharacter = /[\p{Cc}\p{Cs}]/u;
-const permittedHtmlControlCharacters = new Set(["\t", "\n", "\r", "\r\n"]);
 const escapableCharacters = new Set(["\\", "@", "!", "|", "(", ")", "{", "}"]);
 const tokenLexemes = {
   related: ["|", "s", "e", "e", "a", "l", "s", "o", "{"],
@@ -226,39 +224,21 @@ function parseHierarchy(
   let offset = currentToken(state)?.offset ?? input.graphemes.length;
 
   const append = (token: TextToken) => {
-    const segments = [...graphemeSegmenter.segment(token.value)];
-    for (const [index, { segment }] of segments.entries()) {
-      const segmentOffset = token.offset + index;
-      if (hasHtml) {
-        if (forbiddenCharacter.test(segment) && !permittedHtmlControlCharacters.has(segment)) {
-          syntaxError(
-            input,
-            segmentOffset,
-            "a display value contains a forbidden control character",
-          );
-        }
-        html += segment;
-      } else {
-        if (forbiddenCharacter.test(segment)) {
-          syntaxError(input, segmentOffset, "a reading contains a forbidden control character");
-        }
-        reading += segment;
-      }
+    if (hasHtml) {
+      html += token.value;
+    } else {
+      reading += token.value;
     }
   };
 
   const finishKey = () => {
-    if (reading.trim() === "") {
-      syntaxError(input, offset, "a reading must contain a non-whitespace character");
+    if (reading === "") {
+      syntaxError(input, offset, "a reading must not be empty");
     }
-    if (hasHtml && html.trim() === "") {
-      syntaxError(input, offset, "a display value must contain a non-whitespace character");
+    if (hasHtml && html === "") {
+      syntaxError(input, offset, "a display value must not be empty");
     }
-    const normalizedReading = reading.normalize("NFC");
-    const key = {
-      html: hasHtml ? html.normalize("NFC") : normalizedReading,
-      reading: normalizedReading,
-    };
+    const key = createKey(reading, hasHtml ? html : reading);
     if (address.group === undefined) {
       address.group = key;
     } else if (address.entry === undefined) {
@@ -323,17 +303,7 @@ function parseTemplate(state: ParserState): string {
         `an unescaped ${JSON.stringify(tokenLabel(token))} is not allowed in a template`,
       );
     }
-    const segments = [...graphemeSegmenter.segment(token.value)];
-    for (const [index, { segment }] of segments.entries()) {
-      if (forbiddenCharacter.test(segment) && !permittedHtmlControlCharacters.has(segment)) {
-        syntaxError(
-          input,
-          token.offset + index,
-          "a template contains a forbidden control character",
-        );
-      }
-      template += segment;
-    }
+    template += token.value;
   }
 }
 

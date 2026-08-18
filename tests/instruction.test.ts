@@ -201,6 +201,16 @@ void test("normalizes readings and HTML to NFC", () => {
   });
 });
 
+void test("normalizes combining marks to canonical order", () => {
+  const acute = String.fromCharCode(0x301);
+  const cedilla = String.fromCharCode(0x327);
+
+  assert.deepStrictEqual(
+    parseInstruction(`a${acute}${cedilla}!main`).address.group,
+    parseInstruction(`a${cedilla}${acute}!main`).address.group,
+  );
+});
+
 void test("preserves surrounding whitespace and HTML line breaks", () => {
   assert.deepStrictEqual(parseInstruction(" group @<span>\nG\t</span>! main "), {
     type: "page",
@@ -409,6 +419,7 @@ void test("rejects incomplete and structurally invalid instructions", () => {
     "group!main|see{tg!tm}<em><slot></slot></em>",
     "group!main|(@x",
     "group!main|see{tg!tm}!x",
+    "group!main|see{tg@!tm}",
   ];
 
   for (const instruction of invalidInstructions) {
@@ -416,27 +427,72 @@ void test("rejects incomplete and structurally invalid instructions", () => {
   }
 });
 
-void test("reports the exact grapheme offset of a forbidden template character", () => {
-  assert.throws(
-    () => parseInstruction("g!m|(|👨‍👩‍👧‍👦a\u0000#x"),
-    (error: unknown) => error instanceof InstructionSyntaxError && error.offset === 8,
+void test("keeps whitespace-only readings and display values", () => {
+  assert.deepStrictEqual(parseInstruction("foo@bar! @space"), {
+    type: "page",
+    address: {
+      group: { html: "bar", reading: "foo" },
+      entry: { html: "space", reading: " " },
+    },
+    template: identityTemplate,
+  });
+  assert.deepStrictEqual(parseInstruction("   !main"), {
+    type: "page",
+    address: {
+      group: { html: "   ", reading: "   " },
+      entry: { html: "main", reading: "main" },
+    },
+    template: identityTemplate,
+  });
+  assert.deepStrictEqual(parseInstruction("group@   !main"), {
+    type: "page",
+    address: {
+      group: { html: "   ", reading: "group" },
+      entry: { html: "main", reading: "main" },
+    },
+    template: identityTemplate,
+  });
+});
+
+void test("keeps control characters as literal text", () => {
+  const nul = String.fromCharCode(0);
+  const newline = String.fromCharCode(10);
+
+  assert.deepStrictEqual(
+    parseInstruction(`group${newline}name!ma${nul}in|<em>${nul}<slot></slot></em>`),
+    {
+      type: "page",
+      address: {
+        group: { html: `group${newline}name`, reading: `group${newline}name` },
+        entry: { html: `ma${nul}in`, reading: `ma${nul}in` },
+      },
+      template: `<em>${nul}<slot></slot></em>`,
+    },
   );
+  assert.deepStrictEqual(parseInstruction(`group!main@ma${nul}in`), {
+    type: "page",
+    address: {
+      group: { html: "group", reading: "group" },
+      entry: { html: `ma${nul}in`, reading: "main" },
+    },
+    template: identityTemplate,
+  });
 });
 
-void test("rejects blank values and forbidden control characters", () => {
-  const invalidInstructions = [
-    "   !main",
-    "group!\t",
-    "group@   !main",
-    "group\nname!main",
-    "group!main\u0000",
-    "group!main|(|<em>\u0000</em>",
-    "group!main|<em>\u0000<slot></slot></em>",
-  ];
+void test("keeps lone surrogates as literal text", () => {
+  const high = String.fromCharCode(0xd800);
 
-  for (const instruction of invalidInstructions) {
-    assert.throws(() => parseInstruction(instruction), InstructionSyntaxError, instruction);
-  }
+  assert.deepStrictEqual(
+    parseInstruction(`a${high}b!main@m${high}n|<em>${high}<slot></slot></em>`),
+    {
+      type: "page",
+      address: {
+        group: { html: `a${high}b`, reading: `a${high}b` },
+        entry: { html: `m${high}n`, reading: "main" },
+      },
+      template: `<em>${high}<slot></slot></em>`,
+    },
+  );
 });
 
 void test("applies page instructions", () => {

@@ -4,6 +4,7 @@ import test from "node:test";
 import VFile from "vfile";
 
 import { addMessage, emitMessages, messages } from "../src/messages.ts";
+import { createKey } from "../src/model.ts";
 
 void test("groups message arguments by document and emits VFile messages", () => {
   const messagesByDocument = new Map();
@@ -25,8 +26,8 @@ void test("groups message arguments by document and emits VFile messages", () =>
     "/publication/chapter.md",
     messages.invalidXref({
       target: {
-        group: { html: "ち", reading: "ち" },
-        entry: { html: "工業所有権", reading: "こうぎょうしょゆうけん" },
+        group: createKey("ち", "ち"),
+        entry: createKey("こうぎょうしょゆうけん", "工業所有権"),
       },
       missing: "entry",
     }),
@@ -36,9 +37,9 @@ void test("groups message arguments by document and emits VFile messages", () =>
     "/publication/chapter.md",
     messages.invalidXref({
       target: {
-        group: { html: "ち", reading: "ち" },
-        entry: { html: "著作権", reading: "ちょさくけん" },
-        subentry: { html: "――の相続", reading: "ちょさくけんのそうぞく" },
+        group: createKey("ち", "ち"),
+        entry: createKey("ちょさくけん", "著作権"),
+        subentry: createKey("ちょさくけんのそうぞく", "――の相続"),
       },
       missing: "subentry",
     }),
@@ -64,13 +65,13 @@ void test("groups message arguments by document and emits VFile messages", () =>
         source: "vivliostyle-index",
         ruleId: "invalid-xref",
         reason:
-          'index does not contain group={"html":"ち","reading":"ち"},entry={"html":"工業所有権","reading":"こうぎょうしょゆうけん"}. the cross-reference target will not resolve.',
+          'index does not contain group={"reading":"ち","html":"ち"},entry={"reading":"こうぎょうしょゆうけん","html":"工業所有権"}. the cross-reference target will not resolve.',
       },
       {
         source: "vivliostyle-index",
         ruleId: "invalid-xref",
         reason:
-          'index does not contain group={"html":"ち","reading":"ち"},entry={"html":"著作権","reading":"ちょさくけん"},subentry={"html":"――の相続","reading":"ちょさくけんのそうぞく"}. the cross-reference target will not resolve.',
+          'index does not contain group={"reading":"ち","html":"ち"},entry={"reading":"ちょさくけん","html":"著作権"},subentry={"reading":"ちょさくけんのそうぞく","html":"――の相続"}. the cross-reference target will not resolve.',
       },
     ],
   );

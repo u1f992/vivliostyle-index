@@ -5,6 +5,7 @@ import {
 } from "./instruction.ts";
 import { addMessage, messages, type MessageArguments } from "./messages.ts";
 import {
+  addressKey,
   createIndexBuilder,
   finalizeIndex,
   labelInvalidXrefs,
@@ -49,8 +50,8 @@ type RangePairings = Readonly<{
   pairedEnds: ReadonlySet<RangeEndAttachment>;
 }>;
 
-const addressKey = (attachment: Attachment): string =>
-  JSON.stringify(attachment.instruction.address);
+const attachmentAddressKey = (attachment: Attachment): string =>
+  addressKey(attachment.instruction.address);
 
 function ensurePendingIndex(
   pendingIndexes: Map<TargetKey, PendingIndex>,
@@ -126,7 +127,7 @@ function validateXrefs(
 ): void {
   const unresolvedXrefs = labelInvalidXrefs(builder);
   for (const { reportingPath, target } of validations) {
-    const unresolvedXref = unresolvedXrefs.get(JSON.stringify(target));
+    const unresolvedXref = unresolvedXrefs.get(addressKey(target));
     if (unresolvedXref !== undefined) {
       addMessage(messagesByDocument, reportingPath, messages.invalidXref(unresolvedXref));
     }
@@ -142,15 +143,15 @@ function pairRanges(
   const pairedEnds = new Set<RangeEndAttachment>();
   for (const attachment of pendingIndex.attachments) {
     if (attachment.instruction.type === "range-start") {
-      const starts = startsByAddress.get(addressKey(attachment)) ?? [];
+      const starts = startsByAddress.get(attachmentAddressKey(attachment)) ?? [];
       starts.push(attachment as RangeStartAttachment);
-      startsByAddress.set(addressKey(attachment), starts);
+      startsByAddress.set(attachmentAddressKey(attachment), starts);
       continue;
     }
     if (attachment.instruction.type !== "range-end") {
       continue;
     }
-    const starts = startsByAddress.get(addressKey(attachment));
+    const starts = startsByAddress.get(attachmentAddressKey(attachment));
     const start = starts?.pop();
     if (start === undefined) {
       addMessage(

@@ -1,6 +1,8 @@
+const keyBrand = Symbol();
 export type Key = Readonly<{
-  html: string;
   reading: string;
+  html: string;
+  [keyBrand]: unknown;
 }>;
 export type HasKey = { key: Key };
 
@@ -66,7 +68,20 @@ export function createIndexBuilder(): IndexBuilder {
   return { groups: new Map() };
 }
 
-const childKey = (key: Key): string => JSON.stringify([key.html, key.reading]);
+export function createKey(reading: string, html: string): Key {
+  return { reading: reading.normalize("NFC"), html: html.normalize("NFC") } as Key;
+}
+
+const keyIdentity = (key: Key): readonly [string, string] => [key.reading, key.html];
+
+const childKey = (key: Key): string => JSON.stringify(keyIdentity(key));
+
+export const addressKey = (address: EntryAddress): string =>
+  JSON.stringify([
+    keyIdentity(address.group),
+    keyIdentity(address.entry),
+    address.subentry === undefined ? null : keyIdentity(address.subentry),
+  ]);
 
 function ensureChild<TChild extends HasKey>(
   children: Map<string, TChild>,
@@ -145,7 +160,7 @@ export function labelInvalidXrefs(builder: IndexBuilder): ReadonlyMap<string, Un
   const unresolvedByTarget = new Map<string, UnresolvedXref>();
   const resolvedTargets = new Set<string>();
   const resolve = (target: EntryAddress): UnresolvedXref | undefined => {
-    const targetKey = JSON.stringify(target);
+    const targetKey = addressKey(target);
     if (resolvedTargets.has(targetKey)) {
       return undefined;
     }

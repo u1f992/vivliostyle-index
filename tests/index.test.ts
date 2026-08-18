@@ -833,7 +833,7 @@ void test("keeps a cross-reference chain and reports its unresolved endpoint", (
     chapterFile.messages.map((message) => message.ruleId),
     ["invalid-xref"],
   );
-  assert.ok(chapterFile.messages[0]?.reason.includes('group={"html":"d","reading":"d"}'));
+  assert.ok(chapterFile.messages[0]?.reason.includes('group={"reading":"d","html":"d"}'));
   assert.deepStrictEqual(file.messages, []);
 });
 

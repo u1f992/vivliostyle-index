@@ -10,16 +10,16 @@ import { renderDocumentIndexes } from "../src/document-renderer.ts";
 import type { BuiltIndex } from "../src/index-builder.ts";
 import type { CreateRenderer } from "../src/render.ts";
 import { defaultComparator } from "../src/sort.ts";
-import type { Index } from "../src/model.ts";
+import { createKey, type Index } from "../src/model.ts";
 import { createTargetKey } from "../src/target.ts";
 
 function createIndex(): Index {
   return {
     groups: ["z", "a"].map((reading) => ({
-      key: { html: reading, reading },
+      key: createKey(reading, reading),
       entries: [
         {
-          key: { html: reading.toUpperCase(), reading },
+          key: createKey(reading, reading.toUpperCase()),
           subentries: [],
           locators: [],
           xrefPreferred: [],

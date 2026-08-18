@@ -1,7 +1,16 @@
 import assert from "node:assert";
 import test from "node:test";
 
-import type { Entry, EntryAddress, Group, Index, Key, Subentry, Xref } from "../src/model.ts";
+import {
+  createKey,
+  type Entry,
+  type EntryAddress,
+  type Group,
+  type Index,
+  type Key,
+  type Subentry,
+  type Xref,
+} from "../src/model.ts";
 import {
   byKeys,
   byListedOrder,
@@ -12,13 +21,13 @@ import {
 } from "../src/sort.ts";
 import { identityTemplate } from "../src/template.ts";
 
-const symbols = { html: "記号", reading: "記号" };
-const aRow = { html: "あ行", reading: "あ" };
-const kaRow = { html: "か行", reading: "か" };
-const umlaut = { html: "ä", reading: "ä" };
-const z = { html: "z", reading: "z" };
+const symbols = createKey("記号", "記号");
+const aRow = createKey("あ", "あ行");
+const kaRow = createKey("か", "か行");
+const umlaut = createKey("ä", "ä");
+const z = createKey("z", "z");
 
-const plainKey = (name: string): Key => ({ html: name, reading: name });
+const plainKey = (name: string): Key => createKey(name, name);
 const createXref = (target: EntryAddress): Xref => ({ target, template: identityTemplate });
 
 function createGroups(...keys: readonly Key[]): Group[] {
@@ -75,9 +84,9 @@ void test("reads a listed string as a key whose reading and HTML are the same", 
 });
 
 void test("matches a listed key only when both the reading and the HTML agree", () => {
-  const listed = { html: "か行", reading: "か" };
-  const sameHtml = { html: "か行", reading: "き" };
-  const sameReading = { html: "KA", reading: "か" };
+  const listed = createKey("か", "か行");
+  const sameHtml = createKey("き", "か行");
+  const sameReading = createKey("か", "KA");
   const groups = createGroups(sameHtml, sameReading, listed);
 
   groups.sort(byKeys(byListedOrder([listed])("ja")));
@@ -90,14 +99,14 @@ void test("matches a listed key only when both the reading and the HTML agree", 
 });
 
 void test("matches a listed key across Unicode normalization forms", () => {
-  const nfd = { html: "a\u0308", reading: "a\u0308" };
-  const groups = createGroups(z, nfd);
+  const nfd = "a\u0308";
+  const groups = createGroups(createKey(nfd, nfd), z);
 
-  groups.sort(byKeys(byListedOrder([umlaut, z])("en")));
+  groups.sort(byKeys(byListedOrder([z, { html: nfd, reading: nfd }])("en")));
 
   assert.deepStrictEqual(keysOf(groups), [
-    ["a\u0308", "a\u0308"],
     ["z", "z"],
+    ["ä", "ä"],
   ]);
 });
 
@@ -171,8 +180,8 @@ void test("hands an explicit fallback the locale it is created for", () => {
 });
 
 void test("distinguishes listed keys that share the concatenation of their fields", () => {
-  const listed = { html: "ab", reading: "c" };
-  const shifted = { html: "a", reading: "bc" };
+  const listed = createKey("c", "ab");
+  const shifted = createKey("bc", "a");
   const groups = createGroups(shifted, listed);
 
   groups.sort(byKeys(byListedOrder([listed])("en")));
@@ -220,15 +229,12 @@ void test("hands the locale to every collection of the default comparator", () =
 });
 
 void test("orders cross-references by the listed order of their targets", () => {
-  const entry = createEntry(
-    { html: "著作権", reading: "ちょさくけん" },
-    {
-      xrefRelated: [
-        createXref({ group: aRow, entry: { html: "著作", reading: "ちょさく" } }),
-        createXref({ group: kaRow, entry: { html: "権利", reading: "けんり" } }),
-      ],
-    },
-  );
+  const entry = createEntry(createKey("ちょさくけん", "著作権"), {
+    xrefRelated: [
+      createXref({ group: aRow, entry: createKey("ちょさく", "著作") }),
+      createXref({ group: kaRow, entry: createKey("けんり", "権利") }),
+    ],
+  });
   const index: Index = { groups: [{ key: aRow, entries: [entry] }] };
 
   const sorted = sort(index, {
@@ -260,18 +266,15 @@ void test("orders cross-references by their group before their entry", () => {
 });
 
 void test("orders cross-references by their subentry when the listed headings agree", () => {
-  const target = { group: aRow, entry: { html: "相続", reading: "そうぞく" } };
-  const inheritor = { html: "相続人", reading: "そうぞくにん" };
-  const exclusive = { html: "一身専属", reading: "いっしんせんぞく" };
-  const entry = createEntry(
-    { html: "著作権", reading: "ちょさくけん" },
-    {
-      xrefRelated: [
-        createXref({ ...target, subentry: exclusive }),
-        createXref({ ...target, subentry: inheritor }),
-      ],
-    },
-  );
+  const target = { group: aRow, entry: createKey("そうぞく", "相続") };
+  const inheritor = createKey("そうぞくにん", "相続人");
+  const exclusive = createKey("いっしんせんぞく", "一身専属");
+  const entry = createEntry(createKey("ちょさくけん", "著作権"), {
+    xrefRelated: [
+      createXref({ ...target, subentry: exclusive }),
+      createXref({ ...target, subentry: inheritor }),
+    ],
+  });
   const index: Index = { groups: [{ key: aRow, entries: [entry] }] };
 
   const sorted = sort(index, {
@@ -392,9 +395,9 @@ void test("leaves the given index untouched", () => {
 
 void test("compares keys by reading before falling back to the rendered text", () => {
   const groups = createGroups(
-    { html: "<b>z</b>", reading: "same" },
-    { html: "a", reading: "same" },
-    { html: "c", reading: "earlier" },
+    createKey("same", "<b>z</b>"),
+    createKey("same", "a"),
+    createKey("earlier", "c"),
   );
 
   groups.sort(byKeys(byLocales("en")));

@@ -39,7 +39,7 @@ export function byKeys(compareKeys: KeyComparator): EntryComparator {
   };
 }
 
-export type ListedKey = string | Key;
+export type ListedKey = string | Readonly<{ html: string; reading: string }>;
 
 const listedKeyIdentity = (key: ListedKey): string => {
   const { html, reading } = typeof key === "string" ? { html: key, reading: key } : key;
