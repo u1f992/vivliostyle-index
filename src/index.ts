@@ -49,8 +49,10 @@ export type {
   LocatorRenderer,
   SubentryListRenderer,
   SubentryRenderer,
-  XrefListRenderer,
-  XrefRenderer,
+  XrefPreferredListRenderer,
+  XrefPreferredRenderer,
+  XrefRelatedListRenderer,
+  XrefRelatedRenderer,
 } from "./render.ts";
 export type { Settings, TargetSettings } from "./settings.ts";
 export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";

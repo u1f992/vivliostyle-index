@@ -8,7 +8,6 @@ import type {
   ReadonlyIndex,
   ReadonlySubentry,
   Xref,
-  XrefType,
 } from "./model.ts";
 import { fillSlot } from "./template.ts";
 
@@ -38,9 +37,16 @@ export type LocatorRenderer = Readonly<{
   rangeSeparator?(context: { properties: RoleProperties<"range-separator"> }): Content;
 }>;
 
-export type XrefRenderer = (parts: {
+export type XrefPreferredRenderer = (parts: {
   xref: Xref;
-  type: XrefType;
+  type: "preferred";
+  href: string;
+  contents: Content;
+}) => Content;
+
+export type XrefRelatedRenderer = (parts: {
+  xref: Xref;
+  type: "related";
   href: string;
   contents: Content;
 }) => Content;
@@ -53,12 +59,20 @@ export type LocatorListRenderer = Readonly<{
   locator?(context: { locator: Locator }): LocatorRenderer;
 }>;
 
-export type XrefListRenderer = Readonly<{
+export type XrefPreferredListRenderer = Readonly<{
   compose?(parts: {
-    properties: RoleProperties<"xref-preferred" | "xref-related">;
+    properties: RoleProperties<"xref-preferred">;
     xrefs: readonly Content[];
   }): Content;
-  xref?: XrefRenderer;
+  xref?: XrefPreferredRenderer;
+}>;
+
+export type XrefRelatedListRenderer = Readonly<{
+  compose?(parts: {
+    properties: RoleProperties<"xref-related">;
+    xrefs: readonly Content[];
+  }): Content;
+  xref?: XrefRelatedRenderer;
 }>;
 
 export type SubentryRenderer = Readonly<{
@@ -71,8 +85,8 @@ export type SubentryRenderer = Readonly<{
   }): Content;
   heading?: HeadingRenderer;
   locatorList?: LocatorListRenderer;
-  xrefPreferredList?: XrefListRenderer;
-  xrefRelatedList?: XrefListRenderer;
+  xrefPreferredList?: XrefPreferredListRenderer;
+  xrefRelatedList?: XrefRelatedListRenderer;
 }>;
 
 export type SubentryListRenderer = Readonly<{
@@ -94,8 +108,8 @@ export type EntryRenderer = Readonly<{
   }): Content;
   heading?: HeadingRenderer;
   locatorList?: LocatorListRenderer;
-  xrefPreferredList?: XrefListRenderer;
-  xrefRelatedList?: XrefListRenderer;
+  xrefPreferredList?: XrefPreferredListRenderer;
+  xrefRelatedList?: XrefRelatedListRenderer;
   subentryList?: SubentryListRenderer;
 }>;
 
@@ -325,10 +339,14 @@ const renderPreferredXrefList = (
   indexId: string,
   renderer: EntryContentRenderer,
 ): Content => {
-  const type = "preferred";
   const properties = { dataIndexRole: "xref-preferred" } as const;
   const listRenderer = renderer.xrefPreferredList ?? {};
-  return renderXrefs(xrefs, type, indexId, properties, listRenderer);
+  const renderedXrefs = xrefs.map((xref) => renderPreferredXref(xref, indexId, listRenderer));
+  return (
+    listRenderer.compose?.({ properties, xrefs: renderedXrefs }) ?? [
+      h("ul", properties, renderedXrefs.flat()),
+    ]
+  );
 };
 
 const renderRelatedXrefList = (
@@ -336,35 +354,20 @@ const renderRelatedXrefList = (
   indexId: string,
   renderer: EntryContentRenderer,
 ): Content => {
-  const type = "related";
   const properties = { dataIndexRole: "xref-related" } as const;
   const listRenderer = renderer.xrefRelatedList ?? {};
-  return renderXrefs(xrefs, type, indexId, properties, listRenderer);
-};
-
-const renderXrefs = (
-  xrefs: readonly Xref[],
-  type: XrefType,
-  indexId: string,
-  properties: RoleProperties<"xref-preferred"> | RoleProperties<"xref-related">,
-  renderer: XrefListRenderer,
-): Content => {
-  const renderedXrefs = xrefs.map((xref) => renderXref(xref, type, indexId, renderer));
+  const renderedXrefs = xrefs.map((xref) => renderRelatedXref(xref, indexId, listRenderer));
   return (
-    renderer.compose?.({ properties, xrefs: renderedXrefs }) ?? [
+    listRenderer.compose?.({ properties, xrefs: renderedXrefs }) ?? [
       h("ul", properties, renderedXrefs.flat()),
     ]
   );
 };
 
-const renderXref = (
-  xref: Xref,
-  type: XrefType,
+const xrefParts = (
+  { target }: Xref,
   indexId: string,
-  renderer: XrefListRenderer,
-): Content => {
-  const properties = {};
-  const { target, template } = xref;
+): Readonly<{ href: string; contents: Content }> => {
   const href = `#${xrefId(indexId, target)}`;
   const contents =
     target.subentry === undefined
@@ -374,7 +377,34 @@ const renderXref = (
           h("span"),
           h("span", parseFragment(target.subentry.html)),
         ];
-  const content = renderer.xref?.({ xref, type, href, contents }) ?? [h("a", { href }, contents)];
+  return { href, contents };
+};
+
+const applyXrefTemplate = (template: string, content: Content): Content => {
   const children = fillSlot(template, content);
-  return children.length === 0 ? [] : [h("li", properties, children)];
+  return children.length === 0 ? [] : [h("li", children)];
+};
+
+const renderPreferredXref = (
+  xref: Xref,
+  indexId: string,
+  renderer: XrefPreferredListRenderer,
+): Content => {
+  const { href, contents } = xrefParts(xref, indexId);
+  const content = renderer.xref?.({ xref, type: "preferred", href, contents }) ?? [
+    h("a", { href }, contents),
+  ];
+  return applyXrefTemplate(xref.template, content);
+};
+
+const renderRelatedXref = (
+  xref: Xref,
+  indexId: string,
+  renderer: XrefRelatedListRenderer,
+): Content => {
+  const { href, contents } = xrefParts(xref, indexId);
+  const content = renderer.xref?.({ xref, type: "related", href, contents }) ?? [
+    h("a", { href }, contents),
+  ];
+  return applyXrefTemplate(xref.template, content);
 };

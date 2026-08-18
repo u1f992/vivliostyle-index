@@ -18,7 +18,8 @@ import {
   type LocatorListRenderer,
   type LocatorRenderer,
   type SubentryRenderer,
-  type XrefListRenderer,
+  type XrefPreferredListRenderer,
+  type XrefRelatedListRenderer,
 } from "../src/render.ts";
 import { identityTemplate } from "../src/template.ts";
 
@@ -96,6 +97,7 @@ const GROUP = `#index > ${roleOf("group-list")} > section`;
 const ENTRY = `${GROUP} > ${roleOf("entry-list")} > li`;
 const LOCATORS = `${ENTRY} > ${roleOf("locator-list")}`;
 const XREF_PREFERRED = `${ENTRY} > ${roleOf("xref-preferred")}`;
+const XREF_RELATED = `${ENTRY} > ${roleOf("xref-related")}`;
 const SUBENTRY = `${ENTRY} > ${roleOf("subentry-list")} > li`;
 
 function createTarget(): hast.Element {
@@ -213,8 +215,16 @@ void test("passes generated properties to structural compose functions", () => {
       return locators.flat();
     },
   };
-  const xrefList: XrefListRenderer = {
+  const xrefPreferredList: XrefPreferredListRenderer = {
     compose: ({ properties, xrefs }) => {
+      assert.strictEqual(properties.dataIndexRole, "xref-preferred");
+      roles.add(properties.dataIndexRole);
+      return xrefs.flat();
+    },
+  };
+  const xrefRelatedList: XrefRelatedListRenderer = {
+    compose: ({ properties, xrefs }) => {
+      assert.strictEqual(properties.dataIndexRole, "xref-related");
       roles.add(properties.dataIndexRole);
       return xrefs.flat();
     },
@@ -260,8 +270,8 @@ void test("passes generated properties to structural compose functions", () => {
                   ];
                 },
                 locatorList,
-                xrefPreferredList: xrefList,
-                xrefRelatedList: xrefList,
+                xrefPreferredList,
+                xrefRelatedList,
                 subentryList: {
                   compose: ({ properties, subentries }) => {
                     roles.add(properties.dataIndexRole);
@@ -288,8 +298,8 @@ void test("passes generated properties to structural compose functions", () => {
                         ];
                       },
                       locatorList,
-                      xrefPreferredList: xrefList,
-                      xrefRelatedList: xrefList,
+                      xrefPreferredList,
+                      xrefRelatedList,
                     };
                   },
                 },
@@ -348,7 +358,7 @@ void test("keeps the receiver of every renderer method", () => {
       return locatorRenderer;
     },
   };
-  const xrefListRenderer: XrefListRenderer = {
+  const xrefListRenderer: XrefPreferredListRenderer = {
     xref() {
       assert.strictEqual(this, xrefListRenderer);
       leafCalls.push("xref");
@@ -614,7 +624,7 @@ void test("applies a locator template after the nested locator renderer", () => 
   );
 });
 
-void test("applies an xref template after the xref leaf", () => {
+void test("applies xref templates after their distinct leaf renderers", () => {
   const target = createTarget();
   const xrefIndex: Index = {
     children: [
@@ -634,7 +644,15 @@ void test("applies an xref template after the xref leaf", () => {
                 template: "<em><slot></slot></em>",
               },
             ],
-            xrefRelated: [],
+            xrefRelated: [
+              {
+                target: {
+                  group: { html: "そ", reading: "そ" },
+                  entry: { html: "相続", reading: "そうぞく" },
+                },
+                template: "<strong><slot></slot></strong>",
+              },
+            ],
             children: [],
           },
         ],
@@ -647,12 +665,28 @@ void test("applies an xref template after the xref leaf", () => {
         entryList: {
           entry: () => ({
             xrefPreferredList: {
-              compose: ({ properties, xrefs }) => [h("ul", properties, xrefs.flat())],
+              compose: ({ properties, xrefs }) => {
+                assert.strictEqual(properties.dataIndexRole, "xref-preferred");
+                return [h("ul", properties, xrefs.flat())];
+              },
               xref: ({ xref, type, href, contents }) => {
                 assert.strictEqual(type, "preferred");
                 assert.strictEqual(xref.target.subentry?.reading, "いっしんせんぞく");
                 assert.ok(href.startsWith("#"));
                 assert.strictEqual(contents.length, 3);
+                return [h("a", { href, dataCustom: type }, contents)];
+              },
+            },
+            xrefRelatedList: {
+              compose: ({ properties, xrefs }) => {
+                assert.strictEqual(properties.dataIndexRole, "xref-related");
+                return [h("ul", properties, xrefs.flat())];
+              },
+              xref: ({ xref, type, href, contents }) => {
+                assert.strictEqual(type, "related");
+                assert.strictEqual(xref.target.entry.reading, "そうぞく");
+                assert.ok(href.startsWith("#"));
+                assert.strictEqual(contents.length, 1);
                 return [h("a", { href, dataCustom: type }, contents)];
               },
             },
@@ -673,6 +707,11 @@ void test("applies an xref template after the xref leaf", () => {
     toText(selectAll(`${XREF_PREFERRED} > li > em > a`, root)[0]!),
     "相続一身専属",
   );
+  assert.strictEqual(
+    selectAll(`${XREF_RELATED} > li > strong > a[data-custom="related"]`, root).length,
+    1,
+  );
+  assert.strictEqual(toText(selectAll(`${XREF_RELATED} > li > strong > a`, root)[0]!), "相続");
 });
 
 void test("uses the same leaf and list contracts for subentries", () => {
