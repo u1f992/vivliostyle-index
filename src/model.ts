@@ -81,10 +81,27 @@ export type ReadonlyEntry = ReadonlySubentry & Readonly<{ children: readonly Rea
 export type ReadonlyGroup = Readonly<{ key: Key; children: readonly ReadonlyEntry[] }>;
 export type ReadonlyIndex = Readonly<{ children: readonly ReadonlyGroup[] }>;
 
+const childLookups = new WeakMap<object, Map<string, HasKey>>();
+
+const childKey = (key: Key): string => JSON.stringify([key.html, key.reading]);
+
+function childLookup<TChild extends HasKey>(parent: ParentOf<TChild>): Map<string, TChild> {
+  const cached = childLookups.get(parent);
+  if (cached !== undefined) {
+    return cached as Map<string, TChild>;
+  }
+  const built = new Map<string, TChild>();
+  for (const child of parent.children) {
+    if (!built.has(childKey(child.key))) {
+      built.set(childKey(child.key), child);
+    }
+  }
+  childLookups.set(parent, built);
+  return built;
+}
+
 export function getChild<TChild extends HasKey>(parent: ParentOf<TChild>, key: Key) {
-  return parent.children.find(
-    (child) => child.key.html === key.html && child.key.reading === key.reading,
-  );
+  return childLookup(parent).get(childKey(key));
 }
 
 export function ensureChild<TChild extends HasKey>(
@@ -92,15 +109,15 @@ export function ensureChild<TChild extends HasKey>(
   key: Key,
   init: Omit<TChild, "key">,
 ) {
-  return (
-    getChild(parent, key) ??
-    parent.children[
-      parent.children.push({
-        key,
-        ...init,
-      } as TChild) - 1
-    ]!
-  );
+  const lookup = childLookup(parent);
+  const existing = lookup.get(childKey(key));
+  if (existing !== undefined) {
+    return existing;
+  }
+  const created = { key, ...init } as TChild;
+  parent.children.push(created);
+  lookup.set(childKey(key), created);
+  return created;
 }
 
 export function ensureEntry(index: Index, address: EntryAddress): EntryBase {
@@ -135,11 +152,30 @@ export function findUnresolvedXref(index: Index, target: EntryAddress): Unresolv
   return undefined;
 }
 
-export function labelInvalidXrefs(index: Index): void {
+export function labelInvalidXrefs(index: Index): ReadonlyMap<string, UnresolvedXref> {
+  const unresolvedByTarget = new Map<string, UnresolvedXref>();
+  const resolvedTargets = new Set<string>();
+  const resolve = (target: EntryAddress): UnresolvedXref | undefined => {
+    const targetKey = JSON.stringify(target);
+    if (resolvedTargets.has(targetKey)) {
+      return undefined;
+    }
+    const known = unresolvedByTarget.get(targetKey);
+    if (known !== undefined) {
+      return known;
+    }
+    const unresolvedXref = findUnresolvedXref(index, target);
+    if (unresolvedXref === undefined) {
+      resolvedTargets.add(targetKey);
+    } else {
+      unresolvedByTarget.set(targetKey, unresolvedXref);
+    }
+    return unresolvedXref;
+  };
   const label = (xref: Xref): Xref => ({
     target: xref.target,
     template: xref.template,
-    ...(findUnresolvedXref(index, xref.target) === undefined ? {} : { error: "invalid-xref" }),
+    ...(resolve(xref.target) === undefined ? {} : { error: "invalid-xref" }),
   });
   for (const group of index.children) {
     for (const entry of group.children) {
@@ -151,4 +187,5 @@ export function labelInvalidXrefs(index: Index): void {
       }
     }
   }
+  return unresolvedByTarget;
 }

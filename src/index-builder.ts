@@ -4,7 +4,7 @@ import {
   applyXrefInstruction,
 } from "./instruction.ts";
 import { addMessage, messages, type MessageArguments } from "./messages.ts";
-import { findUnresolvedXref, labelInvalidXrefs, type EntryAddress, type Index } from "./model.ts";
+import { labelInvalidXrefs, type EntryAddress, type Index } from "./model.ts";
 import type { Attachment, SourceSnapshot } from "./source-snapshot.ts";
 import type { Target, TargetKey } from "./target.ts";
 import { identityTemplate } from "./template.ts";
@@ -122,9 +122,9 @@ function validateXrefs(
   validations: readonly XrefValidation[],
   messagesByDocument: Map<string, MessageArguments[]>,
 ): void {
-  labelInvalidXrefs(index);
+  const unresolvedXrefs = labelInvalidXrefs(index);
   for (const { reportingPath, target } of validations) {
-    const unresolvedXref = findUnresolvedXref(index, target);
+    const unresolvedXref = unresolvedXrefs.get(JSON.stringify(target));
     if (unresolvedXref !== undefined) {
       addMessage(messagesByDocument, reportingPath, messages.invalidXref(unresolvedXref));
     }
