@@ -1,6 +1,6 @@
 {
   "name": "@u1f992/vivliostyle-index",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "description": "A unified plugin for generating indexes in Vivliostyle CLI builds.",
   "main": "dist/index.js",
   "scripts": {
