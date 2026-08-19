@@ -39,6 +39,7 @@ const index = createIndexPlugin({
               compose: ({ properties, heading, entryList }) => [
                 h("li", properties, [...heading, ...entryList]),
               ],
+              heading: ({ properties, contents }) => [h("span", properties, contents)],
               entryList: {
                 entry: () => ({
                   locatorList,

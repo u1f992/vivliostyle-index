@@ -38,6 +38,10 @@ const defaultHeading: HeadingRenderer = ({ properties, contents }) => [
   h("span", properties, contents),
 ];
 
+const defaultGroupHeading: HeadingRenderer = ({ properties, contents }) => [
+  h("h2", properties, contents),
+];
+
 export type LocationRenderer = Readonly<{
   compose?(parts: {
     properties: Readonly<
@@ -462,7 +466,7 @@ const resolveEntryListRenderer = (renderer: EntryListRenderer): ResolvedEntryLis
 
 const resolveGroupRenderer = (renderer: GroupRenderer): ResolvedGroupRenderer => ({
   compose: bindRendererMethod(renderer, renderer.compose, defaultGroupCompose),
-  heading: bindRendererMethod(renderer, renderer.heading, defaultHeading),
+  heading: bindRendererMethod(renderer, renderer.heading, defaultGroupHeading),
   entryList: resolveEntryListRenderer(renderer.entryList ?? {}),
 });
 

@@ -111,7 +111,7 @@ void test("wraps every key in an element of its own", () => {
   renderIndex(indexWithSubentry, target, "index", {});
 
   assert.deepStrictEqual(
-    selectAll(`${GROUP} > span`, rootOf(target)).map((key) => toText(key)),
+    selectAll(`${GROUP} > h2`, rootOf(target)).map((key) => toText(key)),
     ["そ"],
   );
   assert.deepStrictEqual(
