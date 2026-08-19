@@ -4,8 +4,8 @@
   "description": "A unified plugin for generating indexes in Vivliostyle CLI builds.",
   "main": "dist/index.js",
   "scripts": {
-    "lint": "tsc --noEmit --ignoreConfig oxlint.config.ts && oxlint --fix src tests examples/*/vivliostyle.config.ts",
-    "format": "tsc --noEmit --ignoreConfig oxfmt.config.ts && oxfmt src tests examples/*/vivliostyle.config.ts",
+    "lint": "tsc --noEmit --ignoreConfig oxlint.config.ts && oxlint --fix src tests && npm run lint --workspaces --if-present",
+    "format": "tsc --noEmit --ignoreConfig oxfmt.config.ts && oxfmt src tests && npm run format --workspaces --if-present",
     "build": "tsc",
     "test": "tsc --project tests && node --test \"tests/**/*.test.ts\"",
     "test:vivliostyle": "npm run build && npm test --workspace vivliostyle-e2e"

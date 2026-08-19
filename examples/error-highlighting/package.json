@@ -5,7 +5,9 @@
   "scripts": {
     "build": "vivliostyle build",
     "preview": "vivliostyle preview",
-    "typecheck": "tsc --project ."
+    "typecheck": "tsc --project .",
+    "lint": "oxlint --fix --config ../../oxlint.config.ts .",
+    "format": "oxfmt --config ../../oxfmt.config.ts ."
   },
   "dependencies": {
     "@u1f992/vivliostyle-index": "file:../.."
