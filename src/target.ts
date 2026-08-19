@@ -1,5 +1,3 @@
-import upath from "upath";
-
 import { documentPath } from "./platform.ts";
 
 export type Target = Readonly<{
@@ -25,15 +23,4 @@ export function resolveTarget(reference: string, baseUrl: URL): Target {
 
 export function createTargetKey(target: Target): TargetKey {
   return JSON.stringify([target.path, target.fragment]);
-}
-
-export function mapByTarget<T>(
-  configurations: readonly (readonly [Target, T])[],
-  context: string,
-): ReadonlyMap<TargetKey, T> {
-  const mapped = new Map<TargetKey, T>();
-  for (const [{ path, fragment }, configuration] of configurations) {
-    mapped.set(createTargetKey({ path: upath.resolve(context, path), fragment }), configuration);
-  }
-  return mapped;
 }

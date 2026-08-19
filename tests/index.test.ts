@@ -18,7 +18,7 @@ import {
   defaultComparator,
   logMessages,
   type FileSystem,
-  type Settings,
+  type Profiles,
 } from "../src/index.ts";
 
 const entryProcessor = {
@@ -44,19 +44,19 @@ function createFileSystem(files: Readonly<Record<string, string>>, updates: stri
 function createProcessor({
   entries,
   files,
-  settings,
+  profiles,
   updates,
 }: {
   entries: readonly string[];
   files: Readonly<Record<string, string>>;
-  settings?: Settings;
+  profiles?: Profiles;
   updates?: string[];
 }) {
   const { fileSystem, reads } = createFileSystem(files, updates);
   const plugin = createIndexPlugin({
     entry: entries,
     entryContext: "/publication",
-    ...(settings === undefined ? {} : { settings }),
+    ...(profiles === undefined ? {} : { profiles }),
     fileSystem,
   });
   const processor = unified().use(plugin, {
@@ -175,44 +175,35 @@ void test("renders an index after source entries that follow it in the document"
   assert.deepStrictEqual(locatorLinks(root), ["#index.source.L2h0bWwvYm9keS9zcGFu"]);
 });
 
-void test("composes configured content into the index it names", () => {
+void test("composes the profiles selected by index targets", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=a!Apple#subject">Apple</span>',
       '<span data-index="index.md?q=t!Ada#person">Ada</span>',
     ].join(""),
     "/publication/index.md":
-      '<nav id="subject" role="doc-index"></nav><nav id="person" role="doc-index"></nav><nav id="unnamed" role="doc-index"></nav>',
+      '<nav id="subject" role="doc-index" data-index-profile="subject"></nav><nav id="person" role="doc-index" data-index-profile="person"></nav><nav id="unnamed" role="doc-index" data-index-profile="unnamed"></nav>',
   };
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    settings: [
-      [
-        { path: "index.md", fragment: "subject" },
-        {
-          renderer: ({ h }) => ({
-            compose: ({ groupList }) => [h("p", "事項"), ...groupList],
-          }),
-        },
-      ],
-      [
-        { path: "index.md", fragment: "person" },
-        {
-          renderer: ({ h }) => ({
-            compose: ({ groupList }) => [h("p", "人名"), ...groupList],
-          }),
-        },
-      ],
-      [
-        { path: "index.md", fragment: "unnamed" },
-        {
-          renderer: ({ h }) => ({
-            compose: ({ groupList }) => [h("p", "出ない"), ...groupList],
-          }),
-        },
-      ],
-    ],
+    profiles: {
+      subject: {
+        renderer: ({ h }) => ({
+          compose: ({ groupList }) => [h("p", "事項"), ...groupList],
+        }),
+      },
+      person: {
+        renderer: ({ h }) => ({
+          compose: ({ groupList }) => [h("p", "人名"), ...groupList],
+        }),
+      },
+      unnamed: {
+        renderer: ({ h }) => ({
+          compose: ({ groupList }) => [h("p", "出ない"), ...groupList],
+        }),
+      },
+    },
   });
   const root = fromHtml(files["/publication/index.md"]);
 
@@ -259,31 +250,28 @@ void test("composes index content separately from rendering model nodes", () => 
       '<span data-index="index.md?q=z!Zebra#index">Zebra</span>',
       '<span data-index="index.md?q=a!Apple#index">Apple</span>',
     ].join(""),
-    "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
+    "/publication/index.md": '<nav id="index" role="doc-index" data-index-profile="custom"></nav>',
   };
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    settings: [
-      [
-        { path: "index.md", fragment: "index" },
-        {
-          renderer: ({ h, index }) => {
-            const groupReadings = index.groups.map(({ key }) => key.reading).join(",");
-            return {
-              compose: ({ groupList }) => [h("p", "索引"), ...groupList],
-              groupList: {
-                group: () => ({
-                  heading: ({ contents }) => [
-                    h("h2", { dataGroupReadings: groupReadings }, contents),
-                  ],
-                }),
-              },
-            };
-          },
+    profiles: {
+      custom: {
+        renderer: ({ h, index }) => {
+          const groupReadings = index.groups.map(({ key }) => key.reading).join(",");
+          return {
+            compose: ({ groupList }) => [h("p", "索引"), ...groupList],
+            groupList: {
+              group: () => ({
+                heading: ({ contents }) => [
+                  h("h2", { dataGroupReadings: groupReadings }, contents),
+                ],
+              }),
+            },
+          };
         },
-      ],
-    ],
+      },
+    },
   });
   const root = fromHtml(files["/publication/index.md"]);
 
@@ -334,20 +322,19 @@ void test("keeps target fragments as distinct indexes", () => {
   assert.doesNotMatch(toText(person), /Apple/v);
 });
 
-void test("uses a comparator selected by path and element ID", () => {
+void test("uses the comparator selected by the target profile", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=z!Z#index">Z</span>',
       '<span data-index="index.md?q=ä!Ä#index">Ä</span>',
     ].join(""),
-    "/publication/index.md": '<section lang="sv"><nav id="index" role="doc-index"></nav></section>',
+    "/publication/index.md":
+      '<section lang="sv"><nav id="index" role="doc-index" data-index-profile="english"></nav></section>',
   };
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    settings: [
-      [{ path: "index.md", fragment: "index" }, { comparator: () => defaultComparator("en") }],
-    ],
+    profiles: { english: { comparator: () => defaultComparator("en") } },
   });
   const root = fromHtml(files["/publication/index.md"]);
 
@@ -356,27 +343,28 @@ void test("uses a comparator selected by path and element ID", () => {
   assert.deepStrictEqual(groupHeadings(root), ["ä", "z"]);
 });
 
-void test("uses the last comparator configured for an index target", () => {
+void test("reports an unknown profile through the pipeline", () => {
   const files = {
     "/publication/chapter.md": [
       '<span data-index="index.md?q=z!Z#index">Z</span>',
       '<span data-index="index.md?q=ä!Ä#index">Ä</span>',
     ].join(""),
-    "/publication/index.md": '<nav id="index" role="doc-index"></nav>',
+    "/publication/index.md": '<nav id="index" role="doc-index" data-index-profile="missing"></nav>',
   };
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    settings: [
-      [{ path: "index.md", fragment: "index" }, { comparator: () => defaultComparator("en") }],
-      [{ path: "index.md", fragment: "index" }, { comparator: () => defaultComparator("sv") }],
-    ],
   });
   const root = fromHtml(files["/publication/index.md"]);
+  const file = VFile({ path: "/publication/index.md" });
 
-  processor.runSync(root, { path: "/publication/index.md" });
+  processor.runSync(root, file);
 
-  assert.deepStrictEqual(groupHeadings(root), ["z", "ä"]);
+  assert.deepStrictEqual(
+    file.messages.map((message) => message.ruleId),
+    ["unknown-index-profile"],
+  );
+  assert.strictEqual(groupHeadings(root).length, 2);
 });
 
 void test("uses the closest language when no comparator is configured", () => {
@@ -1428,23 +1416,21 @@ void test("keeps locators in entry and document order when a source is processed
 void test("resolves a configured comparator with the closest language", () => {
   const files = {
     "/publication/chapter.md": '<span data-index="index.md?q=z!Z#index">Z</span>',
-    "/publication/index.md": '<section lang="sv"><nav id="index" role="doc-index"></nav></section>',
+    "/publication/index.md":
+      '<section lang="sv"><nav id="index" role="doc-index" data-index-profile="observer"></nav></section>',
   };
   const requestedLocales: Intl.LocalesArgument[] = [];
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    settings: [
-      [
-        { path: "index.md", fragment: "index" },
-        {
-          comparator: (locales) => {
-            requestedLocales.push(locales);
-            return defaultComparator(locales);
-          },
+    profiles: {
+      observer: {
+        comparator: (locales) => {
+          requestedLocales.push(locales);
+          return defaultComparator(locales);
         },
-      ],
-    ],
+      },
+    },
   });
 
   processor.runSync(fromHtml(files["/publication/index.md"]), { path: "/publication/index.md" });

@@ -99,6 +99,11 @@ export const messages = {
     undefined,
     rule("missing-index-role"),
   ],
+  unknownIndexProfile: (target: Target, profile: string): MessageArguments => [
+    `index target ${formatTarget(target)} names unknown profile ${JSON.stringify(profile)}. the default profile is used.`,
+    undefined,
+    rule("unknown-index-profile"),
+  ],
 };
 
 export function addMessage(

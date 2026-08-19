@@ -13,8 +13,7 @@ import {
 } from "./index-state.ts";
 import { emitMessages, messages } from "./messages.ts";
 import { workingDirectory } from "./platform.ts";
-import type { Settings } from "./settings.ts";
-import { mapByTarget } from "./target.ts";
+import { resolveProfiles, type Profiles } from "./profile.ts";
 
 export { nodeFileSystem } from "./file-system.ts";
 export type { FileSystem } from "./file-system.ts";
@@ -57,7 +56,9 @@ export type {
   XrefRenderer,
   XrefTargetRenderer,
 } from "./render.ts";
-export type { Settings, TargetSettings } from "./settings.ts";
+export { defaultRenderer } from "./render.ts";
+export { defaultProfile } from "./profile.ts";
+export type { IndexProfile, Profiles, ResolvedIndexProfile } from "./profile.ts";
 export { byKeys, byListedOrder, byLocales, defaultComparator } from "./sort.ts";
 export type {
   CreateIndexComparator,
@@ -72,7 +73,7 @@ export type { Target } from "./target.ts";
 export type CreatePluginOptions = {
   entry: readonly string[];
   entryContext?: string;
-  settings?: Settings;
+  profiles?: Profiles;
   fileSystem?: Readonly<FileSystem>;
 };
 
@@ -83,7 +84,7 @@ export type PluginOptions = {
 export function createIndexPlugin({
   entry: entries,
   entryContext,
-  settings = [],
+  profiles = {},
   fileSystem = nodeFileSystem,
 }: Readonly<CreatePluginOptions>): unified.Plugin<[Readonly<PluginOptions>]> {
   const cwd = workingDirectory();
@@ -92,7 +93,7 @@ export function createIndexPlugin({
   const context = upath.resolve(cwd, entryContext ?? ".");
   const entryPaths = entries.map((entry) => upath.resolve(context, entry));
   let state: IndexState | undefined;
-  const settingsByTarget = mapByTarget(settings, context);
+  const profilesByName = resolveProfiles(profiles);
 
   return ({ createEntryProcessor }) =>
     (tree, file) => {
@@ -118,7 +119,7 @@ export function createIndexPlugin({
         file.message(...messages.entryProcessorMismatch(documentPath));
       }
       emitMessages(file, messagesFor(state, documentPath));
-      renderDocumentIndexes(root, documentPath, state.indexes, settingsByTarget, file);
+      renderDocumentIndexes(root, documentPath, state.indexes, profilesByName, file);
     };
 }
 

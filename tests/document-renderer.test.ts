@@ -8,6 +8,7 @@ import VFile from "vfile";
 
 import { renderDocumentIndexes } from "../src/document-renderer.ts";
 import type { BuiltIndex } from "../src/index-builder.ts";
+import { defaultProfile } from "../src/profile.ts";
 import type { CreateRenderer } from "../src/render.ts";
 import { defaultComparator } from "../src/sort.ts";
 import { createKey, type Index } from "../src/model.ts";
@@ -69,7 +70,105 @@ void test("renders into a target whose ID requires CSS escaping", () => {
   assert.strictEqual(file.messages.length, 0);
 });
 
-void test("uses a comparator configured for the target", () => {
+void test("uses the comparator from the target's profile", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, fragment: "index" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePaths: ["/publication/chapter.md"],
+  };
+  const comparator = defaultComparator("en");
+  const reverseComparator = {
+    ...comparator,
+    group: (left: Index["groups"][number], right: Index["groups"][number]) =>
+      -comparator.group(left, right),
+  };
+  const root = fromHtml('<nav id="index" role="doc-index" data-index-profile="reverse"></nav>');
+  const file = VFile({ path: documentPath });
+
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map([["reverse", { ...defaultProfile, comparator: () => reverseComparator }]]),
+    file,
+  );
+
+  assert.deepStrictEqual(
+    selectAll("#index > div > section", root).map((group) => toText(group).slice(0, 1)),
+    ["z", "a"],
+  );
+});
+
+void test("uses the renderer from the target's profile", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, fragment: "index" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePaths: ["/publication/chapter.md"],
+  };
+  const createRenderer: CreateRenderer = ({ h }) => ({
+    groupList: {
+      group: () => ({ heading: ({ contents }) => [h("h2", contents)] }),
+    },
+  });
+  const root = fromHtml('<nav id="index" role="doc-index" data-index-profile="headings"></nav>');
+  const file = VFile({ path: documentPath });
+
+  renderDocumentIndexes(
+    root,
+    documentPath,
+    new Map([[targetKey, builtIndex]]),
+    new Map([["headings", { ...defaultProfile, renderer: createRenderer }]]),
+    file,
+  );
+
+  assert.deepStrictEqual(
+    selectAll("#index > div > section > h2", root).map((heading) => toText(heading)),
+    ["a", "z"],
+  );
+  assert.deepStrictEqual(
+    selectAll("#index > div > section > ul > li > span", root).map((heading) => toText(heading)),
+    ["A", "Z"],
+  );
+  assert.strictEqual(file.messages.length, 0);
+});
+
+void test("reports an unknown profile and uses the default profile", () => {
+  const documentPath = "/publication/index.md";
+  const target = { path: documentPath, fragment: "index" };
+  const targetKey = createTargetKey(target);
+  const builtIndex: BuiltIndex = {
+    target,
+    index: createIndex(),
+    sourcePaths: ["/publication/chapter.md"],
+  };
+  const root = fromHtml('<nav id="index" role="doc-index" data-index-profile="missing"></nav>');
+  const file = VFile({ path: documentPath });
+
+  renderDocumentIndexes(root, documentPath, new Map([[targetKey, builtIndex]]), new Map(), file);
+
+  assert.deepStrictEqual(
+    file.messages.map(({ ruleId, reason }) => ({ ruleId, reason })),
+    [
+      {
+        ruleId: "unknown-index-profile",
+        reason:
+          'index target /publication/index.md#index names unknown profile "missing". the default profile is used.',
+      },
+    ],
+  );
+  assert.deepStrictEqual(
+    selectAll("#index > div > section", root).map((group) => toText(group).slice(0, 1)),
+    ["a", "z"],
+  );
+});
+
+void test("does not infer a profile from the target fragment", () => {
   const documentPath = "/publication/index.md";
   const target = { path: documentPath, fragment: "index" };
   const targetKey = createTargetKey(target);
@@ -85,56 +184,19 @@ void test("uses a comparator configured for the target", () => {
       -comparator.group(left, right),
   };
   const root = fromHtml('<nav id="index" role="doc-index"></nav>');
-  const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
     root,
     documentPath,
     new Map([[targetKey, builtIndex]]),
-    new Map([[targetKey, { comparator: () => reverseComparator }]]),
-    file,
+    new Map([["index", { ...defaultProfile, comparator: () => reverseComparator }]]),
+    VFile({ path: documentPath }),
   );
 
   assert.deepStrictEqual(
     selectAll("#index > div > section", root).map((group) => toText(group).slice(0, 1)),
-    ["z", "a"],
-  );
-});
-
-void test("uses a renderer configured for the target", () => {
-  const documentPath = "/publication/index.md";
-  const target = { path: documentPath, fragment: "index" };
-  const targetKey = createTargetKey(target);
-  const builtIndex: BuiltIndex = {
-    target,
-    index: createIndex(),
-    sourcePaths: ["/publication/chapter.md"],
-  };
-  const createRenderer: CreateRenderer = ({ h }) => ({
-    groupList: {
-      group: () => ({ heading: ({ contents }) => [h("h2", contents)] }),
-    },
-  });
-  const root = fromHtml('<nav id="index" role="doc-index"></nav>');
-  const file = VFile({ path: documentPath });
-
-  renderDocumentIndexes(
-    root,
-    documentPath,
-    new Map([[targetKey, builtIndex]]),
-    new Map([[targetKey, { renderer: createRenderer }]]),
-    file,
-  );
-
-  assert.deepStrictEqual(
-    selectAll("#index > div > section > h2", root).map((heading) => toText(heading)),
     ["a", "z"],
   );
-  assert.deepStrictEqual(
-    selectAll("#index > div > section > ul > li > span", root).map((heading) => toText(heading)),
-    ["A", "Z"],
-  );
-  assert.strictEqual(file.messages.length, 0);
 });
 
 void test("reports a missing target", () => {
@@ -257,7 +319,9 @@ void test("reports a language the runtime cannot sort by", () => {
     sourcePaths: ["/publication/chapter.md"],
   };
   const requestedLocales: Intl.LocalesArgument[] = [];
-  const root = fromHtml('<section lang="en_US"><nav id="index" role="doc-index"></nav></section>');
+  const root = fromHtml(
+    '<section lang="en_US"><nav id="index" role="doc-index" data-index-profile="observer"></nav></section>',
+  );
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
@@ -266,8 +330,9 @@ void test("reports a language the runtime cannot sort by", () => {
     new Map([[targetKey, builtIndex]]),
     new Map([
       [
-        targetKey,
+        "observer",
         {
+          ...defaultProfile,
           comparator: (locales: Intl.LocalesArgument) => {
             requestedLocales.push(locales);
             return defaultComparator(locales);
@@ -299,7 +364,9 @@ void test("takes an empty language as no language at all", () => {
     sourcePaths: ["/publication/chapter.md"],
   };
   const requestedLocales: Intl.LocalesArgument[] = [];
-  const root = fromHtml('<section lang=""><nav id="index" role="doc-index"></nav></section>');
+  const root = fromHtml(
+    '<section lang=""><nav id="index" role="doc-index" data-index-profile="observer"></nav></section>',
+  );
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
@@ -308,8 +375,9 @@ void test("takes an empty language as no language at all", () => {
     new Map([[targetKey, builtIndex]]),
     new Map([
       [
-        targetKey,
+        "observer",
         {
+          ...defaultProfile,
           comparator: (locales: Intl.LocalesArgument) => {
             requestedLocales.push(locales);
             return defaultComparator(locales);
@@ -334,7 +402,9 @@ void test("reports a language the runtime has no collation for", () => {
     sourcePaths: ["/publication/chapter.md"],
   };
   const requestedLocales: Intl.LocalesArgument[] = [];
-  const root = fromHtml('<section lang="jp"><nav id="index" role="doc-index"></nav></section>');
+  const root = fromHtml(
+    '<section lang="jp"><nav id="index" role="doc-index" data-index-profile="observer"></nav></section>',
+  );
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
@@ -343,8 +413,9 @@ void test("reports a language the runtime has no collation for", () => {
     new Map([[targetKey, builtIndex]]),
     new Map([
       [
-        targetKey,
+        "observer",
         {
+          ...defaultProfile,
           comparator: (locales: Intl.LocalesArgument) => {
             requestedLocales.push(locales);
             return defaultComparator(locales);
@@ -372,7 +443,9 @@ void test("keeps a language the runtime can collate", () => {
     sourcePaths: ["/publication/chapter.md"],
   };
   const requestedLocales: Intl.LocalesArgument[] = [];
-  const root = fromHtml('<section lang="sv"><nav id="index" role="doc-index"></nav></section>');
+  const root = fromHtml(
+    '<section lang="sv"><nav id="index" role="doc-index" data-index-profile="observer"></nav></section>',
+  );
   const file = VFile({ path: documentPath });
 
   renderDocumentIndexes(
@@ -381,8 +454,9 @@ void test("keeps a language the runtime can collate", () => {
     new Map([[targetKey, builtIndex]]),
     new Map([
       [
-        targetKey,
+        "observer",
         {
+          ...defaultProfile,
           comparator: (locales: Intl.LocalesArgument) => {
             requestedLocales.push(locales);
             return defaultComparator(locales);

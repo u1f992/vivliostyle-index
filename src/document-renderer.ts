@@ -6,9 +6,9 @@ import type { VFile } from "vfile";
 
 import type { BuiltIndex } from "./index-builder.ts";
 import { messages } from "./messages.ts";
+import { defaultProfile, type ResolvedIndexProfile } from "./profile.ts";
 import { renderIndex } from "./render.ts";
-import type { TargetSettings } from "./settings.ts";
-import { defaultComparator, sort } from "./sort.ts";
+import { sort } from "./sort.ts";
 import type { TargetKey } from "./target.ts";
 
 function collatableLanguage(language: string): boolean {
@@ -64,14 +64,32 @@ function carriesDocIndexRole(element: hast.Element): boolean {
   return role !== null && role.split(roleSeparator).includes("doc-index");
 }
 
+function resolveProfile(
+  element: hast.Element,
+  target: BuiltIndex["target"],
+  profiles: ReadonlyMap<string, ResolvedIndexProfile>,
+  file: VFile,
+): ResolvedIndexProfile {
+  const profileName = getAttribute(element, "data-index-profile");
+  if (profileName === null) {
+    return defaultProfile;
+  }
+  const profile = profiles.get(profileName);
+  if (profile === undefined) {
+    file.message(...messages.unknownIndexProfile(target, profileName));
+    return defaultProfile;
+  }
+  return profile;
+}
+
 export function renderDocumentIndexes(
   root: hast.Root,
   documentPath: string,
   indexes: ReadonlyMap<TargetKey, BuiltIndex>,
-  settings: ReadonlyMap<TargetKey, TargetSettings>,
+  profiles: ReadonlyMap<string, ResolvedIndexProfile>,
   file: VFile,
 ): void {
-  for (const [targetKey, { target, index }] of indexes) {
+  for (const { target, index } of indexes.values()) {
     if (target.path !== documentPath) {
       continue;
     }
@@ -85,11 +103,10 @@ export function renderDocumentIndexes(
       file.message(...messages.missingIndexRole(target));
       continue;
     }
-    const targetSettings = settings.get(targetKey);
-    const createComparator = targetSettings?.comparator ?? defaultComparator;
-    const comparator = createComparator(resolveLocales(language, file));
+    const profile = resolveProfile(element, target, profiles, file);
+    const comparator = profile.comparator(resolveLocales(language, file));
     const sorted = sort(index, comparator);
-    const renderer = targetSettings?.renderer?.({ h, index: sorted }) ?? {};
+    const renderer = profile.renderer({ h, index: sorted });
     renderIndex(sorted, element, target.fragment, renderer);
   }
 }

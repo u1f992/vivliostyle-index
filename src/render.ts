@@ -296,62 +296,243 @@ const defaultIndexCompose: NonNullable<IndexRenderer["compose"]> = ({ groupList 
 
 export type CreateRenderer = (context: { h: typeof h; index: Index }) => IndexRenderer;
 
+type ResolvedLocationRenderer = Readonly<Required<LocationRenderer>>;
+
+type ResolvedLocatorRenderer = Readonly<{
+  compose: NonNullable<LocatorRenderer["compose"]>;
+  location: ResolvedLocationRenderer;
+}>;
+
+type ResolvedXrefTargetRenderer<Type extends XrefType> = Readonly<
+  Required<XrefTargetRenderer<Type>>
+>;
+
+type ResolvedXrefRenderer<Type extends XrefType> = Readonly<{
+  compose: NonNullable<XrefRenderer<Type>["compose"]>;
+  target: ResolvedXrefTargetRenderer<Type>;
+}>;
+
+type ResolvedLocatorListRenderer = Readonly<{
+  compose: NonNullable<LocatorListRenderer["compose"]>;
+  locator(context: { locator: Locator }): ResolvedLocatorRenderer;
+}>;
+
+type ResolvedXrefPreferredListRenderer = Readonly<{
+  compose: NonNullable<XrefPreferredListRenderer["compose"]>;
+  xrefPreferred(context: { xrefPreferred: Xref }): ResolvedXrefRenderer<"preferred">;
+}>;
+
+type ResolvedXrefRelatedListRenderer = Readonly<{
+  compose: NonNullable<XrefRelatedListRenderer["compose"]>;
+  xrefRelated(context: { xrefRelated: Xref }): ResolvedXrefRenderer<"related">;
+}>;
+
+type ResolvedSubentryRenderer = Readonly<{
+  compose: NonNullable<SubentryRenderer["compose"]>;
+  heading: HeadingRenderer;
+  locatorList: ResolvedLocatorListRenderer;
+  xrefPreferredList: ResolvedXrefPreferredListRenderer;
+  xrefRelatedList: ResolvedXrefRelatedListRenderer;
+}>;
+
+type ResolvedSubentryListRenderer = Readonly<{
+  compose: NonNullable<SubentryListRenderer["compose"]>;
+  subentry(context: { subentry: Key }): ResolvedSubentryRenderer;
+}>;
+
+type ResolvedEntryRenderer = Readonly<{
+  compose: NonNullable<EntryRenderer["compose"]>;
+  heading: HeadingRenderer;
+  locatorList: ResolvedLocatorListRenderer;
+  xrefPreferredList: ResolvedXrefPreferredListRenderer;
+  xrefRelatedList: ResolvedXrefRelatedListRenderer;
+  subentryList: ResolvedSubentryListRenderer;
+}>;
+
+type ResolvedEntryListRenderer = Readonly<{
+  compose: NonNullable<EntryListRenderer["compose"]>;
+  entry(context: { entry: Key }): ResolvedEntryRenderer;
+}>;
+
+type ResolvedGroupRenderer = Readonly<{
+  compose: NonNullable<GroupRenderer["compose"]>;
+  heading: HeadingRenderer;
+  entryList: ResolvedEntryListRenderer;
+}>;
+
+type ResolvedGroupListRenderer = Readonly<{
+  compose: NonNullable<GroupListRenderer["compose"]>;
+  group(context: { group: Key }): ResolvedGroupRenderer;
+}>;
+
+type ResolvedIndexRenderer = Readonly<{
+  compose: NonNullable<IndexRenderer["compose"]>;
+  groupList: ResolvedGroupListRenderer;
+}>;
+
+const bindRendererMethod = <Arguments extends unknown[], Result>(
+  renderer: object,
+  method: ((...arguments_: Arguments) => Result) | undefined,
+  defaultMethod: (...arguments_: Arguments) => Result,
+): ((...arguments_: Arguments) => Result) =>
+  method === undefined ? defaultMethod : method.bind(renderer);
+
+const resolveLocationRenderer = (renderer: LocationRenderer): ResolvedLocationRenderer => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultLocationCompose),
+  pageNumber: bindRendererMethod(renderer, renderer.pageNumber, defaultPageNumber),
+  rangeSeparator: bindRendererMethod(renderer, renderer.rangeSeparator, defaultRangeSeparator),
+});
+
+const resolveLocatorRenderer = (renderer: LocatorRenderer): ResolvedLocatorRenderer => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultLocatorCompose),
+  location: resolveLocationRenderer(renderer.location ?? {}),
+});
+
+const resolveXrefTargetRenderer = <Type extends XrefType>(
+  renderer: XrefTargetRenderer<Type>,
+): ResolvedXrefTargetRenderer<Type> => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultXrefTargetCompose),
+  entry: bindRendererMethod(renderer, renderer.entry, defaultXrefEntry),
+  subentrySeparator: bindRendererMethod(
+    renderer,
+    renderer.subentrySeparator,
+    defaultXrefSubentrySeparator,
+  ),
+  subentry: bindRendererMethod(renderer, renderer.subentry, defaultXrefSubentry),
+});
+
+const resolveXrefRenderer = <Type extends XrefType>(
+  renderer: XrefRenderer<Type>,
+): ResolvedXrefRenderer<Type> => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultXrefCompose),
+  target: resolveXrefTargetRenderer(renderer.target ?? {}),
+});
+
+const resolveLocatorListRenderer = (
+  renderer: LocatorListRenderer,
+): ResolvedLocatorListRenderer => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultLocatorListCompose),
+  locator: (context) => resolveLocatorRenderer(renderer.locator?.call(renderer, context) ?? {}),
+});
+
+const resolveXrefPreferredListRenderer = (
+  renderer: XrefPreferredListRenderer,
+): ResolvedXrefPreferredListRenderer => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultXrefPreferredListCompose),
+  xrefPreferred: (context) =>
+    resolveXrefRenderer(renderer.xrefPreferred?.call(renderer, context) ?? {}),
+});
+
+const resolveXrefRelatedListRenderer = (
+  renderer: XrefRelatedListRenderer,
+): ResolvedXrefRelatedListRenderer => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultXrefRelatedListCompose),
+  xrefRelated: (context) =>
+    resolveXrefRenderer(renderer.xrefRelated?.call(renderer, context) ?? {}),
+});
+
+const resolveSubentryRenderer = (renderer: SubentryRenderer): ResolvedSubentryRenderer => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultSubentryCompose),
+  heading: bindRendererMethod(renderer, renderer.heading, defaultHeading),
+  locatorList: resolveLocatorListRenderer(renderer.locatorList ?? {}),
+  xrefPreferredList: resolveXrefPreferredListRenderer(renderer.xrefPreferredList ?? {}),
+  xrefRelatedList: resolveXrefRelatedListRenderer(renderer.xrefRelatedList ?? {}),
+});
+
+const resolveSubentryListRenderer = (
+  renderer: SubentryListRenderer,
+): ResolvedSubentryListRenderer => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultSubentryListCompose),
+  subentry: (context) => resolveSubentryRenderer(renderer.subentry?.call(renderer, context) ?? {}),
+});
+
+const resolveEntryRenderer = (renderer: EntryRenderer): ResolvedEntryRenderer => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultEntryCompose),
+  heading: bindRendererMethod(renderer, renderer.heading, defaultHeading),
+  locatorList: resolveLocatorListRenderer(renderer.locatorList ?? {}),
+  xrefPreferredList: resolveXrefPreferredListRenderer(renderer.xrefPreferredList ?? {}),
+  xrefRelatedList: resolveXrefRelatedListRenderer(renderer.xrefRelatedList ?? {}),
+  subentryList: resolveSubentryListRenderer(renderer.subentryList ?? {}),
+});
+
+const resolveEntryListRenderer = (renderer: EntryListRenderer): ResolvedEntryListRenderer => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultEntryListCompose),
+  entry: (context) => resolveEntryRenderer(renderer.entry?.call(renderer, context) ?? {}),
+});
+
+const resolveGroupRenderer = (renderer: GroupRenderer): ResolvedGroupRenderer => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultGroupCompose),
+  heading: bindRendererMethod(renderer, renderer.heading, defaultHeading),
+  entryList: resolveEntryListRenderer(renderer.entryList ?? {}),
+});
+
+const resolveGroupListRenderer = (renderer: GroupListRenderer): ResolvedGroupListRenderer => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultGroupListCompose),
+  group: (context) => resolveGroupRenderer(renderer.group?.call(renderer, context) ?? {}),
+});
+
+const resolveIndexRenderer = (renderer: IndexRenderer): ResolvedIndexRenderer => ({
+  compose: bindRendererMethod(renderer, renderer.compose, defaultIndexCompose),
+  groupList: resolveGroupListRenderer(renderer.groupList ?? {}),
+});
+
+export const defaultRenderer: CreateRenderer = () => resolveIndexRenderer({});
+
 export function renderIndex(
   index: Index,
   target: hast.Element,
   indexId: string,
   renderer: IndexRenderer,
 ): void {
+  const resolvedRenderer = resolveIndexRenderer(renderer);
   const groupListProperties = { dataIndexRole: "group-list" } as const;
-  const groupListRenderer = renderer.groupList ?? {};
+  const groupListRenderer = resolvedRenderer.groupList;
   const groups = index.groups.map((group) =>
     renderGroup(
       group,
       { dataIndexRole: "group" },
       indexId,
-      groupListRenderer.group?.({ group: group.key }) ?? {},
+      groupListRenderer.group({ group: group.key }),
     ),
   );
   const groupListParts = { properties: groupListProperties, groups };
-  const groupList =
-    groupListRenderer.compose?.(groupListParts) ?? defaultGroupListCompose(groupListParts);
+  const groupList = groupListRenderer.compose(groupListParts);
   target.data = { ...target.data, indexResult: index };
   const indexParts = { groupList };
-  target.children = renderer.compose?.(indexParts) ?? defaultIndexCompose(indexParts);
+  target.children = resolvedRenderer.compose(indexParts);
 }
 
-type HeadingOwner = Readonly<{ heading?: HeadingRenderer }>;
+type HeadingOwner = Readonly<{ heading: HeadingRenderer }>;
 
 const renderHeading = (key: Key, renderer: HeadingOwner): hast.ElementContent[] => {
   const properties = {};
   const contents = parseFragment(key.html);
   const headingParts = { properties, contents };
-  return renderer.heading?.(headingParts) ?? defaultHeading(headingParts);
+  return renderer.heading(headingParts);
 };
 
 const renderGroup = (
   group: Group,
   properties: RoleProperties<"group">,
   indexId: string,
-  renderer: GroupRenderer,
+  renderer: ResolvedGroupRenderer,
 ): hast.ElementContent[] => {
   const heading = renderHeading(group.key, renderer);
   const entryListProperties = { dataIndexRole: "entry-list" } as const;
-  const entryListRenderer = renderer.entryList ?? {};
+  const entryListRenderer = renderer.entryList;
   const entries = group.entries.map((entry) =>
     renderEntry(
       entry,
       { id: createEntryId(indexId, group.key, entry.key) },
       indexId,
       group.key,
-      entryListRenderer.entry?.({ entry: entry.key }) ?? {},
+      entryListRenderer.entry({ entry: entry.key }),
     ),
   );
   const entryListParts = { properties: entryListProperties, entries };
-  const entryList =
-    entryListRenderer.compose?.(entryListParts) ?? defaultEntryListCompose(entryListParts);
+  const entryList = entryListRenderer.compose(entryListParts);
   const groupParts = { properties, heading, entryList };
-  return renderer.compose?.(groupParts) ?? defaultGroupCompose(groupParts);
+  return renderer.compose(groupParts);
 };
 
 const renderEntry = (
@@ -359,29 +540,27 @@ const renderEntry = (
   properties: IdProperties,
   indexId: string,
   groupKey: Key,
-  renderer: EntryRenderer,
+  renderer: ResolvedEntryRenderer,
 ): hast.ElementContent[] => {
   const heading = renderHeading(entry.key, renderer);
   const locatorList = renderLocatorList(entry.locators, renderer);
   const xrefPreferredList = renderPreferredXrefList(entry.xrefPreferred, indexId, renderer);
   const xrefRelatedList = renderRelatedXrefList(entry.xrefRelated, indexId, renderer);
   const subentryListProperties = { dataIndexRole: "subentry-list" } as const;
-  const subentryListRenderer = renderer.subentryList ?? {};
+  const subentryListRenderer = renderer.subentryList;
   const subentries = entry.subentries.map((subentry) =>
     renderSubentry(
       subentry,
       { id: createSubentryId(indexId, groupKey, entry.key, subentry.key) },
       indexId,
-      subentryListRenderer.subentry?.({ subentry: subentry.key }) ?? {},
+      subentryListRenderer.subentry({ subentry: subentry.key }),
     ),
   );
   const subentryListParts = {
     properties: subentryListProperties,
     subentries,
   };
-  const subentryList =
-    subentryListRenderer.compose?.(subentryListParts) ??
-    defaultSubentryListCompose(subentryListParts);
+  const subentryList = subentryListRenderer.compose(subentryListParts);
   const entryParts = {
     properties,
     heading,
@@ -390,14 +569,14 @@ const renderEntry = (
     xrefRelatedList,
     subentryList,
   };
-  return renderer.compose?.(entryParts) ?? defaultEntryCompose(entryParts);
+  return renderer.compose(entryParts);
 };
 
 const renderSubentry = (
   subentry: Subentry,
   properties: IdProperties,
   indexId: string,
-  renderer: SubentryRenderer,
+  renderer: ResolvedSubentryRenderer,
 ): hast.ElementContent[] => {
   const heading = renderHeading(subentry.key, renderer);
   const locatorList = renderLocatorList(subentry.locators, renderer);
@@ -410,31 +589,34 @@ const renderSubentry = (
     xrefPreferredList,
     xrefRelatedList,
   };
-  return renderer.compose?.(subentryParts) ?? defaultSubentryCompose(subentryParts);
+  return renderer.compose(subentryParts);
 };
 
-type EntryContentRenderer = EntryRenderer | SubentryRenderer;
+type ResolvedEntryContentRenderer = ResolvedEntryRenderer | ResolvedSubentryRenderer;
 
 const renderLocatorList = (
   locators: readonly Locator[],
-  renderer: EntryContentRenderer,
+  renderer: ResolvedEntryContentRenderer,
 ): hast.ElementContent[] => {
   const properties = { dataIndexRole: "locator-list" } as const;
-  const listRenderer = renderer.locatorList ?? {};
+  const listRenderer = renderer.locatorList;
   const renderedLocators = locators.map((locator) => renderLocator(locator, listRenderer));
   const locatorListParts = { properties, locators: renderedLocators };
-  return listRenderer.compose?.(locatorListParts) ?? defaultLocatorListCompose(locatorListParts);
+  return listRenderer.compose(locatorListParts);
 };
 
-const renderPageNumber = (target: string, renderer: LocationRenderer): hast.ElementContent[] => {
+const renderPageNumber = (
+  target: string,
+  renderer: ResolvedLocationRenderer,
+): hast.ElementContent[] => {
   const properties = { dataIndexRole: "page-number", dataIndexPageTarget: target } as const;
   const pageNumberParts = { properties };
-  return renderer.pageNumber?.(pageNumberParts) ?? defaultPageNumber(pageNumberParts);
+  return renderer.pageNumber(pageNumberParts);
 };
 
 const renderLocatorContents = (
   { location }: Locator,
-  renderer: LocationRenderer,
+  renderer: ResolvedLocationRenderer,
 ): hast.ElementContent[] => {
   if (location.type === "page") {
     return renderPageNumber(location.href, renderer);
@@ -443,15 +625,14 @@ const renderLocatorContents = (
   const rangeSeparatorParts = { properties: separatorProperties };
   return [
     ...renderPageNumber(location.start, renderer),
-    ...(renderer.rangeSeparator?.(rangeSeparatorParts) ??
-      defaultRangeSeparator(rangeSeparatorParts)),
+    ...renderer.rangeSeparator(rangeSeparatorParts),
     ...renderPageNumber(location.end, renderer),
   ];
 };
 
 const renderLocator = (
   locator: Locator,
-  listRenderer: LocatorListRenderer,
+  listRenderer: ResolvedLocatorListRenderer,
 ): hast.ElementContent[] => {
   const { location } = locator;
   const locationProperties = {
@@ -459,20 +640,19 @@ const renderLocator = (
     href: location.type === "page" ? location.href : location.start,
     ...errorProperties(locator.error),
   } as const;
-  const renderer = listRenderer.locator?.({ locator }) ?? {};
-  const locationRenderer = renderer.location ?? {};
+  const renderer = listRenderer.locator({ locator });
+  const locationRenderer = renderer.location;
   const locationParts = {
     properties: locationProperties,
     contents: renderLocatorContents(locator, locationRenderer),
   };
-  const content =
-    locationRenderer.compose?.(locationParts) ?? defaultLocationCompose(locationParts);
+  const content = locationRenderer.compose(locationParts);
   const contents = fillSlot(locator.template, content);
   if (contents.length === 0) {
     return [];
   }
   const locatorParts = { properties: {}, contents };
-  return renderer.compose?.(locatorParts) ?? defaultLocatorCompose(locatorParts);
+  return renderer.compose(locatorParts);
 };
 
 const xrefId = (indexId: string, { group, entry, subentry }: EntryAddress): string =>
@@ -483,46 +663,35 @@ const xrefId = (indexId: string, { group, entry, subentry }: EntryAddress): stri
 const renderPreferredXrefList = (
   xrefPreferreds: readonly Xref[],
   indexId: string,
-  renderer: EntryContentRenderer,
+  renderer: ResolvedEntryContentRenderer,
 ): hast.ElementContent[] => {
   const properties = { dataIndexRole: "xref-preferred" } as const;
-  const listRenderer = renderer.xrefPreferredList ?? {};
+  const listRenderer = renderer.xrefPreferredList;
   const renderedXrefPreferreds = xrefPreferreds.map((xrefPreferred) =>
-    renderXref(
-      "preferred",
-      xrefPreferred,
-      indexId,
-      listRenderer.xrefPreferred?.({ xrefPreferred }) ?? {},
-    ),
+    renderXref("preferred", xrefPreferred, indexId, listRenderer.xrefPreferred({ xrefPreferred })),
   );
   const xrefPreferredListParts = {
     properties,
     xrefPreferreds: renderedXrefPreferreds,
   };
-  return (
-    listRenderer.compose?.(xrefPreferredListParts) ??
-    defaultXrefPreferredListCompose(xrefPreferredListParts)
-  );
+  return listRenderer.compose(xrefPreferredListParts);
 };
 
 const renderRelatedXrefList = (
   xrefRelateds: readonly Xref[],
   indexId: string,
-  renderer: EntryContentRenderer,
+  renderer: ResolvedEntryContentRenderer,
 ): hast.ElementContent[] => {
   const properties = { dataIndexRole: "xref-related" } as const;
-  const listRenderer = renderer.xrefRelatedList ?? {};
+  const listRenderer = renderer.xrefRelatedList;
   const renderedXrefRelateds = xrefRelateds.map((xrefRelated) =>
-    renderXref("related", xrefRelated, indexId, listRenderer.xrefRelated?.({ xrefRelated }) ?? {}),
+    renderXref("related", xrefRelated, indexId, listRenderer.xrefRelated({ xrefRelated })),
   );
   const xrefRelatedListParts = {
     properties,
     xrefRelateds: renderedXrefRelateds,
   };
-  return (
-    listRenderer.compose?.(xrefRelatedListParts) ??
-    defaultXrefRelatedListCompose(xrefRelatedListParts)
-  );
+  return listRenderer.compose(xrefRelatedListParts);
 };
 
 const xrefProperties = (
@@ -536,12 +705,12 @@ const xrefProperties = (
 const renderXrefContents = <Type extends XrefType>(
   type: Type,
   { target }: Xref,
-  renderer: XrefTargetRenderer<Type>,
+  renderer: ResolvedXrefTargetRenderer<Type>,
 ): hast.ElementContent[] => {
   const entryProperties = { dataIndexRole: `xref-${type}-entry` } as const;
   const entryContents = parseFragment(target.entry.html);
   const entryParts = { properties: entryProperties, contents: entryContents };
-  const entry = renderer.entry?.(entryParts) ?? defaultXrefEntry(entryParts);
+  const entry = renderer.entry(entryParts);
   if (target.subentry === undefined) {
     return entry;
   }
@@ -554,9 +723,8 @@ const renderXrefContents = <Type extends XrefType>(
   const subentryParts = { properties: subentryProperties, contents: subentryContents };
   return [
     ...entry,
-    ...(renderer.subentrySeparator?.(subentrySeparatorParts) ??
-      defaultXrefSubentrySeparator(subentrySeparatorParts)),
-    ...(renderer.subentry?.(subentryParts) ?? defaultXrefSubentry(subentryParts)),
+    ...renderer.subentrySeparator(subentrySeparatorParts),
+    ...renderer.subentry(subentryParts),
   ];
 };
 
@@ -564,18 +732,18 @@ const renderXref = <Type extends XrefType>(
   type: Type,
   xref: Xref,
   indexId: string,
-  renderer: XrefRenderer<Type>,
+  renderer: ResolvedXrefRenderer<Type>,
 ): hast.ElementContent[] => {
-  const targetRenderer = renderer.target ?? {};
+  const targetRenderer = renderer.target;
   const targetParts = {
     properties: xrefProperties(xref, indexId),
     contents: renderXrefContents(type, xref, targetRenderer),
   };
-  const content = targetRenderer.compose?.(targetParts) ?? defaultXrefTargetCompose(targetParts);
+  const content = targetRenderer.compose(targetParts);
   const contents = fillSlot(xref.template, content);
   if (contents.length === 0) {
     return [];
   }
   const xrefParts = { properties: {}, contents };
-  return renderer.compose?.(xrefParts) ?? defaultXrefCompose(xrefParts);
+  return renderer.compose(xrefParts);
 };
