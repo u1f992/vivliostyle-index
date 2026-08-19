@@ -149,7 +149,7 @@ export type LocatorListRenderer = Readonly<{
 const defaultLocatorListCompose: NonNullable<LocatorListRenderer["compose"]> = ({
   properties,
   locators,
-}) => [h("ol", properties, locators.flat())];
+}) => [h("ul", properties, locators.flat())];
 
 export type XrefPreferredListRenderer = Readonly<{
   compose?(parts: {

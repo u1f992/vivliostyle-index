@@ -194,14 +194,14 @@ void test("gives every entry the same lists in the same order", () => {
   const root = rootOf(target);
 
   const entryLists = [
-    "ol:locator-list",
+    "ul:locator-list",
     "ul:xref-preferred",
     "ul:xref-related",
     "ul:subentry-list",
   ];
   assert.deepStrictEqual(selectAll(ENTRY, root).map(listRoles), [entryLists, entryLists]);
   assert.deepStrictEqual(selectAll(SUBENTRY, root).map(listRoles), [
-    ["ol:locator-list", "ul:xref-preferred", "ul:xref-related"],
+    ["ul:locator-list", "ul:xref-preferred", "ul:xref-related"],
   ]);
   assert.deepStrictEqual(
     selectAll(`${LOCATORS} > li > a`, root).map((link) => getAttribute(link, "href")),
