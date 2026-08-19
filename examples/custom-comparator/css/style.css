@@ -1,0 +1,34 @@
+@page {
+  size: 148mm 210mm;
+
+  @bottom-center {
+    content: counter(page);
+  }
+}
+
+.page {
+  break-after: page;
+}
+
+#index > [data-index-role="group-list"] > section > [data-index-role="entry-list"] {
+  padding-left: 1em;
+}
+
+#index [data-index-role="entry-list"] > li {
+  list-style: none;
+}
+
+#index [data-index-role="locator-list"] {
+  display: inline;
+  padding: 0;
+  margin-left: 1em;
+  list-style: none;
+}
+
+#index [data-index-role="locator-list"] > li {
+  display: inline;
+}
+
+#index [data-index-role="page-number"]::before {
+  content: target-counter(attr(data-index-page-target), page);
+}
