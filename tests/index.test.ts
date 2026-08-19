@@ -189,7 +189,7 @@ void test("composes configured content into the index it names", () => {
     files,
     settings: [
       [
-        { path: "index.md", id: "subject" },
+        { path: "index.md", fragment: "subject" },
         {
           renderer: ({ h }) => ({
             compose: ({ groupList }) => [h("p", "事項"), ...groupList],
@@ -197,7 +197,7 @@ void test("composes configured content into the index it names", () => {
         },
       ],
       [
-        { path: "index.md", id: "person" },
+        { path: "index.md", fragment: "person" },
         {
           renderer: ({ h }) => ({
             compose: ({ groupList }) => [h("p", "人名"), ...groupList],
@@ -205,7 +205,7 @@ void test("composes configured content into the index it names", () => {
         },
       ],
       [
-        { path: "index.md", id: "unnamed" },
+        { path: "index.md", fragment: "unnamed" },
         {
           renderer: ({ h }) => ({
             compose: ({ groupList }) => [h("p", "出ない"), ...groupList],
@@ -266,7 +266,7 @@ void test("composes index content separately from rendering model nodes", () => 
     files,
     settings: [
       [
-        { path: "index.md", id: "index" },
+        { path: "index.md", fragment: "index" },
         {
           renderer: ({ h, index }) => {
             const groupReadings = index.groups.map(({ key }) => key.reading).join(",");
@@ -345,7 +345,9 @@ void test("uses a comparator selected by path and element ID", () => {
   const { processor } = createProcessor({
     entries: ["index.md", "chapter.md"],
     files,
-    settings: [[{ path: "index.md", id: "index" }, { comparator: () => defaultComparator("en") }]],
+    settings: [
+      [{ path: "index.md", fragment: "index" }, { comparator: () => defaultComparator("en") }],
+    ],
   });
   const root = fromHtml(files["/publication/index.md"]);
 
@@ -366,8 +368,8 @@ void test("uses the last comparator configured for an index target", () => {
     entries: ["index.md", "chapter.md"],
     files,
     settings: [
-      [{ path: "index.md", id: "index" }, { comparator: () => defaultComparator("en") }],
-      [{ path: "index.md", id: "index" }, { comparator: () => defaultComparator("sv") }],
+      [{ path: "index.md", fragment: "index" }, { comparator: () => defaultComparator("en") }],
+      [{ path: "index.md", fragment: "index" }, { comparator: () => defaultComparator("sv") }],
     ],
   });
   const root = fromHtml(files["/publication/index.md"]);
@@ -1434,7 +1436,7 @@ void test("resolves a configured comparator with the closest language", () => {
     files,
     settings: [
       [
-        { path: "index.md", id: "index" },
+        { path: "index.md", fragment: "index" },
         {
           comparator: (locales) => {
             requestedLocales.push(locales);

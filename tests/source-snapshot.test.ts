@@ -20,7 +20,7 @@ void test("extracts instructions, targets, locations, and element IDs", () => {
   assert.deepStrictEqual(snapshot.attachments[0], {
     sourcePath: "/publication/chapter.md",
     sourceId: "index.source.L2h0bWwvYm9keS9zcGFu",
-    target: { path: "/publication/index.md", id: "index" },
+    target: { path: "/publication/index.md", fragment: "index" },
     targetKey: '["/publication/index.md","index"]',
     instruction: {
       type: "range-start",
@@ -35,7 +35,7 @@ void test("extracts instructions, targets, locations, and element IDs", () => {
   assert.deepStrictEqual(snapshot.attachments[1], {
     sourcePath: "/publication/chapter.md",
     sourceId: "end",
-    target: { path: "/publication/index.md", id: "index" },
+    target: { path: "/publication/index.md", fragment: "index" },
     targetKey: '["/publication/index.md","index"]',
     instruction: {
       type: "range-end",

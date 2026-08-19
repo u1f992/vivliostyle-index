@@ -10,7 +10,7 @@ const index = createIndexPlugin({
   entry,
   settings: [
     [
-      { path: "index.md", id: "index" },
+      { path: "index.md", fragment: "index" },
       {
         renderer: ({ h }) => {
           const locatorList: LocatorListRenderer = {

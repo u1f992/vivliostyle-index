@@ -4,7 +4,7 @@ import { documentPath } from "./platform.ts";
 
 export type Target = Readonly<{
   path: string;
-  id: string;
+  fragment: string;
 }>;
 
 export type TargetKey = string;
@@ -15,7 +15,7 @@ export function createTarget(url: URL): Target {
   strippedUrl.hash = "";
   return {
     path: documentPath(strippedUrl),
-    id: decodeURIComponent(url.hash.slice(1)),
+    fragment: decodeURIComponent(url.hash.slice(1)),
   };
 }
 
@@ -24,7 +24,7 @@ export function resolveTarget(reference: string, baseUrl: URL): Target {
 }
 
 export function createTargetKey(target: Target): TargetKey {
-  return JSON.stringify([target.path, target.id]);
+  return JSON.stringify([target.path, target.fragment]);
 }
 
 export function mapByTarget<T>(
@@ -32,8 +32,8 @@ export function mapByTarget<T>(
   context: string,
 ): ReadonlyMap<TargetKey, T> {
   const mapped = new Map<TargetKey, T>();
-  for (const [{ path, id }, configuration] of configurations) {
-    mapped.set(createTargetKey({ path: upath.resolve(context, path), id }), configuration);
+  for (const [{ path, fragment }, configuration] of configurations) {
+    mapped.set(createTargetKey({ path: upath.resolve(context, path), fragment }), configuration);
   }
   return mapped;
 }

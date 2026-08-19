@@ -75,7 +75,7 @@ export function renderDocumentIndexes(
     if (target.path !== documentPath) {
       continue;
     }
-    const found = findTargetElement(root, target.id);
+    const found = findTargetElement(root, target.fragment);
     if (!found) {
       file.message(...messages.missingIndexTarget(target));
       continue;
@@ -90,6 +90,6 @@ export function renderDocumentIndexes(
     const comparator = createComparator(resolveLocales(language, file));
     const sorted = sort(index, comparator);
     const renderer = targetSettings?.renderer?.({ h, index: sorted }) ?? {};
-    renderIndex(sorted, element, target.id, renderer);
+    renderIndex(sorted, element, target.fragment, renderer);
   }
 }

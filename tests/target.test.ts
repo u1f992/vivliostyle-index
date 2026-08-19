@@ -12,7 +12,7 @@ void test("separates a document target from its query and fragment", () => {
 
   assert.deepStrictEqual(createTarget(url), {
     path: "/publication/index.md",
-    id: "索引",
+    fragment: "索引",
   });
 });
 
@@ -21,7 +21,7 @@ void test("resolves targets relative to the source document", () => {
 
   assert.deepStrictEqual(target, {
     path: "/publication/index.md",
-    id: "main",
+    fragment: "main",
   });
   assert.strictEqual(createTargetKey(target), '["/publication/index.md","main"]');
 });
@@ -31,15 +31,17 @@ void test("resolves configured targets and keeps the last configuration", () => 
   const second = () => () => ({ type: "element", tagName: "div", children: [] });
   const configurations = mapByTarget(
     [
-      [{ path: "indexes/index.md", id: "main" }, first],
-      [{ path: "indexes/index.md", id: "main" }, second],
+      [{ path: "indexes/index.md", fragment: "main" }, first],
+      [{ path: "indexes/index.md", fragment: "main" }, second],
     ],
     "/publication",
   );
 
   assert.strictEqual(configurations.size, 1);
   assert.strictEqual(
-    configurations.get(createTargetKey({ path: "/publication/indexes/index.md", id: "main" })),
+    configurations.get(
+      createTargetKey({ path: "/publication/indexes/index.md", fragment: "main" }),
+    ),
     second,
   );
 });

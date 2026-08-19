@@ -32,7 +32,7 @@ function createIndex(): Index {
 
 void test("renders indexes into targets in the current document", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "index" };
+  const target = { path: documentPath, fragment: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -53,7 +53,7 @@ void test("renders indexes into targets in the current document", () => {
 
 void test("renders into a target whose ID requires CSS escaping", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "index/main" };
+  const target = { path: documentPath, fragment: "index/main" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -71,7 +71,7 @@ void test("renders into a target whose ID requires CSS escaping", () => {
 
 void test("uses a comparator configured for the target", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "index" };
+  const target = { path: documentPath, fragment: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -103,7 +103,7 @@ void test("uses a comparator configured for the target", () => {
 
 void test("uses a renderer configured for the target", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "index" };
+  const target = { path: documentPath, fragment: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -139,7 +139,7 @@ void test("uses a renderer configured for the target", () => {
 
 void test("reports a missing target", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "missing" };
+  const target = { path: documentPath, fragment: "missing" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -162,7 +162,7 @@ void test("reports a missing target", () => {
 
 void test("refuses a target without a role attribute", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "index" };
+  const target = { path: documentPath, fragment: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -184,7 +184,7 @@ void test("refuses a target without a role attribute", () => {
 
 void test("refuses a target whose role lacks the doc-index token", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "index" };
+  const target = { path: documentPath, fragment: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -203,7 +203,7 @@ void test("refuses a target whose role lacks the doc-index token", () => {
 
 void test("accepts a target carrying doc-index among other role tokens", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "index" };
+  const target = { path: documentPath, fragment: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -221,7 +221,7 @@ void test("accepts a target carrying doc-index among other role tokens", () => {
 
 void test("exposes the sorted index on the target element", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "index" };
+  const target = { path: documentPath, fragment: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -249,7 +249,7 @@ void test("exposes the sorted index on the target element", () => {
 
 void test("reports a language the runtime cannot sort by", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "index" };
+  const target = { path: documentPath, fragment: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -291,7 +291,7 @@ void test("reports a language the runtime cannot sort by", () => {
 
 void test("takes an empty language as no language at all", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "index" };
+  const target = { path: documentPath, fragment: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -326,7 +326,7 @@ void test("takes an empty language as no language at all", () => {
 
 void test("reports a language the runtime has no collation for", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "index" };
+  const target = { path: documentPath, fragment: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,
@@ -364,7 +364,7 @@ void test("reports a language the runtime has no collation for", () => {
 
 void test("keeps a language the runtime can collate", () => {
   const documentPath = "/publication/index.md";
-  const target = { path: documentPath, id: "index" };
+  const target = { path: documentPath, fragment: "index" };
   const targetKey = createTargetKey(target);
   const builtIndex: BuiltIndex = {
     target,

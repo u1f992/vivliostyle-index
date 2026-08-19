@@ -205,7 +205,7 @@ void test("applies an entry listed twice once", () => {
     fileSystem,
     () => entryProcessor as never,
   );
-  const builtIndex = state.indexes.get(createTargetKey({ path: indexPath, id: "index" }));
+  const builtIndex = state.indexes.get(createTargetKey({ path: indexPath, fragment: "index" }));
 
   assert.deepStrictEqual(state.entryPaths, [chapterPath, indexPath]);
   assert.deepStrictEqual(reads, [chapterPath, indexPath]);

@@ -31,7 +31,7 @@ void test("builds range locators from ordered source snapshots", () => {
   ]);
 
   const { indexes, messages } = buildIndexes([chapterPath, endPath, indexPath], sources);
-  const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
+  const builtIndex = indexes.get(createTargetKey({ path: indexPath, fragment: "index" }));
 
   assert.ok(builtIndex);
   assert.deepStrictEqual(builtIndex.index, {
@@ -85,7 +85,7 @@ void test("degrades range markers that precede their starts to page locators", (
   ]);
 
   const { indexes, messages } = buildIndexes([endPath, chapterPath, indexPath], sources);
-  const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
+  const builtIndex = indexes.get(createTargetKey({ path: indexPath, fragment: "index" }));
 
   assert.ok(builtIndex);
   assert.deepStrictEqual(
@@ -118,7 +118,9 @@ void test("reports unresolved cross-references and targets outside the entry lis
   ]);
 
   const { indexes, messages } = buildIndexes([chapterPath], sources);
-  const builtIndex = indexes.get(createTargetKey({ path: "/publication/outside.md", id: "index" }));
+  const builtIndex = indexes.get(
+    createTargetKey({ path: "/publication/outside.md", fragment: "index" }),
+  );
 
   assert.strictEqual(builtIndex?.index.groups[0]?.entries[0]?.xrefPreferred.length, 1);
   assert.strictEqual(
@@ -154,7 +156,7 @@ void test("degrades a range start whose end lies outside the entry list", () => 
   ]);
 
   const { indexes, messages } = buildIndexes([chapterPath, indexPath], sources);
-  const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
+  const builtIndex = indexes.get(createTargetKey({ path: indexPath, fragment: "index" }));
 
   assert.ok(builtIndex);
   assert.deepStrictEqual(
@@ -187,7 +189,7 @@ void test("degrades a range start when its end is in an unprocessed document", (
   ]);
 
   const { indexes, messages } = buildIndexes([chapterPath, indexPath], sources);
-  const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
+  const builtIndex = indexes.get(createTargetKey({ path: indexPath, fragment: "index" }));
 
   assert.ok(builtIndex);
   assert.deepStrictEqual(
@@ -279,7 +281,7 @@ void test("builds locators and cross-references in the order the sources list th
   ]);
 
   const { indexes } = buildIndexes([indexPath, chapterPath], sources);
-  const builtIndex = indexes.get(createTargetKey({ path: indexPath, id: "index" }));
+  const builtIndex = indexes.get(createTargetKey({ path: indexPath, fragment: "index" }));
   const apple = builtIndex?.index.groups[0]?.entries[0];
 
   assert.deepStrictEqual(

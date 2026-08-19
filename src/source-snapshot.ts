@@ -66,7 +66,7 @@ export function collectSourceSnapshot(root: hast.Root, sourcePath: string): Sour
       continue;
     }
 
-    if (target.id === "") {
+    if (target.fragment === "") {
       documentMessages.push(messages.missingTargetFragment(reference));
       continue;
     }

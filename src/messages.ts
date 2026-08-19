@@ -7,7 +7,7 @@ import type { Target } from "./target.ts";
 export type MessageArguments = Parameters<VFile["message"]>;
 
 const rule = (ruleId: string): string => `vivliostyle-index:${ruleId}`;
-const formatTarget = (target: Target): string => `${target.path}#${target.id}`;
+const formatTarget = (target: Target): string => `${target.path}#${target.fragment}`;
 const formatEntryAddress = ({ group, entry, subentry }: EntryAddress): string => {
   const parts = [`group=${JSON.stringify(group)}`, `entry=${JSON.stringify(entry)}`];
   if (subentry !== undefined) {
