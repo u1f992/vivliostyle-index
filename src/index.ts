@@ -70,14 +70,34 @@ export type {
 } from "./sort.ts";
 export type { Target } from "./target.ts";
 
-export type CreatePluginOptions = {
+export type CreateIndexPluginOptions = {
   entry: readonly string[];
   entryContext?: string;
   profiles?: Profiles;
   fileSystem?: Readonly<FileSystem>;
 };
 
-export type PluginOptions = {
+export type IndexPluginOptions = {
+  /**
+   * Creates the processor used to read every configured entry before the host processes it.
+   *
+   * This option exists because of a design limitation: when the host processes an index target,
+   * documents that the host will process after that target have not yet produced their transformed
+   * trees. The plugin needs their index data to render the target, so it processes every configured
+   * entry in advance.
+   *
+   * The returned processor must reproduce the transformation that the host will later apply, but
+   * without this plugin, and must read document metadata in the same way. Including this plugin
+   * would invoke it recursively.
+   *
+   * The plugin obtains this factory while the host is processing one document, then uses it for
+   * every entry. A host may supply different processor options for each entry. The factory must
+   * account for those options or rely only on differences that do not change the collected index
+   * data. For example, Vivliostyle CLI supplies each manuscript with `style`, `title`, and
+   * `language` options.
+   *
+   * @see https://github.com/vivliostyle/vivliostyle-cli/blob/v11.1.0/src/processor/compile.ts#L195-L212
+   */
   createEntryProcessor: CreateEntryProcessor;
 };
 
@@ -86,7 +106,7 @@ export function createIndexPlugin({
   entryContext,
   profiles = {},
   fileSystem = nodeFileSystem,
-}: Readonly<CreatePluginOptions>): unified.Plugin<[Readonly<PluginOptions>]> {
+}: Readonly<CreateIndexPluginOptions>): unified.Plugin<[Readonly<IndexPluginOptions>]> {
   const cwd = workingDirectory();
   // Vivliostyle CLI also resolves an omitted entryContext against the working directory:
   // https://github.com/vivliostyle/vivliostyle-cli/blob/v11.1.0/src/config/resolve.ts#L627-L632
